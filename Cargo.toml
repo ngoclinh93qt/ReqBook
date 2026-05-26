@@ -4,8 +4,14 @@ version = "1.0.0"
 edition = "2021"
 rust-version = "1.75"
 license = "Apache-2.0"
+authors = ["Trellis contributors"]
 description = "Markdown-native API specs with execution, pipelines, and cross-agent workflows."
 repository = "https://github.com/trellis-md/trellis"
+homepage = "https://trellis.dev"
+documentation = "https://trellis.dev"
+readme = "README.md"
+keywords = ["api", "markdown", "cli", "testing", "agents"]
+categories = ["command-line-utilities", "development-tools::testing"]
 
 [lib]
 name = "trellis"
@@ -25,8 +31,8 @@ minimal = []
 anyhow = "1.0"
 askama = { version = "0.12", optional = true }
 axum = { version = "0.7", optional = true }
-clap = { version = "4.5", features = ["derive"] }
-clap_complete = "4.5"
+clap = { version = "=4.5.23", features = ["derive"] }
+clap_complete = "=4.5.40"
 dialoguer = "0.11"
 http = "1.1"
 owo-colors = "4.0"
@@ -61,3 +67,38 @@ codegen-units = 1
 opt-level = "z"
 panic = "abort"
 strip = true
+
+[profile.dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+opt-level = "z"
+panic = "abort"
+strip = true
+
+[workspace]
+members = ["."]
+resolver = "2"
+
+[workspace.metadata.dist]
+cargo-dist-version = "0.31.0"
+ci = ["github"]
+installers = ["shell", "powershell", "homebrew", "npm", "msi"]
+targets = [
+  "x86_64-unknown-linux-musl",
+  "aarch64-unknown-linux-musl",
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+]
+install-path = "~/.local/bin"
+tap = "trellis-md/homebrew-tap"
+publish-jobs = ["homebrew"]
+pr-run-mode = "plan"
+allow-dirty = ["ci"]
+
+[package.metadata.wix]
+upgrade-guid = "CCF909E6-11F5-4899-BBF0-E7EDBAE416A4"
+path-guid = "9D7098F7-2FB2-4E67-AA5E-E3C9361FD22C"
+license = false
+eula = false

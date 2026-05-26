@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 4 - cross-agent skill compatibility acceptance passed; commit pending
+- Current phase: Phase 5 - distribution: acceptance passed; commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -13,8 +13,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 1. Phase 1 - markdown convention: completed and committed (`efaad0c docs: define markdown convention`)
 2. Phase 2 - engine core: completed and committed (`31c0f1c feat: implement engine core`)
 3. Phase 3 - CLI surface: completed and committed (`cd6f3e7 feat: add cli surface`)
-4. Phase 4 - cross-agent skill compatibility: acceptance passed, commit pending
-5. Phase 5 - distribution: pending
+4. Phase 4 - cross-agent skill compatibility: completed and committed (`c35a312 feat: add cross-agent skills`)
+5. Phase 5 - distribution: acceptance passed, commit pending
 6. Phase 6 - migration tools: pending
 7. Phase 7 - web preview: pending
 8. Phase 8 - documentation site: pending
@@ -92,7 +92,32 @@ Phase 3 implementation notes:
 - `trellis skills uninstall` removes installed workspace skill files: passed
 - Real Claude Code non-interactive smoke check with trigger phrase: passed; Claude returned `trellis-author`
 
-Phase 4 implementation notes:
+## Phase 5 acceptance tracking
+
+- `cargo build --release --no-default-features --features minimal` (Dockerfile minimal build): passed at approximately 17 seconds
+- `cargo test`: passed (all 28 tests including httpbin integration)
+- `cargo clippy -- -D warnings`: passed
+- `cargo fmt --check`: passed
+- `packages/npm/package.json` is valid JSON with correct `bin` and `files` fields: passed
+- `scripts/install.sh` syntax check (`bash -n`): passed
+- All distribution artifacts present: Dockerfile, `.dockerignore`, `.github/workflows/release.yml`, `CHANGELOG.md`, `README.md`, `packages/npm/`, `scripts/`, `wix/main.wxs`: passed
+- `Cargo.toml` metadata complete (authors, homepage, documentation, readme, keywords, categories): passed
+- `[workspace.metadata.dist]` targets 5 platforms (linux-musl x86/arm, macOS x86/arm, Windows msvc): passed
+- `[profile.dist]` with release-grade settings present: passed
+- `[package.metadata.wix]` with upgrade/path GUIDs present: passed
+
+Phase 5 implementation notes:
+
+- `[workspace.metadata.dist]` configures cargo-dist 0.31.0 with shell, powershell, homebrew, npm, and msi installers.
+- `scripts/install.sh` supports Linux/macOS with SHA256 verification, automatic PATH selection, and `--version` override.
+- `scripts/install.ps1` supports Windows x86_64/arm64 with SHA256 verification.
+- `packages/npm/trellis.js` is a Node.js binary wrapper that downloads and caches the correct platform binary on first run.
+- Dockerfile uses a two-stage Alpine build with the `minimal` feature set for a minimal image size.
+- `[profile.dist]` is pinned to `opt-level = "z"` with `strip = true` for smallest binary size.
+- clap and clap_complete versions are pinned exactly (`=4.5.23`, `=4.5.40`) to ensure reproducible dist builds.
+- `src/lib.rs` adds `#[cfg(feature = "install")]` gate on the installer module so the minimal build compiles without it.
+
+## Phase 4 implementation notes:
 
 - Canonical skill sources live in `skills/trellis-author/SKILL.md`, `skills/trellis-exec/SKILL.md`, and `skills/trellis-flow/SKILL.md`.
 - Cursor and Copilot formats are generated from the same canonical SKILL.md frontmatter and body.

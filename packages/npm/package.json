@@ -1,0 +1,24 @@
+{
+  "name": "trellis-md",
+  "version": "1.0.0",
+  "description": "Markdown-native API specs with a Rust Trellis binary.",
+  "license": "Apache-2.0",
+  "bin": {
+    "trellis": "./trellis.js"
+  },
+  "files": [
+    "trellis.js",
+    "postinstall.js",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node ./postinstall.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trellis-md/trellis.git"
+  }
+}

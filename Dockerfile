@@ -1,0 +1,12 @@
+FROM rust:1.90-alpine AS builder
+RUN apk add --no-cache musl-dev
+WORKDIR /src
+COPY . .
+RUN cargo build --release --no-default-features --features minimal --locked
+
+FROM alpine:3.20
+RUN addgroup -S trellis && adduser -S trellis -G trellis
+COPY --from=builder /src/target/release/trellis /usr/local/bin/trellis
+USER trellis
+WORKDIR /work
+ENTRYPOINT ["trellis"]

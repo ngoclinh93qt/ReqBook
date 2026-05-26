@@ -11,7 +11,6 @@ use clap_complete::{generate, Shell};
 use owo_colors::OwoColorize;
 use trellis::{
     engine::{self, ExecOpts},
-    installer,
     parser::{self, parse_endpoint, parse_pipeline},
     pipeline::{self, PipelineOpts},
     report::{ConsoleReporter, JsonReporter, JunitReporter, MarkdownReporter, Reporter},
@@ -609,16 +608,25 @@ fn import(command: ImportCommand) -> Result<()> {
 }
 
 fn skills(command: SkillsCommand) -> Result<()> {
+    #[cfg(not(feature = "install"))]
+    {
+        let _ = command;
+        bail!(
+            "skills support is not compiled into this binary\nFix: install Trellis with default features."
+        );
+    }
+
+    #[cfg(feature = "install")]
     match command {
         SkillsCommand::Install { agent } => {
-            let installed = installer::install(Path::new("."), agent.as_deref())?;
+            let installed = trellis::installer::install(Path::new("."), agent.as_deref())?;
             for file in installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
             }
             Ok(())
         }
         SkillsCommand::List => {
-            for status in installer::detect_agents(Path::new(".")) {
+            for status in trellis::installer::detect_agents(Path::new(".")) {
                 println!(
                     "{}: {}",
                     status.agent.name(),
@@ -632,7 +640,7 @@ fn skills(command: SkillsCommand) -> Result<()> {
             Ok(())
         }
         SkillsCommand::Uninstall { agent } => {
-            let removed = installer::uninstall(Path::new("."), agent.as_deref())?;
+            let removed = trellis::installer::uninstall(Path::new("."), agent.as_deref())?;
             for path in removed {
                 println!("removed {}", path.display());
             }
