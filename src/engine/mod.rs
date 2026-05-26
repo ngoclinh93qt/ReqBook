@@ -226,6 +226,10 @@ pub async fn execute_with_client(
                         source,
                     })?;
                 let body = String::from_utf8_lossy(&bytes).to_string();
+                if status.is_server_error() && attempt < attempts {
+                    sleep(Duration::from_millis(25 * u64::from(attempt + 1))).await;
+                    continue;
+                }
                 let captured_response = CapturedResponse {
                     status: status.as_u16(),
                     headers: headers_to_map(&headers),

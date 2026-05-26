@@ -11,6 +11,7 @@ use clap_complete::{generate, Shell};
 use owo_colors::OwoColorize;
 use trellis::{
     engine::{self, ExecOpts},
+    installer,
     parser::{self, parse_endpoint, parse_pipeline},
     pipeline::{self, PipelineOpts},
     report::{ConsoleReporter, JsonReporter, JunitReporter, MarkdownReporter, Reporter},
@@ -166,7 +167,11 @@ enum SkillsCommand {
     /// List detected agents and skill status.
     List,
     /// Uninstall installed Trellis skills.
-    Uninstall,
+    Uninstall {
+        /// Agent name.
+        #[arg(long)]
+        agent: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -605,30 +610,34 @@ fn import(command: ImportCommand) -> Result<()> {
 
 fn skills(command: SkillsCommand) -> Result<()> {
     match command {
-        SkillsCommand::Install { agent } => bail!(
-            "skills install{} is scheduled for Phase 4\nFix: continue to Phase 4 before using this command.",
-            agent
-                .as_ref()
-                .map(|agent| format!(" --agent={agent}"))
-                .unwrap_or_default()
-        ),
-        SkillsCommand::List => {
-            println!("Claude Code: {}", detected(Path::new(".claude")));
-            println!("Cursor: {}", detected(Path::new(".cursor")));
-            println!("GitHub Copilot: {}", detected(Path::new(".github")));
+        SkillsCommand::Install { agent } => {
+            let installed = installer::install(Path::new("."), agent.as_deref())?;
+            for file in installed {
+                println!("installed {}: {}", file.agent.name(), file.path.display());
+            }
             Ok(())
         }
-        SkillsCommand::Uninstall => bail!(
-            "skills uninstall is scheduled for Phase 4\nFix: continue to Phase 4 before using this command."
-        ),
-    }
-}
-
-fn detected(path: &Path) -> &'static str {
-    if path.exists() {
-        "detected"
-    } else {
-        "not detected"
+        SkillsCommand::List => {
+            for status in installer::detect_agents(Path::new(".")) {
+                println!(
+                    "{}: {}",
+                    status.agent.name(),
+                    if status.detected {
+                        "detected"
+                    } else {
+                        "not detected"
+                    }
+                );
+            }
+            Ok(())
+        }
+        SkillsCommand::Uninstall { agent } => {
+            let removed = installer::uninstall(Path::new("."), agent.as_deref())?;
+            for path in removed {
+                println!("removed {}", path.display());
+            }
+            Ok(())
+        }
     }
 }
 

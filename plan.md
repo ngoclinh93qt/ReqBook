@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 3 - CLI surface acceptance passed; commit pending
+- Current phase: Phase 4 - cross-agent skill compatibility acceptance passed; commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -12,8 +12,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 1. Phase 1 - markdown convention: completed and committed (`efaad0c docs: define markdown convention`)
 2. Phase 2 - engine core: completed and committed (`31c0f1c feat: implement engine core`)
-3. Phase 3 - CLI surface: acceptance passed, commit pending
-4. Phase 4 - cross-agent skill compatibility: pending
+3. Phase 3 - CLI surface: completed and committed (`cd6f3e7 feat: add cli surface`)
+4. Phase 4 - cross-agent skill compatibility: acceptance passed, commit pending
 5. Phase 5 - distribution: pending
 6. Phase 6 - migration tools: pending
 7. Phase 7 - web preview: pending
@@ -81,3 +81,19 @@ Phase 3 implementation notes:
 - Full clap command surface is present: `init`, `validate`, `exec`, `flow`, `index`, `import`, `skills`, `serve`, `doctor`, `completion`, and `version`.
 - `import`, `skills install/uninstall`, and `serve` are wired into the CLI with actionable errors until their implementation phases complete.
 - `trellis init` creates `.gitignore` with `.env.local` to satisfy the security convention and doctor check.
+
+## Phase 4 acceptance tracking
+
+- `trellis skills install --agent=claude-code` creates `.claude/skills/trellis-{author,exec,flow}/SKILL.md`: passed
+- `trellis skills install --agent=cursor` creates `.cursor/rules/trellis-{author,exec,flow}.mdc`: passed
+- `trellis skills install --agent=copilot` creates `.github/instructions/trellis-*.instructions.md`: passed
+- `trellis skills install` without `--agent` auto-detects at least one agent: passed using `.opencode/`
+- Generated YAML frontmatter validates for Claude Code, Cursor, and Copilot formats: passed
+- `trellis skills uninstall` removes installed workspace skill files: passed
+- Real Claude Code non-interactive smoke check with trigger phrase: passed; Claude returned `trellis-author`
+
+Phase 4 implementation notes:
+
+- Canonical skill sources live in `skills/trellis-author/SKILL.md`, `skills/trellis-exec/SKILL.md`, and `skills/trellis-flow/SKILL.md`.
+- Cursor and Copilot formats are generated from the same canonical SKILL.md frontmatter and body.
+- Auto-detection follows the configured agent matrix. During local validation, temporary `HOME` was used for CLI checks that should not touch the developer's real global skill directories.
