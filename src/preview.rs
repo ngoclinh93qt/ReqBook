@@ -10,6 +10,7 @@ use std::{
 use anyhow::Result;
 use askama::Template;
 use axum::{
+    body::Bytes,
     extract::{Path as AxumPath, State},
     http::StatusCode,
     response::{Html, IntoResponse, Json},
@@ -20,6 +21,7 @@ use owo_colors::OwoColorize;
 
 use crate::{
     engine::{self, ExecOpts},
+    importer::{self, curl as curl_importer},
     parser::{parse_endpoint, parse_env_config},
     resolver::{Context, SourceKind},
 };
@@ -242,6 +244,73 @@ fn read_project_name(api_docs: &Path) -> Option<String> {
     None
 }
 
+async fn import_curl_handler(State(state): State<Arc<AppState>>, body: Bytes) -> impl IntoResponse {
+    let text = match std::str::from_utf8(&body) {
+        Ok(s) => s.to_string(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "request body must be UTF-8"})),
+            )
+                .into_response();
+        }
+    };
+    if text.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "empty curl command"})),
+        )
+            .into_response();
+    }
+
+    let endpoints = match curl_importer::import(&text) {
+        Ok((_, eps)) => eps,
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(serde_json::json!({"error": e.to_string()})),
+            )
+                .into_response();
+        }
+    };
+
+    match importer::write_endpoints(&state.root, &endpoints) {
+        Ok(written) => {
+            if written.is_empty() {
+                // File already existed — still return what would have been written.
+                let ep = &endpoints[0];
+                let spec = importer::render_endpoint(ep);
+                Json(serde_json::json!({
+                    "status": "exists",
+                    "message": "A spec for this endpoint already exists.",
+                    "spec": spec,
+                }))
+                .into_response()
+            } else {
+                let path = &written[0];
+                let rel_path = path
+                    .strip_prefix(state.root.join("api-docs"))
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .into_owned();
+                let spec = importer::render_endpoint(&endpoints[0]);
+                Json(serde_json::json!({
+                    "status": "created",
+                    "path": path.display().to_string(),
+                    "rel_path": rel_path,
+                    "spec": spec,
+                }))
+                .into_response()
+            }
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
+    }
+}
+
 // ─── Template helpers ─────────────────────────────────────────────────────────
 
 fn render_template<T: Template>(template: T) -> axum::response::Response {
@@ -278,6 +347,7 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str) -> Result<()> 
         .route("/", get(index_handler))
         .route("/spec/*path", get(spec_handler))
         .route("/exec/*path", post(exec_handler))
+        .route("/import/curl", post(import_curl_handler))
         .with_state(state);
 
     let addr = format!("{host}:{port}");

@@ -1,5 +1,6 @@
-//! Import tools for Postman, Insomnia, and OpenAPI specs.
+//! Import tools for Postman, Insomnia, OpenAPI specs, and raw curl commands.
 
+pub mod curl;
 pub mod insomnia;
 pub mod openapi;
 pub mod postman;

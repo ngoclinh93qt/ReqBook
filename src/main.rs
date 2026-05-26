@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
     time::Instant,
 };
@@ -153,6 +153,15 @@ enum ImportCommand {
     Insomnia { file: PathBuf },
     /// Import OpenAPI 3.x YAML or JSON.
     Openapi { file: PathBuf },
+    /// Import a raw curl command (paste from browser DevTools).
+    ///
+    /// Reads from FILE if provided, otherwise reads from stdin.
+    /// Example: trellis import curl curl.txt
+    /// Example: pbpaste | trellis import curl
+    Curl {
+        /// File containing the curl command (omit to read from stdin).
+        file: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -608,6 +617,34 @@ fn import(command: ImportCommand) -> Result<()> {
         ),
         ImportCommand::Openapi { file } => {
             run_import(&file, "OpenAPI spec", trellis::importer::openapi::import)
+        }
+        ImportCommand::Curl { file } => {
+            let source = match file {
+                Some(ref path) => read_text(path, "reading curl command")?,
+                None => {
+                    let mut buf = String::new();
+                    io::stdin()
+                        .read_to_string(&mut buf)
+                        .context("reading curl command from stdin")?;
+                    buf
+                }
+            };
+            let (name, endpoints) =
+                trellis::importer::curl::import(&source).context("invalid curl command")?;
+            if endpoints.is_empty() {
+                println!("no endpoints parsed");
+                return Ok(());
+            }
+            let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
+            println!("imported from {name}");
+            for path in &written {
+                println!("  created {}", path.display());
+            }
+            println!("{} endpoint(s) written", written.len());
+            if !written.is_empty() {
+                regenerate_index(Path::new("api-docs"))?;
+            }
+            Ok(())
         }
     }
 }

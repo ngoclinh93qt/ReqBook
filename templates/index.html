@@ -27,6 +27,25 @@ header p{color:#666;font-size:.875rem;margin-top:.25rem}
 .empty{color:#aaa;text-align:center;padding:3rem 0;font-size:.9rem}
 footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #eee;font-size:.75rem;color:#bbb}
 a.footer-link{color:#bbb}
+/* cURL import box */
+.import-section{margin-top:3rem;border-top:1px solid #eee;padding-top:1.75rem}
+.import-toggle{background:none;border:1px solid #e5e5e5;border-radius:6px;padding:.45rem .9rem;font-size:.8rem;color:#555;cursor:pointer;display:flex;align-items:center;gap:.4rem;transition:border-color .15s}
+.import-toggle:hover{border-color:#aaa;color:#111}
+.import-toggle .arrow{font-size:.65rem;transition:transform .2s}
+.import-toggle.open .arrow{transform:rotate(90deg)}
+.import-body{display:none;margin-top:1rem}
+.import-body.visible{display:block}
+.import-body label{font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:.4rem}
+.import-body textarea{width:100%;height:160px;font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:.78rem;border:1px solid #d4d4d4;border-radius:6px;padding:.6rem .75rem;resize:vertical;outline:none;background:#fff;color:#1a1a1a;transition:border-color .15s}
+.import-body textarea:focus{border-color:#6366f1}
+.import-body textarea::placeholder{color:#bbb}
+.import-btn{margin-top:.6rem;background:#6366f1;color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .15s}
+.import-btn:hover{background:#4f46e5}
+.import-btn:disabled{background:#a5a7f5;cursor:not-allowed}
+.import-result{margin-top:.75rem;font-size:.82rem;border-radius:6px;padding:.6rem .85rem;display:none}
+.import-result.success{background:#dcfce7;color:#15803d;display:block}
+.import-result.error{background:#fee2e2;color:#dc2626;display:block}
+.import-result a{color:inherit;font-weight:600}
 </style>
 </head>
 <body>
@@ -51,7 +70,78 @@ a.footer-link{color:#bbb}
 </div>
 {% endfor %}
 {% endif %}
+<section class="import-section">
+  <button class="import-toggle" id="import-toggle" onclick="toggleImport()">
+    <span class="arrow">▶</span> Import from cURL
+  </button>
+  <div class="import-body" id="import-body">
+    <label for="curl-input">Paste a <code>curl</code> command (e.g. from Chrome DevTools → Copy as cURL)</label>
+    <textarea id="curl-input" spellcheck="false"
+      placeholder="curl 'https://api.example.com/users' \&#10;  -H 'accept: application/json' \&#10;  -H 'authorization: Bearer ...'"></textarea>
+    <button class="import-btn" id="import-btn" onclick="importCurl()">Import endpoint</button>
+    <div class="import-result" id="import-result"></div>
+  </div>
+</section>
+
 <footer>Trellis {{ version }} &middot; <a class="footer-link" href="https://trellis.dev">trellis.dev</a></footer>
 </div>
+<script>
+function toggleImport() {
+  var btn = document.getElementById('import-toggle');
+  var body = document.getElementById('import-body');
+  btn.classList.toggle('open');
+  body.classList.toggle('visible');
+  if (body.classList.contains('visible')) {
+    document.getElementById('curl-input').focus();
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function importCurl() {
+  var text = document.getElementById('curl-input').value.trim();
+  var result = document.getElementById('import-result');
+  var btn = document.getElementById('import-btn');
+  if (!text) {
+    result.className = 'import-result error';
+    result.textContent = 'Paste a curl command first.';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  result.className = 'import-result';
+  result.textContent = '';
+  try {
+    var resp = await fetch('/import/curl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: text
+    });
+    var data = await resp.json();
+    if (data.error) {
+      result.className = 'import-result error';
+      result.textContent = data.error;
+    } else if (data.status === 'exists') {
+      result.className = 'import-result error';
+      result.textContent = data.message + ' Remove the existing file to reimport.';
+    } else {
+      result.className = 'import-result success';
+      result.innerHTML = '✓ Created <a href="/spec/' + escapeHtml(data.rel_path) + '">' +
+        escapeHtml(data.path) + '</a> — <a href="/spec/' + escapeHtml(data.rel_path) + '">view spec →</a>';
+      document.getElementById('curl-input').value = '';
+      // Reload after short delay so the new endpoint appears in the list.
+      setTimeout(function(){ location.reload(); }, 1800);
+    }
+  } catch (e) {
+    result.className = 'import-result error';
+    result.textContent = 'Request failed: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import endpoint';
+  }
+}
+</script>
 </body>
 </html>
