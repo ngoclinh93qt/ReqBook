@@ -6,6 +6,8 @@ pub mod importer;
 pub mod installer;
 pub mod parser;
 pub mod pipeline;
+#[cfg(feature = "web")]
+pub mod preview;
 pub mod report;
 pub mod resolver;
 

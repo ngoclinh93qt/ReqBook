@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 6 - migration tools: acceptance passed, commit pending
+- Current phase: Phase 7 - web preview: acceptance passed, commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -15,8 +15,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 3. Phase 3 - CLI surface: completed and committed (`cd6f3e7 feat: add cli surface`)
 4. Phase 4 - cross-agent skill compatibility: completed and committed (`c35a312 feat: add cross-agent skills`)
 5. Phase 5 - distribution: completed and committed (`a8f690c feat: add distribution packaging`)
-6. Phase 6 - migration tools: acceptance passed, commit pending
-7. Phase 7 - web preview: pending
+6. Phase 6 - migration tools: completed and committed (`f5c8c78 feat: add migration tools`)
+7. Phase 7 - web preview: acceptance passed, commit pending
 8. Phase 8 - documentation site: pending
 9. Phase 9 - examples: pending
 10. Phase 10 - CI/CD: pending
@@ -29,6 +29,30 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 - If a later phase exposes a defect in an earlier phase, fix the earlier phase first and commit the fix.
 - Preserve markdown-native configuration. Do not introduce TOML, JSON, or YAML project config files beyond Rust/package tooling files that require them.
 - Keep production code free of stubs, unchecked secrets, and untracked TODO/FIXME comments.
+
+## Phase 7 acceptance tracking
+
+- `trellis serve` starts, prints `✓ Preview: http://127.0.0.1:8080`, and serves HTML: passed
+- `GET /` returns HTML listing grouped endpoint cards with method badges: passed
+- `GET /spec/<path>` returns HTML endpoint detail page with request, expected response, and Run button: passed
+- `POST /exec/<path>` returns JSON `Execution` with `diff.passed` field: passed (via curl smoke test)
+- `cargo test` (47 tests total, 4 new preview unit tests): passed
+- `cargo clippy -- -D warnings`: passed
+- `cargo fmt --check`: passed
+- `cargo build --release --no-default-features --features minimal` (Dockerfile path): passed
+
+Phase 7 implementation notes:
+
+- `src/preview.rs` implements the web preview server gated by `#[cfg(feature = "web")]`.
+- Routes: `GET /` (index), `GET /spec/*path` (endpoint detail), `POST /exec/*path` (execute and return JSON).
+- `IndexTemplate` (askama) groups endpoints by resource and renders method badges styled by HTTP method.
+- `SpecTemplate` (askama) renders endpoint details with a JavaScript Run button that POSTs to `/exec/*path`.
+- `collect_specs` walks `api-docs/` recursively, tries `parse_endpoint` on each `.md` file; silently skips non-endpoint files (README.md, trellis.md, env.md, pipeline files, etc.).
+- `load_env_context` reads `api-docs/_shared/env.md` for the selected env and populates the `Context` before execution.
+- `read_project_name` extracts the `name:` field from `api-docs/trellis.md` frontmatter for the page title.
+- `serve` in `main.rs` changed to `async fn` to await the preview server; `#[cfg]` guards compile the correct version.
+- Templates live in `templates/` (at crate root), embedded at compile time by askama.
+- Server binds to `127.0.0.1:8080` by default; warns on `0.0.0.0`; uses `tokio::net::TcpListener` + `axum::serve`.
 
 ## Phase 6 acceptance tracking
 

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ project_name }} · Trellis Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fafafa;color:#1a1a1a;line-height:1.5}
+.shell{max-width:860px;margin:0 auto;padding:2rem 1.5rem}
+header{border-bottom:1px solid #e5e5e5;margin-bottom:2rem;padding-bottom:1.25rem}
+header h1{font-size:1.5rem;font-weight:700}
+header p{color:#666;font-size:.875rem;margin-top:.25rem}
+.group+.group{margin-top:2rem}
+.group h2{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:.65rem}
+.item{display:flex;align-items:center;gap:.75rem;background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:.65rem 1rem;margin-bottom:.35rem;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
+.item:hover{border-color:#bbb;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.badge{font-size:.7rem;font-weight:700;padding:.2rem .45rem;border-radius:4px;min-width:54px;text-align:center;flex-shrink:0;font-family:monospace}
+.GET{background:#dbeafe;color:#1d4ed8}
+.POST{background:#dcfce7;color:#15803d}
+.PUT{background:#fef9c3;color:#92400e}
+.PATCH{background:#f3e8ff;color:#7c3aed}
+.DELETE{background:#fee2e2;color:#dc2626}
+.HEAD,.OPTIONS{background:#f3f4f6;color:#374151}
+.item-path{font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:.85rem;color:#333}
+.item-title{margin-left:auto;color:#aaa;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.empty{color:#aaa;text-align:center;padding:3rem 0;font-size:.9rem}
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #eee;font-size:.75rem;color:#bbb}
+a.footer-link{color:#bbb}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <h1>{{ project_name }}</h1>
+  <p>{{ spec_count }} endpoint{% if spec_count != 1 %}s{% endif %} &middot; Trellis web preview</p>
+</header>
+{% if groups.is_empty() %}
+<p class="empty">No endpoints found. Run <code>trellis init</code> to scaffold a project.</p>
+{% else %}
+{% for group in groups %}
+<div class="group">
+  <h2>{{ group.resource }}</h2>
+  {% for spec in group.specs %}
+  <a class="item" href="/spec/{{ spec.rel_path }}">
+    <span class="badge {{ spec.method }}">{{ spec.method }}</span>
+    <span class="item-path">{{ spec.path }}</span>
+    <span class="item-title">{{ spec.title }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+<footer>Trellis {{ version }} &middot; <a class="footer-link" href="https://trellis.dev">trellis.dev</a></footer>
+</div>
+</body>
+</html>

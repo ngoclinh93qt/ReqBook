@@ -195,7 +195,7 @@ async fn main() -> Result<()> {
         Command::Index => regenerate_index(Path::new("api-docs"))?,
         Command::Import { command } => import(command)?,
         Command::Skills { command } => skills(command)?,
-        Command::Serve(args) => serve(args)?,
+        Command::Serve(args) => serve(args).await?,
         Command::Doctor(args) => doctor(args)?,
         Command::Completion { shell } => {
             let mut cmd = Cli::command();
@@ -678,15 +678,18 @@ fn skills(command: SkillsCommand) -> Result<()> {
     }
 }
 
-fn serve(args: ServeArgs) -> Result<()> {
+async fn serve(args: ServeArgs) -> Result<()> {
     if args.host == "0.0.0.0" {
         eprintln!("Warning: binding to 0.0.0.0 exposes the local preview on your network.");
     }
+    #[cfg(feature = "web")]
+    {
+        let root = args.path.unwrap_or_else(|| Path::new(".").to_path_buf());
+        return trellis::preview::run(root, &args.host, args.port, &args.env).await;
+    }
+    #[cfg(not(feature = "web"))]
     bail!(
-        "web preview is scheduled for Phase 7 (requested {}:{} env={})\nFix: continue to Phase 7 before using `trellis serve`.",
-        args.host,
-        args.port,
-        args.env
+        "web preview is not compiled into this binary\nFix: install Trellis with default features."
     )
 }
 

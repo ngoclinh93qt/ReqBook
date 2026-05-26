@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · Trellis Preview</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fafafa;color:#1a1a1a;line-height:1.5}
+.shell{max-width:860px;margin:0 auto;padding:2rem 1.5rem}
+nav{margin-bottom:1.5rem}
+nav a{color:#666;text-decoration:none;font-size:.875rem}
+nav a:hover{color:#333}
+header{border-bottom:1px solid #e5e5e5;margin-bottom:2rem;padding-bottom:1.25rem;display:flex;align-items:flex-start;gap:1rem}
+header .meta{flex:1}
+.badge{font-size:.75rem;font-weight:700;padding:.3rem .55rem;border-radius:5px;font-family:monospace;flex-shrink:0;margin-top:.15rem}
+.GET{background:#dbeafe;color:#1d4ed8}
+.POST{background:#dcfce7;color:#15803d}
+.PUT{background:#fef9c3;color:#92400e}
+.PATCH{background:#f3e8ff;color:#7c3aed}
+.DELETE{background:#fee2e2;color:#dc2626}
+.HEAD,.OPTIONS{background:#f3f4f6;color:#374151}
+header h1{font-size:1.4rem;font-weight:700}
+.path{font-family:'SF Mono','Fira Code',Consolas,monospace;color:#555;font-size:.9rem;margin-top:.25rem}
+.description{color:#666;font-size:.9rem;margin-top:.4rem}
+section{margin-bottom:1.75rem}
+section h2{font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:.6rem}
+pre{background:#fff;border:1px solid #e8e8e8;border-radius:8px;padding:1rem 1.25rem;overflow-x:auto;font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:.82rem;line-height:1.6;color:#333}
+.run-bar{display:flex;align-items:center;gap:1rem}
+.run-btn{background:#1d4ed8;color:#fff;border:none;padding:.5rem 1.1rem;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s}
+.run-btn:hover{background:#1e40af}
+.run-btn:disabled{background:#93c5fd;cursor:not-allowed}
+.env-label{color:#888;font-size:.8rem}
+#result{margin-top:1rem}
+.result-box{background:#fff;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden}
+.result-status{padding:.65rem 1rem;font-weight:600;font-size:.875rem;border-bottom:1px solid #e8e8e8}
+.result-status.pass{background:#f0fdf4;color:#15803d}
+.result-status.fail{background:#fef2f2;color:#dc2626}
+.result-body{padding:1rem 1.25rem;font-family:'SF Mono','Fira Code',Consolas,monospace;font-size:.82rem;overflow-x:auto;white-space:pre}
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #eee;font-size:.75rem;color:#bbb}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav><a href="/">&#8592; All endpoints</a></nav>
+<header>
+  <span class="badge {{ method }}">{{ method }}</span>
+  <div class="meta">
+    <h1>{{ title }}</h1>
+    <p class="path">{{ path }}</p>
+    {% if !description.is_empty() %}
+    <p class="description">{{ description }}</p>
+    {% endif %}
+  </div>
+</header>
+
+<section>
+  <h2>Request</h2>
+  <pre>{{ request }}</pre>
+</section>
+
+<section>
+  <h2>Expected response</h2>
+  <pre>{{ expected_response }}</pre>
+</section>
+
+{% if let Some(t) = tests %}
+<section>
+  <h2>Tests</h2>
+  <pre>{{ t }}</pre>
+</section>
+{% endif %}
+
+<section>
+  <h2>Run</h2>
+  <div class="run-bar">
+    <button class="run-btn" id="run-btn" onclick="runSpec()">&#9654; Run</button>
+    <span class="env-label">env: {{ env }}</span>
+  </div>
+  <div id="result"></div>
+</section>
+
+<footer>Trellis {{ version }}</footer>
+</div>
+<script>
+async function runSpec() {
+  var btn = document.getElementById('run-btn');
+  btn.textContent = '...';
+  btn.disabled = true;
+  var result = document.getElementById('result');
+  result.innerHTML = '';
+  try {
+    var r = await fetch('/exec/{{ rel_path|safe }}', { method: 'POST' });
+    var data = await r.json();
+    var passed = data.diff && data.diff.passed;
+    var status = data.response ? data.response.status : null;
+    var statusText = status ? ('HTTP ' + status) : 'No response';
+    var box = document.createElement('div');
+    box.className = 'result-box';
+    var hdr = document.createElement('div');
+    hdr.className = 'result-status ' + (passed ? 'pass' : 'fail');
+    hdr.textContent = (passed ? '✓ Passed' : '✗ Failed') + ' · ' + statusText + ' · ' + data.duration_ms + 'ms';
+    var body = document.createElement('div');
+    body.className = 'result-body';
+    body.textContent = JSON.stringify(data, null, 2);
+    box.appendChild(hdr);
+    box.appendChild(body);
+    result.appendChild(box);
+  } catch(e) {
+    result.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>';
+  }
+  btn.textContent = '▶ Run';
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
