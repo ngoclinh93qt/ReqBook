@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 7 - web preview: acceptance passed, commit pending
+- Current phase: Phase 8 - documentation site: acceptance passed, commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -16,8 +16,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 4. Phase 4 - cross-agent skill compatibility: completed and committed (`c35a312 feat: add cross-agent skills`)
 5. Phase 5 - distribution: completed and committed (`a8f690c feat: add distribution packaging`)
 6. Phase 6 - migration tools: completed and committed (`f5c8c78 feat: add migration tools`)
-7. Phase 7 - web preview: acceptance passed, commit pending
-8. Phase 8 - documentation site: pending
+7. Phase 7 - web preview: completed and committed (`42ae3a7 feat: add web preview`)
+8. Phase 8 - documentation site: acceptance passed, commit pending
 9. Phase 9 - examples: pending
 10. Phase 10 - CI/CD: pending
 11. Phase 11 - acceptance, polish, launch readiness: pending
@@ -29,6 +29,25 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 - If a later phase exposes a defect in an earlier phase, fix the earlier phase first and commit the fix.
 - Preserve markdown-native configuration. Do not introduce TOML, JSON, or YAML project config files beyond Rust/package tooling files that require them.
 - Keep production code free of stubs, unchecked secrets, and untracked TODO/FIXME comments.
+
+## Phase 8 acceptance tracking
+
+- `docs/index.md` exists with description, features, quick start, and navigation links: passed (35 lines)
+- `docs/getting-started.md` exists with all 5 install methods, init walkthrough, validate, exec, serve, doctor: passed (197 lines)
+- `docs/cli.md` documents all 17 subcommands (init, validate, exec, flow, index, import×3, skills×3, serve, doctor, completion, version) plus global flags and exit codes: passed (448 lines)
+- `docs/configuration.md` covers trellis.md format, env.md format, variable resolution priority, secret detection, auth modes, retry policy: passed (279 lines)
+- `docs/guides/migration.md` covers Postman v2.1, Insomnia v4, OpenAPI 3.x with concept mapping tables and workflows: passed (222 lines)
+- Each docs page cross-links to at least one other docs page: passed
+- `README.md` updated with badges, description, quick start, features table, all 5 install methods, links to docs: passed (60 lines)
+- `docs/spec/convention.md` unchanged: confirmed
+
+Phase 8 implementation notes:
+
+- Documentation follows the coordination rule for markdown-native structure: all docs are `.md` files with no site generator config required.
+- `docs/spec/convention.md` is the canonical spec; the other docs pages are user-facing guides that reference it.
+- Cross-linking uses relative markdown paths (e.g., `[CLI reference](cli.md)` from `docs/getting-started.md`).
+- `cli.md` groups `import postman/insomnia/openapi` under `## trellis import` with `###` subsections, and similarly for `skills install/list/uninstall`.
+- README.md uses placeholder badge URLs that resolve once the GitHub repo is published.
 
 ## Phase 7 acceptance tracking
 
