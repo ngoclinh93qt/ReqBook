@@ -20,7 +20,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 8. Phase 8 - documentation site: completed and committed (`e9616d3 docs: add documentation site`)
 9. Phase 9 - examples: completed and committed (`7e402a0 examples: add jsonplaceholder example project`)
 10. Phase 10 - CI/CD: completed and committed (`ecb61cd ci: add CI workflow`)
-11. Phase 11 - acceptance, polish, launch readiness: completed and committed (see below)
+11. Phase 11 - acceptance, polish, launch readiness: completed and committed (`c530699 chore: polish and launch readiness for v1.0.0`)
 
 ## Coordination rules
 
