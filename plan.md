@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 5 - distribution: acceptance passed; commit pending
+- Current phase: Phase 6 - migration tools: acceptance passed, commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -14,8 +14,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 2. Phase 2 - engine core: completed and committed (`31c0f1c feat: implement engine core`)
 3. Phase 3 - CLI surface: completed and committed (`cd6f3e7 feat: add cli surface`)
 4. Phase 4 - cross-agent skill compatibility: completed and committed (`c35a312 feat: add cross-agent skills`)
-5. Phase 5 - distribution: acceptance passed, commit pending
-6. Phase 6 - migration tools: pending
+5. Phase 5 - distribution: completed and committed (`a8f690c feat: add distribution packaging`)
+6. Phase 6 - migration tools: acceptance passed, commit pending
 7. Phase 7 - web preview: pending
 8. Phase 8 - documentation site: pending
 9. Phase 9 - examples: pending
@@ -29,6 +29,28 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 - If a later phase exposes a defect in an earlier phase, fix the earlier phase first and commit the fix.
 - Preserve markdown-native configuration. Do not introduce TOML, JSON, or YAML project config files beyond Rust/package tooling files that require them.
 - Keep production code free of stubs, unchecked secrets, and untracked TODO/FIXME comments.
+
+## Phase 6 acceptance tracking
+
+- `cargo test` (43 tests total including 8 new importer unit tests): passed
+- `cargo clippy -- -D warnings`: passed
+- `cargo fmt --check`: passed
+- `trellis import postman` parses Postman v2.1 JSON, generates `api-docs/<resource>/<method>-<slug>.md` files: passed
+- `trellis import insomnia` parses Insomnia v4 JSON, maps request groups to resource folders: passed
+- `trellis import openapi` parses OpenAPI 3.x YAML/JSON, converts `{param}` paths to `:param`: passed
+- All generated files pass `parse_endpoint` (validated by `generated_file_passes_validate` tests): passed
+- `trellis import` on missing file returns error with path and fix suggestion: passed (anyhow context)
+
+Phase 6 implementation notes:
+
+- `src/importer/mod.rs` defines `ImportedEndpoint`, `write_endpoints`, `render_endpoint`, and shared helpers: `convert_path_params`, `resource_slug`, `normalize_variables`, `parse_url`, `sentence_case`.
+- `parse_url` handles `{{baseUrl}}/path`, `https://host/path`, `/path`, and bare-path forms; strips query strings; converts path variables to `:param`.
+- `postman.rs` walks the nested item tree recursively; extracts example responses from the `response` array.
+- `insomnia.rs` builds a group-id → slug map from `request_group` resources and resolves each request's `parentId` for resource naming.
+- `openapi.rs` uses `serde_yaml::Value` (handles both YAML and JSON); converts `{param}` to `:param`; generates method-appropriate request blocks; uses `serde_json::to_string_pretty` on `serde_yaml::Value` for JSON body rendering.
+- No new crate dependencies added. All three importers use `serde_json`, `serde_yaml`, `regex`, and `anyhow` already present.
+- Test fixtures in `tests/fixtures/`: `postman.json`, `insomnia.json`, `openapi.yaml`.
+- `importer` module is unconditional (no feature flag) since it uses no optional deps.
 
 ## Phase 1 acceptance tracking
 

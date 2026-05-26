@@ -1,6 +1,7 @@
 //! Public API for embedding Trellis.
 
 pub mod engine;
+pub mod importer;
 #[cfg(feature = "install")]
 pub mod installer;
 pub mod parser;

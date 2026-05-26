@@ -1,0 +1,18 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "resources": [
+    {"_type": "workspace", "_id": "wrk_1", "name": "Demo API"},
+    {"_type": "request_group", "_id": "fld_1", "parentId": "wrk_1", "name": "Orders"},
+    {
+      "_type": "request",
+      "_id": "req_1",
+      "parentId": "fld_1",
+      "name": "Get order",
+      "method": "GET",
+      "url": "{{ baseUrl }}/orders/{{ orderId }}",
+      "headers": [{"name": "Accept", "value": "application/json"}],
+      "body": {}
+    }
+  ]
+}

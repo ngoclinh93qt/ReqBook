@@ -595,16 +595,45 @@ fn check(label: &str, ok: bool) {
 }
 
 fn import(command: ImportCommand) -> Result<()> {
-    let file = match command {
-        ImportCommand::Postman { file }
-        | ImportCommand::Insomnia { file }
-        | ImportCommand::Openapi { file } => file,
-    };
-    let _ = read_text(&file, "reading import file")?;
-    bail!(
-        "{}: importer implementation is scheduled for Phase 6\nFix: use `trellis init` or author markdown specs directly until import is enabled.",
-        file.display()
-    )
+    match command {
+        ImportCommand::Postman { file } => run_import(
+            &file,
+            "Postman collection",
+            trellis::importer::postman::import,
+        ),
+        ImportCommand::Insomnia { file } => run_import(
+            &file,
+            "Insomnia export",
+            trellis::importer::insomnia::import,
+        ),
+        ImportCommand::Openapi { file } => {
+            run_import(&file, "OpenAPI spec", trellis::importer::openapi::import)
+        }
+    }
+}
+
+fn run_import(
+    file: &Path,
+    kind: &str,
+    parse: impl Fn(&str) -> anyhow::Result<(String, Vec<trellis::importer::ImportedEndpoint>)>,
+) -> Result<()> {
+    let source = read_text(file, &format!("reading {kind}"))?;
+    let (name, endpoints) =
+        parse(&source).with_context(|| format!("{}: invalid {kind}", file.display()))?;
+    if endpoints.is_empty() {
+        println!("no endpoints found in {}", file.display());
+        return Ok(());
+    }
+    let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
+    println!("imported from {} ({})", name, file.display());
+    for path in &written {
+        println!("  created {}", path.display());
+    }
+    println!("{} endpoint(s) written", written.len());
+    if !written.is_empty() {
+        regenerate_index(Path::new("api-docs"))?;
+    }
+    Ok(())
 }
 
 fn skills(command: SkillsCommand) -> Result<()> {

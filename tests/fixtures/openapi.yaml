@@ -1,0 +1,42 @@
+openapi: 3.0.0
+info:
+  title: Demo API
+  version: 1.0.0
+paths:
+  /products/{productId}:
+    get:
+      summary: Get product
+      description: Fetches a product by ID.
+      tags: [products]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              example:
+                id: 1
+                name: Test Product
+  /products:
+    post:
+      summary: Create product
+      tags: [products]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              example:
+                id: 2
+                name: New Product
