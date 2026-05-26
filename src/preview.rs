@@ -493,10 +493,10 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str) -> Result<()> 
         // JSON API
         .route("/api/index", get(api_index_handler))
         .route(
-            "/api/spec/{*path}",
+            "/api/spec/*path",
             get(api_spec_handler).put(save_spec_handler),
         )
-        .route("/api/exec/{*path}", post(exec_handler))
+        .route("/api/exec/*path", post(exec_handler))
         .route(
             "/api/variables",
             get(get_variables_handler).post(save_variables_handler),
