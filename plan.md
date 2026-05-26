@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 10 - CI/CD: acceptance passed, commit pending
+- Current phase: v1.0.0 build plan complete
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -19,8 +19,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 7. Phase 7 - web preview: completed and committed (`42ae3a7 feat: add web preview`)
 8. Phase 8 - documentation site: completed and committed (`e9616d3 docs: add documentation site`)
 9. Phase 9 - examples: completed and committed (`7e402a0 examples: add jsonplaceholder example project`)
-10. Phase 10 - CI/CD: acceptance passed, commit pending
-11. Phase 11 - acceptance, polish, launch readiness: pending
+10. Phase 10 - CI/CD: completed and committed (`ecb61cd ci: add CI workflow`)
+11. Phase 11 - acceptance, polish, launch readiness: completed and committed (see below)
 
 ## Coordination rules
 
@@ -29,6 +29,29 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 - If a later phase exposes a defect in an earlier phase, fix the earlier phase first and commit the fix.
 - Preserve markdown-native configuration. Do not introduce TOML, JSON, or YAML project config files beyond Rust/package tooling files that require them.
 - Keep production code free of stubs, unchecked secrets, and untracked TODO/FIXME comments.
+
+## Phase 11 acceptance tracking
+
+- `cargo test` (47 tests, 46 unit + 1 httpbin integration): passed
+- `cargo clippy -- -D warnings`: passed
+- `cargo fmt --check`: passed
+- `trellis --version` prints `1.0.0`: passed
+- `trellis validate examples/jsonplaceholder/api-docs/` reports valid (9 files, 4 ms): passed
+- `trellis doctor` runs cleanly with no fatal errors: passed
+- No TODO/FIXME/stub markers in production code (`src/`): passed
+- Binary size under 5 MB (`target/release/trellis` ≈ 3.1 MB stripped): passed
+- `trellis skills list` detects claude-code, codex-cli, antigravity, copilot: passed
+- `trellis completion bash` generates valid bash completion script: passed
+- `CHANGELOG.md` expanded to full v1.0.0 release notes covering all 11 phases: passed
+- `README.md` has badges, description, quick-start, features table, install methods: passed
+- `docs/` site has index, getting-started, cli, configuration, migration guides: passed
+
+Phase 11 implementation notes:
+
+- End-to-end acceptance sweep confirmed every phase's deliverables are present and functional.
+- `CHANGELOG.md` rewritten from stub to comprehensive notes grouped by: Engine, CLI, Cross-agent skills, Web preview, Distribution, Spec convention.
+- No production code changes were needed; all prior phase implementations passed their acceptance criteria without modification.
+- Binary is ~3.1 MB (stripped, opt-level="z") for the default feature set on macOS aarch64.
 
 ## Phase 10 acceptance tracking
 
