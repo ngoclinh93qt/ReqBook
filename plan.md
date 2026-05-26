@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 12 - slash commands, smart init, project route scanner: in progress
+- Current phase: Phase 12 complete
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -21,7 +21,28 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 9. Phase 9 - examples: completed and committed (`7e402a0 examples: add jsonplaceholder example project`)
 10. Phase 10 - CI/CD: completed and committed (`ecb61cd ci: add CI workflow`)
 11. Phase 11 - acceptance, polish, launch readiness: completed and committed (`c530699 chore: polish and launch readiness for v1.0.0`)
-12. Phase 12 - slash commands, smart init, project route scanner: in progress
+12. Phase 12 - slash commands, smart init, project route scanner: completed and committed (`d239200 feat: slash commands, smart init, project route scanner`)
+
+## Phase 12 acceptance tracking
+
+- `cargo test` (73 tests: 72 unit + 1 httpbin integration): passed
+- `cargo clippy -- -D warnings`: passed
+- `cargo fmt --check`: passed
+- `trellis skills install --agent=claude-code` creates 7 slash commands in `.claude/commands/` + 3 skills: passed
+- `trellis skills uninstall --agent=claude-code` removes all 10 files: passed
+- `trellis install --agent=cursor` creates 3 skills only (no slash commands): passed
+- `trellis init --yes` in a dir with `Cargo.toml name = "trellis"` uses "trellis" as default: passed (detected via smoke test)
+- `trellis import project src/` on this repo finds 6 axum routes in preview.rs: passed
+- `trellis import project examples/` returns 0 endpoints (no source code): passed (by test)
+- Generated specs pass `trellis validate`: passed (by unit test)
+
+Phase 12 implementation notes:
+
+- Slash commands added to `src/installer/mod.rs` as `COMMANDS: &[CommandDef]` array (7 entries). `Agent::supports_commands()` gates which agents get them (claude-code, codex-cli only).
+- `detect_project_name()` added to `src/main.rs`: checks package.json, Cargo.toml, pyproject.toml, go.mod, composer.json, pom.xml in order; uses `serde_json` for JSON manifests, simple line-by-line parsing for TOML/go.mod, regex for pom.xml — no new dependencies.
+- `src/importer/project.rs` walks the source tree using `walkdir`-style manual recursion (no extra dep), applies 15 regex patterns per file extension, deduplicates by `(method, path)`, normalises paths (Flask `<type:param>`, OpenAPI `{param}`, Axum `:param` all → `:param`).
+- `walkdir` moved from optional (`install` feature) to unconditional since the project importer has no feature gate.
+- `title_from_path` in `curl.rs` promoted from `fn` to `pub(crate) fn` so `project.rs` can reuse it.
 
 ## Coordination rules
 
