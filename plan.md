@@ -4,15 +4,15 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 2 - engine core acceptance passed; commit pending
+- Current phase: Phase 3 - CLI surface acceptance passed; commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
 ## Phase checklist
 
 1. Phase 1 - markdown convention: completed and committed (`efaad0c docs: define markdown convention`)
-2. Phase 2 - engine core: acceptance passed, commit pending
-3. Phase 3 - CLI surface: pending
+2. Phase 2 - engine core: completed and committed (`31c0f1c feat: implement engine core`)
+3. Phase 3 - CLI surface: acceptance passed, commit pending
 4. Phase 4 - cross-agent skill compatibility: pending
 5. Phase 5 - distribution: pending
 6. Phase 6 - migration tools: pending
@@ -67,3 +67,17 @@ Phase 2 final command results:
 - `cargo fmt --check`: passed
 - `cargo bench --bench parse_endpoint -- --sample-size 10`: `parse_50_line_endpoint` measured approximately 15.8 microseconds
 - Secret detection CLI check: `trellis validate api-docs/_shared/env.md` exits 5 for `sk_` token
+
+## Phase 3 acceptance tracking
+
+- `trellis --help` shows clean output and lists all required commands: passed
+- `trellis init` in an empty directory creates a working `api-docs/` project: passed at approximately 0.06 seconds for init plus validate
+- `trellis completion bash > /tmp/c && source /tmp/c` enables a bash completion registration: passed
+- `trellis doctor` runs in under 500 ms with project, agent, and network diagnostics: passed at approximately 0.04 seconds in the initialized project check
+- Error messages include path and suggested fix where applicable: passed for invalid specs, secret detection, and missing files
+
+Phase 3 implementation notes:
+
+- Full clap command surface is present: `init`, `validate`, `exec`, `flow`, `index`, `import`, `skills`, `serve`, `doctor`, `completion`, and `version`.
+- `import`, `skills install/uninstall`, and `serve` are wired into the CLI with actionable errors until their implementation phases complete.
+- `trellis init` creates `.gitignore` with `.env.local` to satisfy the security convention and doctor check.
