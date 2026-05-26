@@ -23,14 +23,15 @@ path = "src/main.rs"
 
 [features]
 default = ["web", "install"]
-web = ["dep:axum", "dep:askama", "dep:tokio-stream"]
+web = ["dep:axum", "dep:rust-embed", "dep:mime_guess", "dep:tokio-stream"]
 install = ["dep:dirs"]
 minimal = []
 
 [dependencies]
 anyhow = "1.0"
-askama = { version = "0.12", optional = true }
 axum = { version = "0.7", optional = true }
+rust-embed = { version = "8", optional = true }
+mime_guess = { version = "2", optional = true }
 clap = { version = "=4.5.23", features = ["derive"] }
 clap_complete = "=4.5.40"
 dialoguer = "0.11"

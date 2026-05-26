@@ -1,3 +1,5 @@
 /target/
 /.env.local
 *.profraw
+/web/node_modules/
+/web/dist/
