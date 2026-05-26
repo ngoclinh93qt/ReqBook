@@ -1,9 +1,11 @@
-//! Import tools for Postman, Insomnia, OpenAPI specs, and raw curl commands.
+//! Import tools for Postman, Insomnia, OpenAPI specs, raw curl commands,
+//! and project source-code route scanning.
 
 pub mod curl;
 pub mod insomnia;
 pub mod openapi;
 pub mod postman;
+pub mod project;
 
 use std::{
     fs,

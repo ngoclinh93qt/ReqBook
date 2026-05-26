@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: v1.0.0 build plan complete
+- Current phase: Phase 12 - slash commands, smart init, project route scanner: in progress
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -21,6 +21,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 9. Phase 9 - examples: completed and committed (`7e402a0 examples: add jsonplaceholder example project`)
 10. Phase 10 - CI/CD: completed and committed (`ecb61cd ci: add CI workflow`)
 11. Phase 11 - acceptance, polish, launch readiness: completed and committed (`c530699 chore: polish and launch readiness for v1.0.0`)
+12. Phase 12 - slash commands, smart init, project route scanner: in progress
 
 ## Coordination rules
 

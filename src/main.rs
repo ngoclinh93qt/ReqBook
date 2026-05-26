@@ -162,6 +162,17 @@ enum ImportCommand {
         /// File containing the curl command (omit to read from stdin).
         file: Option<PathBuf>,
     },
+    /// Scan project source code for route definitions and import them.
+    ///
+    /// Detects routes from Express, FastAPI, Flask, Axum, Actix, Gin, Spring
+    /// Boot, Laravel, Rails, ASP.NET Core, NestJS, Hono, and more.
+    ///
+    /// Example: trellis import project
+    /// Example: trellis import project ./src
+    Project {
+        /// Root directory to scan (default: current directory).
+        path: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -215,13 +226,131 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// Try to detect the project name from common project manifest files in the
+/// current directory. Returns `None` if no manifest is found or parsing fails.
+///
+/// Search order:
+/// 1. `package.json` → `name` field (strips `@scope/` prefix)
+/// 2. `Cargo.toml` → `name` under `[package]`
+/// 3. `pyproject.toml` → `name` under `[project]` or `[tool.poetry]`
+/// 4. `go.mod` → last segment of the `module` path
+/// 5. `composer.json` → part after `/` in `name`
+/// 6. `pom.xml` → first `<artifactId>` element
+fn detect_project_name() -> Option<String> {
+    // package.json
+    if let Ok(raw) = fs::read_to_string("package.json") {
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
+            if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+                // Strip @scope/ prefix
+                let name = n.split('/').next_back().unwrap_or(n).trim().to_string();
+                if !name.is_empty() {
+                    return Some(name);
+                }
+            }
+        }
+    }
+
+    // Cargo.toml — simple line-by-line parse (no new dep)
+    if let Ok(raw) = fs::read_to_string("Cargo.toml") {
+        let mut in_package = false;
+        for line in raw.lines() {
+            let trimmed = line.trim();
+            if trimmed == "[package]" {
+                in_package = true;
+                continue;
+            }
+            if trimmed.starts_with('[') {
+                in_package = false;
+            }
+            if in_package {
+                if let Some(rest) = trimmed.strip_prefix("name") {
+                    let rest = rest.trim().strip_prefix('=').unwrap_or("").trim();
+                    let name = rest.trim_matches('"').trim_matches('\'').trim().to_string();
+                    if !name.is_empty() {
+                        return Some(name);
+                    }
+                }
+            }
+        }
+    }
+
+    // pyproject.toml — look for name = "..." under [project] or [tool.poetry]
+    if let Ok(raw) = fs::read_to_string("pyproject.toml") {
+        let mut in_section = false;
+        for line in raw.lines() {
+            let trimmed = line.trim();
+            if trimmed == "[project]" || trimmed == "[tool.poetry]" {
+                in_section = true;
+                continue;
+            }
+            if trimmed.starts_with('[') {
+                in_section = false;
+            }
+            if in_section {
+                if let Some(rest) = trimmed.strip_prefix("name") {
+                    let rest = rest.trim().strip_prefix('=').unwrap_or("").trim();
+                    let name = rest.trim_matches('"').trim_matches('\'').trim().to_string();
+                    if !name.is_empty() {
+                        return Some(name);
+                    }
+                }
+            }
+        }
+    }
+
+    // go.mod — `module github.com/owner/repo` → `repo`
+    if let Ok(raw) = fs::read_to_string("go.mod") {
+        if let Some(line) = raw.lines().next() {
+            if let Some(path) = line.strip_prefix("module ") {
+                let name = path
+                    .trim()
+                    .split('/')
+                    .next_back()
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                if !name.is_empty() {
+                    return Some(name);
+                }
+            }
+        }
+    }
+
+    // composer.json — `"name": "vendor/package"` → `package`
+    if let Ok(raw) = fs::read_to_string("composer.json") {
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
+            if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+                let name = n.split('/').next_back().unwrap_or(n).trim().to_string();
+                if !name.is_empty() {
+                    return Some(name);
+                }
+            }
+        }
+    }
+
+    // pom.xml — first <artifactId>...</artifactId>
+    if let Ok(raw) = fs::read_to_string("pom.xml") {
+        let re = regex::Regex::new(r"<artifactId>([^<]+)</artifactId>").expect("valid regex");
+        if let Some(cap) = re.captures(&raw) {
+            let name = cap[1].trim().to_string();
+            if !name.is_empty() {
+                return Some(name);
+            }
+        }
+    }
+
+    None
+}
+
 fn init(args: InitArgs) -> Result<()> {
+    let detected = detect_project_name();
+    let default_name = detected.unwrap_or_else(|| "my-api".to_string());
     let name = match args.name {
         Some(name) => name,
-        None if args.yes => "my-api".to_string(),
+        None if args.yes => default_name,
         None => dialoguer::Input::new()
             .with_prompt("Project name")
-            .default("my-api".to_string())
+            .default(default_name)
             .interact_text()?,
     };
     let dev_url = match args.dev_url {
@@ -643,6 +772,44 @@ fn import(command: ImportCommand) -> Result<()> {
             println!("{} endpoint(s) written", written.len());
             if !written.is_empty() {
                 regenerate_index(Path::new("api-docs"))?;
+            }
+            Ok(())
+        }
+        ImportCommand::Project { path } => {
+            let root = path.unwrap_or_else(|| Path::new(".").to_path_buf());
+            let started = std::time::Instant::now();
+            println!("Scanning {} for route definitions…", root.display());
+            let (name, endpoints) = trellis::importer::project::import(&root)
+                .with_context(|| format!("scanning {}", root.display()))?;
+            if endpoints.is_empty() {
+                println!(
+                    "no routes found in {} ({}ms)",
+                    root.display(),
+                    started.elapsed().as_millis()
+                );
+                println!("Tip: run from a directory that contains source code, or specify a path.");
+                return Ok(());
+            }
+            let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
+            println!(
+                "scanned {} ({}ms) — {} route(s) found",
+                name,
+                started.elapsed().as_millis(),
+                endpoints.len()
+            );
+            for path in &written {
+                println!("  created {}", path.display());
+            }
+            let skipped = endpoints.len() - written.len();
+            if skipped > 0 {
+                println!("  {} spec(s) already existed and were skipped", skipped);
+            }
+            println!("{} spec(s) written", written.len());
+            if !written.is_empty() {
+                regenerate_index(Path::new("api-docs"))?;
+                println!(
+                    "Next: set baseUrl in api-docs/_shared/env.md, then run `trellis validate api-docs/`"
+                );
             }
             Ok(())
         }

@@ -1,4 +1,4 @@
-//! Cross-agent skill installation.
+//! Cross-agent skill and slash-command installation.
 
 use std::{
     fs,
@@ -11,6 +11,121 @@ use thiserror::Error;
 const AUTHOR: &str = include_str!("../../skills/trellis-author/SKILL.md");
 const EXEC: &str = include_str!("../../skills/trellis-exec/SKILL.md");
 const FLOW: &str = include_str!("../../skills/trellis-flow/SKILL.md");
+
+// ─── Slash-command definitions ────────────────────────────────────────────────
+
+/// A slash-command installed into the agent's commands directory.
+struct CommandDef {
+    slug: &'static str,
+    description: &'static str,
+    prompt: &'static str,
+}
+
+/// All Trellis slash commands, in order.
+const COMMANDS: &[CommandDef] = &[
+    CommandDef {
+        slug: "trellis-exec",
+        description: "Execute a Trellis endpoint spec and report the result",
+        prompt: r#"Run the Trellis endpoint spec specified in $ARGUMENTS and report the result.
+
+```bash
+trellis exec $ARGUMENTS --env=dev
+```
+
+Report: endpoint file, environment, method + URL (mask auth headers), HTTP status, duration, and whether the diff passed.
+If no file is specified, search `api-docs/**/*.md` for an endpoint matching the user's description and run that.
+On failure include the exit code, error message, and the fix suggestion from trellis output."#,
+    },
+    CommandDef {
+        slug: "trellis-flow",
+        description: "Execute a Trellis pipeline and report step results",
+        prompt: r#"Run the Trellis pipeline specified in $ARGUMENTS and report each step's result.
+
+```bash
+trellis flow $ARGUMENTS --env=dev
+```
+
+Report: pipeline name, environment, each step's endpoint + status + diff outcome, and overall pass/fail.
+If no file is specified, search `api-docs/pipelines/**/*.md` for a pipeline matching the user's description.
+On failure include which step failed and the suggested fix."#,
+    },
+    CommandDef {
+        slug: "trellis-validate",
+        description: "Validate Trellis endpoint specs in a file or directory",
+        prompt: r#"Validate the Trellis spec(s) at $ARGUMENTS (defaults to `api-docs/` if not given).
+
+```bash
+trellis validate ${ARGUMENTS:-api-docs/}
+```
+
+Report: number of files checked, any validation errors with file paths and line references, and the exit code.
+Exit 2 = invalid spec. Exit 5 = secret detected in a versioned file."#,
+    },
+    CommandDef {
+        slug: "trellis-import-curl",
+        description:
+            "Import a curl command from the clipboard or user input as a Trellis endpoint spec",
+        prompt: r#"Ask the user to paste a `curl` command (e.g. copied from browser DevTools → Copy as cURL).
+
+Once you have the curl text, run:
+
+```bash
+echo '<CURL_COMMAND>' | trellis import curl
+```
+
+Or save it to a temp file and run `trellis import curl /tmp/curl.txt`.
+
+After import:
+- Show the path of the created spec file.
+- Remind the user to set `baseUrl` in `api-docs/_shared/env.md` if it's a new host.
+- Offer to run `trellis exec <new-file>` to verify the endpoint works."#,
+    },
+    CommandDef {
+        slug: "trellis-serve",
+        description: "Start the Trellis web preview server",
+        prompt: r#"Start the Trellis web preview server so the user can browse and run specs in a browser.
+
+```bash
+trellis serve
+```
+
+Report the URL printed by trellis (e.g. `http://127.0.0.1:8080`).
+Tell the user they can open it in a browser to browse endpoints, click Run on any spec, and paste curl commands to import new endpoints."#,
+    },
+    CommandDef {
+        slug: "trellis-init",
+        description: "Initialise a new Trellis api-docs/ project in the current directory",
+        prompt: r#"Initialise a new Trellis project in the current directory.
+
+```bash
+trellis init
+```
+
+Trellis will auto-detect the project name from `package.json`, `Cargo.toml`, `pyproject.toml`, or `go.mod` if present.
+After init:
+- Show the files created.
+- Suggest running `trellis serve` to open the web preview.
+- Suggest running `trellis import project .` to scan for existing API routes."#,
+    },
+    CommandDef {
+        slug: "trellis-import",
+        description:
+            "Scan the current project source code for API routes and import them as Trellis specs",
+        prompt: r#"Scan the project source code for API route definitions and generate Trellis endpoint specs.
+
+```bash
+trellis import project ${ARGUMENTS:-.}
+```
+
+Trellis detects routes from Express, FastAPI, Flask, Axum, Actix, Gin, Spring Boot, Laravel, Rails, and more.
+After import:
+- Show the list of created spec files.
+- Remind the user to set `baseUrl` in `api-docs/_shared/env.md`.
+- Offer to run `trellis validate api-docs/` to confirm all generated specs are valid."#,
+    },
+];
+
+// ─── Agent enum ───────────────────────────────────────────────────────────────
 
 /// Supported AI agent targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +169,14 @@ impl Agent {
             Self::Copilot => "copilot",
         }
     }
+
+    /// Whether this agent supports slash commands.
+    fn supports_commands(self) -> bool {
+        matches!(self, Self::ClaudeCode | Self::CodexCli)
+    }
 }
+
+// ─── Result types ─────────────────────────────────────────────────────────────
 
 /// Installed file record.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,6 +240,8 @@ struct SkillSource {
     body: String,
 }
 
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 /// List detectable agents for a workspace.
 pub fn detect_agents(root: &Path) -> Vec<AgentStatus> {
     [
@@ -146,39 +270,36 @@ pub fn detect_agents(root: &Path) -> Vec<AgentStatus> {
     .collect()
 }
 
-/// Install all Trellis skills for one explicit agent or all detected agents.
+/// Install all Trellis skills **and slash commands** for one explicit agent or
+/// all detected agents.
 pub fn install(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, InstallError> {
-    let agents = if let Some(agent) = agent {
-        vec![
-            Agent::parse(agent).ok_or_else(|| InstallError::UnknownAgent {
-                name: agent.to_string(),
-            })?,
-        ]
-    } else {
-        let detected: Vec<_> = detect_agents(root)
-            .into_iter()
-            .filter_map(|status| status.detected.then_some(status.agent))
-            .collect();
-        if detected.is_empty() {
-            return Err(InstallError::NoAgentDetected);
-        }
-        detected
-    };
-
+    let agents = resolve_agents(root, agent)?;
     let skills = canonical_skills()?;
     let mut installed = Vec::new();
+
     for agent in agents {
+        // Install skills (SKILL.md / .mdc / .instructions.md).
         for skill in &skills {
-            let path = target_path(root, agent, &skill.meta.name);
-            let contents = render(agent, skill);
+            let path = skill_target_path(root, agent, &skill.meta.name);
+            let contents = render_skill(agent, skill);
             write_file(&path, &contents)?;
             installed.push(InstalledFile { agent, path });
+        }
+
+        // Install slash commands for agents that support them.
+        if agent.supports_commands() {
+            for cmd in COMMANDS {
+                let path = command_target_path(root, agent, cmd.slug);
+                let contents = render_command(cmd);
+                write_file(&path, &contents)?;
+                installed.push(InstalledFile { agent, path });
+            }
         }
     }
     Ok(installed)
 }
 
-/// Remove installed Trellis skills for one explicit agent or all known workspace agents.
+/// Remove installed Trellis skills and slash commands.
 pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, InstallError> {
     let agents = if let Some(agent) = agent {
         vec![
@@ -189,17 +310,20 @@ pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, Insta
     } else {
         vec![
             Agent::ClaudeCode,
+            Agent::CodexCli,
             Agent::Antigravity,
             Agent::OpenCode,
             Agent::Cursor,
             Agent::Copilot,
         ]
     };
+
     let skills = canonical_skills()?;
     let mut removed = Vec::new();
+
     for agent in agents {
         for skill in &skills {
-            let path = target_path(root, agent, &skill.meta.name);
+            let path = skill_target_path(root, agent, &skill.meta.name);
             if path.exists() {
                 fs::remove_file(&path).map_err(|source| InstallError::Io {
                     path: path.clone(),
@@ -208,8 +332,42 @@ pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, Insta
                 removed.push(path);
             }
         }
+
+        if agent.supports_commands() {
+            for cmd in COMMANDS {
+                let path = command_target_path(root, agent, cmd.slug);
+                if path.exists() {
+                    fs::remove_file(&path).map_err(|source| InstallError::Io {
+                        path: path.clone(),
+                        source,
+                    })?;
+                    removed.push(path);
+                }
+            }
+        }
     }
     Ok(removed)
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, InstallError> {
+    if let Some(agent) = agent {
+        Ok(vec![Agent::parse(agent).ok_or_else(|| {
+            InstallError::UnknownAgent {
+                name: agent.to_string(),
+            }
+        })?])
+    } else {
+        let detected: Vec<_> = detect_agents(root)
+            .into_iter()
+            .filter_map(|status| status.detected.then_some(status.agent))
+            .collect();
+        if detected.is_empty() {
+            return Err(InstallError::NoAgentDetected);
+        }
+        Ok(detected)
+    }
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
@@ -237,7 +395,8 @@ fn parse_skill(source: &'static str) -> Result<SkillSource, InstallError> {
     Ok(SkillSource { source, meta, body })
 }
 
-fn target_path(root: &Path, agent: Agent, name: &str) -> PathBuf {
+/// Path for a skill file (SKILL.md, .mdc, or .instructions.md).
+fn skill_target_path(root: &Path, agent: Agent, name: &str) -> PathBuf {
     match agent {
         Agent::ClaudeCode => root.join(format!(".claude/skills/{name}/SKILL.md")),
         Agent::CodexCli => dirs::home_dir()
@@ -259,7 +418,19 @@ fn target_path(root: &Path, agent: Agent, name: &str) -> PathBuf {
     }
 }
 
-fn render(agent: Agent, skill: &SkillSource) -> String {
+/// Path for a slash-command file.
+fn command_target_path(root: &Path, agent: Agent, slug: &str) -> PathBuf {
+    match agent {
+        Agent::ClaudeCode => root.join(format!(".claude/commands/{slug}.md")),
+        Agent::CodexCli => dirs::home_dir()
+            .unwrap_or_else(|| root.to_path_buf())
+            .join(format!(".codex/commands/{slug}.md")),
+        // Other agents do not support slash commands.
+        _ => root.join(format!(".unsupported/commands/{slug}.md")),
+    }
+}
+
+fn render_skill(agent: Agent, skill: &SkillSource) -> String {
     match agent {
         Agent::Cursor => format!(
             "---\ndescription: {}\nglobs: api-docs/**/*.md\nalwaysApply: false\n---\n\n{}",
@@ -275,6 +446,13 @@ fn render(agent: Agent, skill: &SkillSource) -> String {
     }
 }
 
+fn render_command(cmd: &CommandDef) -> String {
+    format!(
+        "---\ndescription: {}\n---\n{}\n",
+        cmd.description, cmd.prompt
+    )
+}
+
 fn write_file(path: &Path, contents: &str) -> Result<(), InstallError> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|source| InstallError::Io {
@@ -288,6 +466,8 @@ fn write_file(path: &Path, contents: &str) -> Result<(), InstallError> {
     })
 }
 
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -299,7 +479,7 @@ mod tests {
         fs::create_dir(dir.path().join(".github")).unwrap();
         let mut installed = install(dir.path(), Some("cursor")).unwrap();
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
-        assert_eq!(installed.len(), 6);
+        assert_eq!(installed.len(), 6); // 3 skills each
         let cursor =
             fs::read_to_string(dir.path().join(".cursor/rules/trellis-author.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
@@ -309,5 +489,59 @@ mod tests {
         )
         .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
+    }
+
+    #[test]
+    fn installs_slash_commands_for_claude_code() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".claude")).unwrap();
+        let installed = install(dir.path(), Some("claude-code")).unwrap();
+
+        // 3 skills + 7 commands = 10
+        assert_eq!(installed.len(), 10);
+
+        let cmd_path = dir.path().join(".claude/commands/trellis-exec.md");
+        assert!(cmd_path.exists(), "trellis-exec command not created");
+        let content = fs::read_to_string(&cmd_path).unwrap();
+        assert!(content.contains("description:"));
+        assert!(content.contains("trellis exec"));
+
+        let import_cmd = dir.path().join(".claude/commands/trellis-import.md");
+        assert!(import_cmd.exists(), "trellis-import command not created");
+    }
+
+    #[test]
+    fn uninstalls_slash_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".claude")).unwrap();
+        install(dir.path(), Some("claude-code")).unwrap();
+
+        let exec_cmd = dir.path().join(".claude/commands/trellis-exec.md");
+        assert!(exec_cmd.exists());
+
+        uninstall(dir.path(), Some("claude-code")).unwrap();
+        assert!(!exec_cmd.exists(), "command file should be removed");
+    }
+
+    #[test]
+    fn cursor_does_not_get_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".cursor")).unwrap();
+        let installed = install(dir.path(), Some("cursor")).unwrap();
+        // Only 3 skills, no commands
+        assert_eq!(installed.len(), 3);
+        assert!(!dir.path().join(".cursor/commands").exists());
+    }
+
+    #[test]
+    fn all_seven_commands_installed() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".claude")).unwrap();
+        let installed = install(dir.path(), Some("claude-code")).unwrap();
+        let cmd_paths: Vec<_> = installed
+            .iter()
+            .filter(|f| f.path.to_string_lossy().contains("commands"))
+            .collect();
+        assert_eq!(cmd_paths.len(), COMMANDS.len());
     }
 }

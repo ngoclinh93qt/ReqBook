@@ -329,7 +329,7 @@ fn resource_from_path(path: &str) -> String {
 }
 
 /// Generate a human-readable title from the HTTP method and URL path.
-fn title_from_path(method: &str, path: &str) -> String {
+pub(crate) fn title_from_path(method: &str, path: &str) -> String {
     let segments: Vec<&str> = path
         .trim_start_matches('/')
         .split('/')
