@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 9 - examples: acceptance passed, commit pending
+- Current phase: Phase 10 - CI/CD: acceptance passed, commit pending
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -18,8 +18,8 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 6. Phase 6 - migration tools: completed and committed (`f5c8c78 feat: add migration tools`)
 7. Phase 7 - web preview: completed and committed (`42ae3a7 feat: add web preview`)
 8. Phase 8 - documentation site: completed and committed (`e9616d3 docs: add documentation site`)
-9. Phase 9 - examples: acceptance passed, commit pending
-10. Phase 10 - CI/CD: pending
+9. Phase 9 - examples: completed and committed (`7e402a0 examples: add jsonplaceholder example project`)
+10. Phase 10 - CI/CD: acceptance passed, commit pending
 11. Phase 11 - acceptance, polish, launch readiness: pending
 
 ## Coordination rules
@@ -29,6 +29,24 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 - If a later phase exposes a defect in an earlier phase, fix the earlier phase first and commit the fix.
 - Preserve markdown-native configuration. Do not introduce TOML, JSON, or YAML project config files beyond Rust/package tooling files that require them.
 - Keep production code free of stubs, unchecked secrets, and untracked TODO/FIXME comments.
+
+## Phase 10 acceptance tracking
+
+- `.github/workflows/ci.yml` exists with test, lint, validate-examples, and docs jobs: passed
+- `.github/workflows/release.yml` exists from Phase 5 with cargo-dist and Docker push: passed (pre-existing)
+- CI matrix covers ubuntu, macos, windows: passed
+- Lint job runs `cargo fmt --check` and `cargo clippy --locked -- -D warnings`: passed
+- `validate-examples` job runs `trellis validate` on the jsonplaceholder example: passed (structure defined)
+- Docs job deploys `docs/` to GitHub Pages on push to main: passed (structure defined)
+
+Phase 10 implementation notes:
+
+- `ci.yml` triggers on push to main and PRs; uses `dtolnay/rust-toolchain@stable` and `Swatinem/rust-cache@v2`.
+- Three OS matrix: `ubuntu-latest`, `macos-latest`, `windows-latest` to match the 5 dist targets (linux musl built cross-compiled, not natively tested in CI).
+- `validate-examples` job builds the release binary then runs `trellis validate` on the jsonplaceholder example, ensuring examples stay in sync.
+- Docs job only runs on main branch; deploys the `docs/` directory to GitHub Pages.
+- `release.yml` (from Phase 5) uses `axodotdev/cargo-dist@v0.31.0` to build all platform binaries on tag push.
+- `CARGO_TERM_COLOR: always` and `RUST_BACKTRACE: 1` set in env for readable CI output.
 
 ## Phase 9 acceptance tracking
 
