@@ -16,4 +16,24 @@ fn main() {
     // Re-run if the web source or dist changes
     println!("cargo:rerun-if-changed=web/src");
     println!("cargo:rerun-if-changed=web/dist");
+
+    // Capture git SHA for `trellis doctor` and `trellis --version` build info.
+    // Falls back to "unknown" if git is unavailable (e.g. in CI without checkout depth).
+    let sha = std::process::Command::new("git")
+        .args(["rev-parse", "--short=8", "HEAD"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                String::from_utf8(o.stdout).ok()
+            } else {
+                None
+            }
+        })
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    println!("cargo:rustc-env=TRELLIS_BUILD_SHA={sha}");
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/refs");
 }

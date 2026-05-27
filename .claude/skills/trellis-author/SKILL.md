@@ -1,11 +1,13 @@
 ---
 name: trellis-author
-description: Use this skill when the user wants to add, scaffold, or document a new API endpoint into the Trellis spec system. Triggers on phrases like "add endpoint", "create API for X", "scaffold a new route", "document the POST /users endpoint", or when the user describes an HTTP method+path not yet in api-docs/. Do NOT use for testing existing endpoints (use trellis-exec) or running pipelines (use trellis-flow).
+description: Use this skill when the user wants to add, scaffold, document, or update one API endpoint spec in api-docs/. Triggers on phrases like "add endpoint", "document POST /users", "create spec for GET /orders/:id", "scaffold route", or when a single HTTP method+path is missing from Trellis. Do NOT use for executing endpoints (use trellis-exec), running existing pipelines (use trellis-flow), or creating multi-step workflows/pipelines/flows (use trellis-workflow).
 ---
 
 # Trellis author
 
-Use this skill to add or update Trellis endpoint specifications in `api-docs/`. Trellis specs are executable markdown. The goal is to create files that a developer can read, a CLI can validate, and an agent can use safely without guessing.
+Use this skill to add or update one Trellis endpoint specification in `api-docs/apis/`. Trellis specs are executable markdown. The goal is to create files that a developer can read, a CLI can validate, and an agent can use safely without guessing.
+
+If the user asks to connect multiple endpoints, capture values between calls, create a flow canvas, or author a workflow, stop and use `trellis-workflow` instead.
 
 ## Operating rules
 
@@ -38,19 +40,19 @@ If method or path is missing, ask one concise question. If both are present, pro
 
 ## Resource routing
 
-Inspect `api-docs/` before creating files.
+Inspect `api-docs/apis/` before creating files.
 
 1. If a matching resource folder exists, use it.
 2. If a near match exists, prefer the existing project naming.
-3. If no folder exists, create `api-docs/<resource>/`.
+3. If no folder exists, create `api-docs/apis/<resource>/`.
 4. Do not ask for confirmation when the resource is obvious from the path.
 5. Ask before creating a surprising folder, such as `misc`, `api`, or `v1`.
 
 Examples:
 
-- `/users/:id` routes to `api-docs/users/`.
-- `/orders/:id/items` routes to `api-docs/orders/`.
-- `/webhooks/stripe` routes to `api-docs/webhooks/`.
+- `/users/:id` routes to `api-docs/apis/users/`.
+- `/orders/:id/items` routes to `api-docs/apis/orders/`.
+- `/webhooks/stripe` routes to `api-docs/apis/webhooks/`.
 
 ## Filename derivation
 
@@ -176,7 +178,7 @@ Document GET /users/:id with bearer auth.
 Action:
 
 - Resource: `users`
-- File: `api-docs/users/get-user-by-id.md`
+- File: `api-docs/apis/users/get-user-by-id.md`
 - Auth: `bearer`
 - Tags: `[users, read]`
 
@@ -242,7 +244,7 @@ Add POST /orders for creating an order.
 Action:
 
 - Resource: `orders`
-- File: `api-docs/orders/post-orders.md`
+- File: `api-docs/apis/orders/post-orders.md`
 - Auth: `bearer`
 - Tags: `[orders, create]`
 
@@ -263,7 +265,7 @@ Document POST /webhooks/invoice-paid for inbound invoice webhooks.
 Action:
 
 - Resource: `webhooks`
-- File: `api-docs/webhooks/post-webhooks-invoice-paid.md`
+- File: `api-docs/apis/webhooks/post-webhooks-invoice-paid.md`
 - Auth: `custom`
 - Tags: `[webhooks, receive]`
 
@@ -273,3 +275,72 @@ Key choices:
 - Put signing guidance in `## Notes`.
 - Store `webhookSecret` only in `.env.local` or `TRELLIS_WEBHOOK_SECRET`.
 
+## MCP mode
+
+When the Trellis MCP server is registered (`claude mcp add trellis -- trellis mcp`), you can
+author, inspect, and validate specs using MCP tools — no bash required.
+
+### Check existing specs before creating
+
+Use `trellis_list_specs` to avoid duplicates:
+
+```json
+{
+  "tool": "trellis_list_specs",
+  "arguments": { "dir": "api-docs/" }
+}
+```
+
+Or read a specific spec to understand current structure:
+
+```json
+{
+  "tool": "trellis_read_spec",
+  "arguments": { "spec_path": "api-docs/apis/users/get-user-by-id.md" }
+}
+```
+
+Returns `content` (raw markdown), `method`, `path`, and `resource` fields.
+
+### Write the spec
+
+Use `trellis_author` to create a new endpoint file. The tool validates the content via
+`trellis validate` **before** writing — it will return an error without touching the filesystem
+if the spec is invalid:
+
+```json
+{
+  "tool": "trellis_author",
+  "arguments": {
+    "spec_path": "api-docs/apis/users/get-user-by-id.md",
+    "content": "---\nresource: users\nprotocol: http\nmethod: GET\npath: /users/:id\n...\n---\n# Get user by id\n\n..."
+  }
+}
+```
+
+If the file already exists, stop and ask before changing it. Do not set overwrite unless the user explicitly asked to replace that exact spec path.
+
+### Validate after authoring
+
+Use `trellis_validate` to confirm the spec is well-formed:
+
+```json
+{
+  "tool": "trellis_validate",
+  "arguments": { "path": "api-docs/apis/users/get-user-by-id.md" }
+}
+```
+
+Returns `{ "valid": true, "file_count": 1 }` on success, or a list of errors with line
+references on failure.
+
+### Access specs as MCP Resources
+
+Specs are also exposed under the `trellis://spec/` URI scheme. Models supporting the MCP
+resources protocol can browse and read them directly:
+
+- `trellis://spec/users/get-user-by-id.md`
+- `trellis://spec/flows/user-onboarding.md`
+
+**Prefer MCP tools over bash** when the Trellis MCP server is available — `trellis_author`
+validates before writing, so you get the safety of `trellis validate` without a second shell call.

@@ -1,11 +1,11 @@
 ---
 name: trellis-flow
-description: Use this skill when the user wants to execute a multi-step pipeline chaining multiple Trellis endpoints with captured values between steps. Triggers on phrases like "run the user onboarding flow", "execute pipeline X", "test the full signup-to-pairing scenario". Pipeline file must exist in api-docs/pipelines/. Do NOT use for single endpoint runs (use trellis-exec) or authoring new pipelines/endpoints.
+description: Use this skill when the user wants to run, execute, verify, debug, or inspect an existing Trellis workflow/pipeline/flow in api-docs/flows/. Triggers on phrases like "run the onboarding flow", "execute pipeline X", "test the signup scenario", or "why did this flow fail". Pipeline file must already exist. Do NOT use for single endpoint runs (use trellis-exec), endpoint authoring (use trellis-author), or creating/editing workflows (use trellis-workflow).
 ---
 
 # Trellis flow
 
-Use this skill to run an existing Trellis pipeline from `api-docs/pipelines/`. A pipeline chains endpoint specs and passes captured values between steps. If the user asks for one endpoint, use `trellis-exec`. If the user asks to create a new endpoint or pipeline, use `trellis-author` or regular editing first.
+Use this skill to run an existing Trellis pipeline from `api-docs/flows/`. A pipeline chains endpoint specs and passes captured values between steps. If the user asks for one endpoint, use `trellis-exec`. If the user asks to create or edit a new pipeline/workflow/flow, use `trellis-workflow`.
 
 ## Operating rules
 
@@ -18,11 +18,11 @@ Use this skill to run an existing Trellis pipeline from `api-docs/pipelines/`. A
 
 ## Locate the pipeline
 
-Search `api-docs/pipelines/`.
+Search `api-docs/flows/`.
 
 ```bash
-rg --files api-docs/pipelines
-rg -n "name: user-onboarding|# User onboarding" api-docs/pipelines
+rg --files api-docs/flows
+rg -n "name: user-onboarding|# User onboarding" api-docs/flows
 ```
 
 Match by:
@@ -63,19 +63,19 @@ For production, ask for confirmation and mention the pipeline file.
 Use:
 
 ```bash
-trellis flow api-docs/pipelines/user-onboarding.md --env=dev
+trellis flow api-docs/flows/user-onboarding.md --env=dev
 ```
 
 Pass variables when needed:
 
 ```bash
-trellis flow api-docs/pipelines/user-onboarding.md --env=dev --var email=test@example.com
+trellis flow api-docs/flows/user-onboarding.md --env=dev --var email=test@example.com
 ```
 
 Use JSON output when detailed step data is needed:
 
 ```bash
-trellis flow api-docs/pipelines/user-onboarding.md --env=dev --output=json
+trellis flow api-docs/flows/user-onboarding.md --env=dev --output=json
 ```
 
 ## Capture and inject behavior
@@ -130,9 +130,9 @@ parallel: false
 
 ## Steps
 
-1. **Create user** -> `users/create-user.md`
+1. **Create user** -> `apis/users/create-user.md`
    - Capture: `response.body.id` as `userId`
-2. **Login** -> `users/login.md`
+2. **Login** -> `apis/users/login.md`
    - Inject: `userId`
    - Capture: `response.body.token` as `authToken`
 3. **Pair device** -> `devices/pair-device.md`
@@ -143,7 +143,7 @@ parallel: false
 Run:
 
 ```bash
-trellis flow api-docs/pipelines/user-onboarding.md --env=dev --var email=test@example.com
+trellis flow api-docs/flows/user-onboarding.md --env=dev --var email=test@example.com
 ```
 
 Expected summary:
@@ -177,3 +177,36 @@ If `parallel: true`, Trellis may run independent steps concurrently. A step that
 - Did you identify the first failing step?
 - Did you include Trellis's suggested fix when available?
 
+## MCP mode
+
+When the Trellis MCP server is registered (`claude mcp add trellis -- trellis mcp`), you can call
+`trellis_flow` directly as an MCP tool — no bash required.
+
+**Locate the pipeline first** using `trellis_list_specs`:
+
+```json
+{
+  "tool": "trellis_list_specs",
+  "arguments": { "dir": "api-docs/flows/" }
+}
+```
+
+**Run the pipeline** using `trellis_flow`:
+
+```json
+{
+  "tool": "trellis_flow",
+  "arguments": {
+    "pipeline_path": "api-docs/flows/user-onboarding.md",
+    "env": "dev",
+    "vars": { "email": "test@example.com" }
+  }
+}
+```
+
+Returns a structured result with `passed`, `steps` array (each with `name`, `status`,
+`diff_passed`, and `captures`), and `first_failure` when applicable. Captured secrets are
+automatically masked in the response.
+
+**Prefer MCP tools over bash** when the Trellis MCP server is available — responses are structured
+JSON and no shell escaping is needed.

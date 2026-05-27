@@ -804,7 +804,12 @@ fn regenerate_index(root: &Path) -> Result<()> {
 }
 
 fn doctor(args: DoctorArgs) -> Result<()> {
-    println!("Trellis {} (rust unknown)", env!("CARGO_PKG_VERSION"));
+    let sha = env!("TRELLIS_BUILD_SHA");
+    println!(
+        "Trellis {} ({})",
+        env!("CARGO_PKG_VERSION"),
+        sha
+    );
     println!();
     println!("Project");
     check("api-docs/ exists", Path::new("api-docs").exists());
@@ -832,10 +837,62 @@ fn doctor(args: DoctorArgs) -> Result<()> {
     check("Claude Code (.claude/)", Path::new(".claude").exists());
     check("Cursor (.cursor/)", Path::new(".cursor").exists());
     check("GitHub Copilot (.github/)", Path::new(".github").exists());
+    check_skills_freshness(args.fix);
     println!();
     println!("Network");
     check("Can reach httpbin.org", true);
     Ok(())
+}
+
+/// Compare installed skill files against what this binary embeds.
+/// Prints a warning and reinstalls when `--fix` is passed.
+fn check_skills_freshness(fix: bool) {
+    use trellis::installer::{install, Agent};
+
+    let skill_dir = Path::new(".claude/skills");
+    if !skill_dir.exists() {
+        // No Claude Code installation — nothing to check.
+        return;
+    }
+
+    // Skill slugs embedded in this binary (must stay in sync with installer).
+    let embedded: &[(&str, &str)] = &[
+        ("trellis-author", include_str!("../skills/trellis-author/SKILL.md")),
+        ("trellis-exec",   include_str!("../skills/trellis-exec/SKILL.md")),
+        ("trellis-flow",   include_str!("../skills/trellis-flow/SKILL.md")),
+        ("trellis-workflow", include_str!("../skills/trellis-workflow/SKILL.md")),
+    ];
+
+    let mut stale: Vec<&str> = Vec::new();
+    for (name, expected) in embedded {
+        let installed_path = skill_dir.join(name).join("SKILL.md");
+        let installed = fs::read_to_string(&installed_path).unwrap_or_default();
+        if installed.trim() != expected.trim() {
+            stale.push(name);
+        }
+    }
+
+    if stale.is_empty() {
+        println!("  {} Skills up-to-date", "✓".green());
+    } else {
+        println!(
+            "  {} Skills out-of-date: {}",
+            "✗".red(),
+            stale.join(", ")
+        );
+        println!("  Fix: run `trellis skills install` to update installed skills.");
+        if fix {
+            match install(Path::new("."), Some(Agent::ClaudeCode.name())) {
+                Ok(files) => {
+                    for f in &files {
+                        println!("  reinstalled: {}", f.path.display());
+                    }
+                    println!("  {} Skills reinstalled", "✓".green());
+                }
+                Err(e) => println!("  {} Reinstall failed: {e}", "✗".red()),
+            }
+        }
+    }
 }
 
 fn validate_project_silent(root: &Path) -> Result<usize> {
