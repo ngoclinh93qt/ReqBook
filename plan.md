@@ -4,7 +4,7 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 
 ## Current status
 
-- Current phase: Phase 12 complete
+- Current phase: Phase 14 MCP server in progress
 - Repository status at start: empty workspace, no git repository
 - Active instruction: work phases in order, run each phase acceptance check, commit before moving on
 
@@ -22,6 +22,111 @@ This file is the shared coordination plan for all agents working on Trellis. Kee
 10. Phase 10 - CI/CD: completed and committed (`ecb61cd ci: add CI workflow`)
 11. Phase 11 - acceptance, polish, launch readiness: completed and committed (`c530699 chore: polish and launch readiness for v1.0.0`)
 12. Phase 12 - slash commands, smart init, project route scanner: completed and committed (`d239200 feat: slash commands, smart init, project route scanner`)
+13. Phase 13 - OSS release readiness: completed and committed (pending tag)
+14. Phase 14 - MCP server: in progress, not committed
+15. Phase 15 - mock server: not started
+
+## Phase 13 acceptance tracking
+
+- OSS trust files added: `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`: passed
+- GitHub issue templates and PR template added: passed
+- Dependabot and OpenSSF Scorecard workflow added: passed
+- README rewritten for public OSS positioning with install, quick start, project layout, docs, release status: passed
+- Release and launch docs added: `docs/release.md`, `docs/launch.md`: passed
+- Release workflow hardened with preflight checks, optional crates.io/npm publish gates, Docker, docs deploy: passed
+- Cargo package excludes workspace-local artifacts such as `.claude/`, root `api-docs/`, `web/node_modules/`, and frontend source while including built `web/dist/`: passed
+- `cargo fmt --check`: passed
+- `cargo clippy --locked -- -D warnings`: passed
+- `cargo test --locked`: passed
+- `cargo test --locked --no-default-features --features minimal`: passed
+- `cd web && npm run build`: passed
+- `cargo run -- validate api-docs`: passed
+- `cargo run -- validate examples/jsonplaceholder/api-docs`: passed
+- `cargo package --allow-dirty --no-verify --offline`: passed, packaged 68 files / 758.0 KiB uncompressed / 210.4 KiB compressed
+- `cargo dist build`: blocked locally because `cargo-dist` is not installed in this environment; the GitHub release workflow uses `axodotdev/cargo-dist@v0.31.0`.
+- Vibe-coder feedback pass: fixed CLI env loading from `_shared/env.md`, path param resolution, flow array captures, safer dry-run output, web empty-body override behavior, and agent skill paths for `api-docs/apis`.
+- Regression tests added for `:pathParam` resolution and `response.body[0].id` capture.
+- Vibe-coder smoke test in `/private/tmp/trellis-vibe-fixed.UqpH7n`: `init`, `exec`, `dry-run`, `doctor`, `flow`, `skills install --agent=claude-code` passed.
+- `cargo test --locked`: passed, 121 unit tests + 1 integration test.
+- `cargo test --locked --no-default-features --features minimal`: passed, 98 unit tests + 1 integration test.
+- `cargo clippy --locked -- -D warnings`: passed.
+- `cd web && npm run build`: passed.
+
+Phase 13 implementation notes:
+
+- Keep the next public release conservative: prefer `v0.1.0` or `v1.0.0-rc1` until several external users complete init, serve, flow, and install flows.
+- Before a real public tag, update `BENCHMARKS.md` with fresh measurements from the release machine and configure publish toggles/secrets: `PUBLISH_CRATES`, `PUBLISH_NPM`, `CARGO_REGISTRY_TOKEN` or npm trusted publishing.
+- Local package verification is now clean enough for crates.io packaging; root demo specs and local agent installs stay outside the crate package.
+
+## Phase 15 acceptance tracking
+
+- `trellis mock api-docs/` starts without error and prints bind address: not started
+- `GET /<path>` for each spec's path returns the recorded response body with correct status code: not started
+- `POST /<path>` for each POST spec returns recorded response: not started
+- Axum route params (`:userId`) resolve correctly — requesting `/users/42` matches the `/users/:userId` spec: not started
+- Unknown paths return `404 {"error":"no mock for <method> <path>"}`: not started
+- `--port <n>` flag overrides default port 4001: not started
+- `--dir <path>` flag overrides default `api-docs/` directory: not started
+- `--latency <ms>` flag adds artificial delay to all responses: not started
+- `cargo test` with new mock module unit tests: not started
+- `cargo clippy -- -D warnings`: not started
+- `cargo fmt --check`: not started
+
+Phase 15 implementation notes:
+
+- New file: `src/mock.rs`, gated by `#[cfg(feature = "web")]` to reuse the existing Axum dependency.
+- New CLI subcommand: `Command::Mock(MockArgs)` added to the `Command` enum in `src/main.rs`. `MockArgs` has three fields: `dir: PathBuf` (default `api-docs/`), `port: u16` (default `4001`), `latency: Option<u64>` (milliseconds).
+- Route building: walk all `.md` files under `<dir>/apis/` using the same `collect_specs` pattern from `src/preview.rs`; call `parse_endpoint` on each; build an `Axum Router` entry per `(method, path)` pair. Trellis path params use `:param` syntax — Axum 0.7 uses the same syntax, so conversion is a direct passthrough.
+- Response parsing: `expected_response` block from each spec has the form `HTTP/1.1 <status> <reason>\n<headers>\n\n<body>`. Split on the first blank line; extract status code from the first line with a simple integer parse; use the body verbatim. If the headers block contains `Content-Type`, forward it; otherwise default to `application/json`.
+- Each route handler is a closure that returns a static `(StatusCode, HeaderMap, Bytes)` tuple built at startup, not at request time, so the router holds no mutable state.
+- `--latency <ms>` injects a `tokio::time::sleep` before the response in every handler. This is wired via a shared `AppState` field, not per-route cloning.
+- Conflicting specs (two files with the same method + path): log a warning and keep the first one encountered (alphabetical walk order). Do not fail; conflicting specs are a data problem, not a runtime error.
+- Wildcard/catch-all routes (`:param` at multiple levels, e.g. `/orgs/:orgId/repos/:repoId`) are registered verbatim; Axum handles nested params natively.
+- `trellis mock` is independent of `trellis serve`. They can run concurrently on different ports. The mock server has no web UI.
+- `src/mock.rs` exports a single public async function `run_mock_server(dir, port, latency) -> Result<()>` called from `main.rs`.
+- No new dependencies required: Axum, tokio, serde_json, and walkdir are all already present.
+
+---
+
+## Phase 14 acceptance tracking
+
+- `trellis mcp` starts without error and writes the MCP `initialize` response to stdout: not started
+- `tools/list` request returns a JSON list with exactly three tools: `trellis_exec`, `trellis_flow`, `trellis_validate`: not started
+- `trellis_exec` tool call with `{"spec_path": "api-docs/apis/posts/get-list.md"}` executes the spec and returns a JSON result with `passed`, `status_code`, and `body` fields: not started
+- `trellis_flow` tool call with `{"pipeline_path": "api-docs/flows/demo-post-flow.md"}` executes the pipeline and returns a JSON result with per-step outcomes: not started
+- `trellis_validate` tool call with `{"path": "api-docs/"}` validates the directory and returns `{"valid": true, "file_count": N}` or a list of errors: not started
+- Unknown tool name returns a JSON-RPC error response with code `-32601` (method not found): not started
+- Invalid params (missing `spec_path`) returns a JSON-RPC error response with code `-32602` (invalid params): not started
+- `trellis mcp --help` documents the command clearly: not started
+- `cargo test` with at least 5 unit tests covering the JSON-RPC message serialization and tool dispatch: not started
+- `cargo clippy -- -D warnings`: not started
+- `cargo fmt --check`: not started
+- Smoke test: pipe a minimal `initialize` + `tools/list` + `tools/call` sequence through `trellis mcp` via stdin and verify stdout JSON is valid MCP: not started
+
+Phase 14 implementation notes:
+
+- New file: `src/mcp.rs`. No new feature flag — MCP uses only `serde_json` (already a dependency) and `tokio::io` (already in scope). MCP over stdio is the canonical transport and requires no network stack beyond what is already present.
+- New CLI subcommand: `Command::Mcp` (no arguments at v1) added to the `Command` enum in `src/main.rs`. Invocation: `trellis mcp`. The command reads newline-delimited JSON from stdin and writes newline-delimited JSON to stdout in a loop until EOF.
+- Protocol: MCP JSON-RPC 2.0 over stdio. Message framing is one JSON object per line (NDJSON). Both `request` and `notification` forms are handled; only `request` forms require a response.
+- MCP initialization sequence handled in `src/mcp.rs`:
+  1. Client sends `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{...}}` — respond with `{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"trellis","version":"1.0.0"}}}`.
+  2. Client sends `{"jsonrpc":"2.0","method":"notifications/initialized"}` — this is a notification (no `id`); no response required.
+  3. Client sends `{"jsonrpc":"2.0","id":2,"method":"tools/list"}` — respond with the three tool schemas below.
+  4. Client sends `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"trellis_exec","arguments":{...}}}` — dispatch to the appropriate handler and return the result.
+- Tool schemas for `tools/list` response:
+  - `trellis_exec`: description `"Execute a Trellis endpoint spec and return the HTTP result."`, input schema requires `spec_path: string`, optional `env: string` and `vars: object`.
+  - `trellis_flow`: description `"Execute a Trellis pipeline and return per-step results."`, input schema requires `pipeline_path: string`, optional `env: string`.
+  - `trellis_validate`: description `"Validate a Trellis spec file or directory."`, input schema requires `path: string`.
+- Tool call return format: all three tools return a `content` array with a single `{"type":"text","text":"<json string>"}` entry. This matches the MCP spec for text tool results and allows any MCP client to display or further parse the output.
+- `trellis_exec` handler: resolve `spec_path` relative to cwd; call `parse_endpoint` then `engine::execute`; serialize `ExecutionResult` to JSON; return as text content. On error, return a JSON-RPC error response with code `-32000` and the anyhow error message.
+- `trellis_flow` handler: resolve `pipeline_path`; call `parse_pipeline` then `pipeline::run`; serialize per-step results to JSON; return as text content.
+- `trellis_validate` handler: if `path` is a file, call `parse_endpoint` and return `{"valid":true}` or `{"valid":false,"error":"..."}`. If `path` is a directory, walk all `.md` files, collect errors, return `{"valid":true,"file_count":N}` or `{"valid":false,"errors":[...]}`.
+- Error handling: unknown method returns `{"code":-32601,"message":"Method not found"}`; missing required params returns `{"code":-32602,"message":"Invalid params: <field> is required"}`; internal engine errors return `{"code":-32000,"message":"<anyhow error chain>"}`.
+- The `run_mcp_server()` async function in `src/mcp.rs` uses `tokio::io::AsyncBufReadExt` to read lines from stdin and `tokio::io::AsyncWriteExt` to write responses to stdout. The loop exits cleanly on EOF.
+- No MCP SDK dependency. The MCP 2024-11-05 protocol spec is simple enough to implement with hand-written serde structs. Keeping it dependency-free avoids supply chain risk and keeps the binary size delta under 50 KB.
+- `src/lib.rs` exports `pub mod mcp;` unconditionally (no feature flag) since it has no optional deps.
+
+---
 
 ## Phase 12 acceptance tracking
 

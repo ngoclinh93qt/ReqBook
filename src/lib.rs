@@ -4,6 +4,9 @@ pub mod engine;
 pub mod importer;
 #[cfg(feature = "install")]
 pub mod installer;
+pub mod mcp;
+#[cfg(feature = "web")]
+pub mod mock;
 pub mod parser;
 pub mod pipeline;
 #[cfg(feature = "web")]

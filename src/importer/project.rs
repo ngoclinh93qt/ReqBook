@@ -206,6 +206,8 @@ fn normalise_path(raw: &str) -> String {
     };
     // Convert {param} / <param> / :param styles to :param.
     let normed = convert_path_params(&with_slash);
+    // Axum 0.7 wildcard routes use `/*path`; Trellis keeps path params as `:path`.
+    let normed = normed.replace("/*", "/:").replace(":*", ":");
     // Convert <type:name> (Flask) and <name> to :name.
     let re_angle = Regex::new(r"<(?:[^:>]+:)?([^>]+)>").expect("valid");
     let normed = re_angle.replace_all(&normed, ":$1").into_owned();

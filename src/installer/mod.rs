@@ -11,6 +11,7 @@ use thiserror::Error;
 const AUTHOR: &str = include_str!("../../skills/trellis-author/SKILL.md");
 const EXEC: &str = include_str!("../../skills/trellis-exec/SKILL.md");
 const FLOW: &str = include_str!("../../skills/trellis-flow/SKILL.md");
+const WORKFLOW: &str = include_str!("../../skills/trellis-workflow/SKILL.md");
 
 // ─── Slash-command definitions ────────────────────────────────────────────────
 
@@ -46,8 +47,32 @@ trellis flow $ARGUMENTS --env=dev
 ```
 
 Report: pipeline name, environment, each step's endpoint + status + diff outcome, and overall pass/fail.
-If no file is specified, search `api-docs/pipelines/**/*.md` for a pipeline matching the user's description.
+If no file is specified, search `api-docs/flows/**/*.md` for a pipeline matching the user's description.
 On failure include which step failed and the suggested fix."#,
+    },
+    CommandDef {
+        slug: "trellis-workflow",
+        description: "Create or edit a Trellis workflow pipeline from existing endpoint specs",
+        prompt: r#"Create or edit a Trellis workflow in `api-docs/flows/` from the scenario in $ARGUMENTS.
+
+First inspect existing endpoint specs:
+
+```bash
+rg --files api-docs | rg '\.md$'
+rg -n '^method:|^path:|^# ' api-docs
+```
+
+Then write a markdown pipeline with frontmatter `type: pipeline`, ordered `## Steps`, `Capture`, `Inject`, and `Assert` directives.
+
+After writing:
+
+```bash
+trellis validate api-docs/flows/<workflow>.md
+trellis index
+```
+
+Report the workflow path, each endpoint step, captured values, injected values, and any endpoint specs that were missing.
+Do not run the workflow unless the user explicitly asks to execute it."#,
     },
     CommandDef {
         slug: "trellis-validate",
@@ -122,6 +147,55 @@ After import:
 - Show the list of created spec files.
 - Remind the user to set `baseUrl` in `api-docs/_shared/env.md`.
 - Offer to run `trellis validate api-docs/` to confirm all generated specs are valid."#,
+    },
+    CommandDef {
+        slug: "trellis-mock",
+        description: "Start the Trellis mock server to replay recorded API responses",
+        prompt: r#"Start the Trellis mock server so the frontend can work without a live backend.
+
+```bash
+trellis mock ${ARGUMENTS:-api-docs/} --port 4001
+```
+
+The mock server reads every `## Expected response` block from endpoint specs and serves those
+responses over HTTP. Path parameters like `/users/:id` are matched automatically.
+
+Report:
+- The base URL (e.g. `http://127.0.0.1:4001`)
+- The number of routes loaded and their method + path
+- Any duplicate routes that were skipped
+
+To add artificial latency (useful for testing loading states):
+```bash
+trellis mock api-docs/ --port 4001 --latency 300
+```"#,
+    },
+    CommandDef {
+        slug: "trellis-mcp-setup",
+        description: "Register the Trellis MCP server with your AI agent",
+        prompt: r#"Register the Trellis MCP server with Claude Code so Trellis tools are available
+to the AI directly (no bash required).
+
+Run:
+```bash
+claude mcp add trellis -- trellis mcp
+```
+
+After registration, the following tools become available inside Claude Code:
+- `trellis_exec`       — execute an endpoint spec
+- `trellis_flow`       — run a pipeline
+- `trellis_validate`   — validate specs in a file or directory
+- `trellis_list_specs` — list all endpoint specs with method + path
+- `trellis_read_spec`  — read the full content of a spec file
+- `trellis_author`     — create a spec file, or update one only after explicit user approval
+
+Trellis spec files are also exposed as **MCP Resources** under the `trellis://spec/` URI scheme,
+so models can browse and read specs directly via the resources protocol.
+
+Verify registration:
+```bash
+claude mcp list
+```"#,
     },
 ];
 
@@ -371,7 +445,10 @@ fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, Instal
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
-    [AUTHOR, EXEC, FLOW].into_iter().map(parse_skill).collect()
+    [AUTHOR, EXEC, FLOW, WORKFLOW]
+        .into_iter()
+        .map(parse_skill)
+        .collect()
 }
 
 fn parse_skill(source: &'static str) -> Result<SkillSource, InstallError> {
@@ -479,16 +556,24 @@ mod tests {
         fs::create_dir(dir.path().join(".github")).unwrap();
         let mut installed = install(dir.path(), Some("cursor")).unwrap();
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
-        assert_eq!(installed.len(), 6); // 3 skills each
+        assert_eq!(installed.len(), 8); // 4 skills each
         let cursor =
             fs::read_to_string(dir.path().join(".cursor/rules/trellis-author.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
+        assert!(dir
+            .path()
+            .join(".cursor/rules/trellis-workflow.mdc")
+            .exists());
         let copilot = fs::read_to_string(
             dir.path()
                 .join(".github/instructions/trellis-author.instructions.md"),
         )
         .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
+        assert!(dir
+            .path()
+            .join(".github/instructions/trellis-workflow.instructions.md")
+            .exists());
     }
 
     #[test]
@@ -497,8 +582,8 @@ mod tests {
         fs::create_dir(dir.path().join(".claude")).unwrap();
         let installed = install(dir.path(), Some("claude-code")).unwrap();
 
-        // 3 skills + 7 commands = 10
-        assert_eq!(installed.len(), 10);
+        // 4 skills + 10 commands = 14
+        assert_eq!(installed.len(), 14);
 
         let cmd_path = dir.path().join(".claude/commands/trellis-exec.md");
         assert!(cmd_path.exists(), "trellis-exec command not created");
@@ -508,6 +593,16 @@ mod tests {
 
         let import_cmd = dir.path().join(".claude/commands/trellis-import.md");
         assert!(import_cmd.exists(), "trellis-import command not created");
+        let workflow_skill = dir.path().join(".claude/skills/trellis-workflow/SKILL.md");
+        assert!(
+            workflow_skill.exists(),
+            "trellis-workflow skill not created"
+        );
+        let workflow_cmd = dir.path().join(".claude/commands/trellis-workflow.md");
+        assert!(
+            workflow_cmd.exists(),
+            "trellis-workflow command not created"
+        );
     }
 
     #[test]
@@ -528,13 +623,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".cursor")).unwrap();
         let installed = install(dir.path(), Some("cursor")).unwrap();
-        // Only 3 skills, no commands
-        assert_eq!(installed.len(), 3);
+        // Only 4 skills, no commands
+        assert_eq!(installed.len(), 4);
         assert!(!dir.path().join(".cursor/commands").exists());
     }
 
     #[test]
-    fn all_seven_commands_installed() {
+    fn all_commands_installed() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
         let installed = install(dir.path(), Some("claude-code")).unwrap();

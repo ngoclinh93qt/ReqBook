@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 28" fill="none" stroke="#5b6cff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Trellis mark">
+  <path d="M11 4 L5 4 L5 24 L11 24"/>
+  <path d="M25 4 L31 4 L31 24 L25 24"/>
+  <circle cx="14" cy="14" r="1.08" fill="#5b6cff" stroke="none"/>
+  <circle cx="18" cy="14" r="2.04" fill="#5b6cff" stroke="none"/>
+  <circle cx="22" cy="14" r="1.08" fill="#5b6cff" stroke="none"/>
+</svg>

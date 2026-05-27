@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 164 40" fill="none" role="img" aria-label="Trellis">
+  <g stroke="#5b6cff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 8 L5 8 L5 32 L11 32"/>
+    <path d="M25 8 L31 8 L31 32 L25 32"/>
+  </g>
+  <circle cx="14" cy="20" r="1.08" fill="#5b6cff"/>
+  <circle cx="18" cy="20" r="2.04" fill="#5b6cff"/>
+  <circle cx="22" cy="20" r="1.08" fill="#5b6cff"/>
+  <text x="46" y="27" fill="#11131a" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="600" letter-spacing="-.6">Trellis</text>
+</svg>

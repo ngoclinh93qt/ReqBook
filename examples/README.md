@@ -21,7 +21,7 @@ cd examples/jsonplaceholder
 trellis validate api-docs/
 
 # Execute one endpoint (requires network access to jsonplaceholder.typicode.com)
-trellis exec api-docs/posts/get-post-by-id.md
+trellis exec api-docs/apis/posts/get-post-by-id.md
 
 # Execute the pipeline
 trellis flow api-docs/pipelines/post-with-author.md
@@ -30,7 +30,7 @@ trellis flow api-docs/pipelines/post-with-author.md
 trellis serve
 
 # Dry-run without sending
-trellis exec api-docs/posts/create-post.md --dry-run
+trellis exec api-docs/apis/posts/create-post.md --dry-run
 ```
 
 ### Endpoints

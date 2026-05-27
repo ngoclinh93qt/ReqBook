@@ -11,7 +11,27 @@ permissions:
   packages: write
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - run: cd web && npm ci && npm run build
+      - run: cargo fmt --check
+      - run: cargo clippy --locked -- -D warnings
+      - run: cargo test --locked
+      - run: cargo run -- validate api-docs
+
   cargo-dist:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +39,36 @@ jobs:
         with:
           command: build
 
+  cargo-publish:
+    needs: checks
+    runs-on: ubuntu-latest
+    if: ${{ vars.PUBLISH_CRATES == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  npm-publish:
+    needs: checks
+    runs-on: ubuntu-latest
+    if: ${{ vars.PUBLISH_NPM == 'true' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm publish --provenance --access public
+        working-directory: packages/npm
+
   docker:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,3 +84,22 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/trellis-md/trellis:${{ github.ref_name }},ghcr.io/trellis-md/trellis:latest
+
+  docs:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p _site
+          cp -r docs/* _site/
+          cp README.md BENCHMARKS.md CHANGELOG.md _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4

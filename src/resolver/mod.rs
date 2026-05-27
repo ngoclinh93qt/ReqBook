@@ -61,6 +61,21 @@ impl Context {
         .into_iter()
         .find_map(|map| map.get(key).map(String::as_str))
     }
+
+    /// Return variables from one source as owned key-value pairs.
+    pub fn entries_for(&self, source: SourceKind) -> Vec<(String, String)> {
+        let map = match source {
+            SourceKind::Pipeline => &self.pipeline,
+            SourceKind::Cli => &self.cli,
+            SourceKind::Endpoint => &self.endpoint,
+            SourceKind::Env => &self.env,
+            SourceKind::DotEnvLocal => &self.dotenv,
+            SourceKind::OsEnv => &self.os,
+        };  
+        map.iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect()
+    }
 }
 
 /// Resolution errors.

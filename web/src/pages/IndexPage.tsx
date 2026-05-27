@@ -1,75 +1,122 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import type { IndexData, VarsData } from '../types';
-import { MethodBadge } from '../components/MethodBadge';
-import { VariablesSection } from '../components/VariablesSection';
-import { BrowserVarsSection } from '../components/BrowserVarsSection';
-import { CurlImportSection } from '../components/CurlImportSection';
-import { useBrowserVars } from '../hooks/useBrowserVars';
+import type { IndexData } from '../types';
+import { Icon, MethodBadge, PathStr } from '../ui';
 
-export function IndexPage() {
+const METHODS = ['ALL', 'GET', 'POST', 'PATCH', 'PUT', 'DELETE'];
+
+export function IndexPage({ env, refreshKey }: { env: string; refreshKey: number }) {
   const [data, setData] = useState<IndexData | null>(null);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState('ALL');
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
-  const { vars: browserVars, save: saveBrowserVars } = useBrowserVars();
-  const [, setEnvVars] = useState<VarsData | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
   const fetchIndex = useCallback(async () => {
     try {
       setData(await api.getIndex());
+      setError('');
     } catch (e: unknown) {
       setError(String(e));
     }
   }, []);
 
-  useEffect(() => { fetchIndex(); }, [fetchIndex]);
+  useEffect(() => { fetchIndex(); }, [fetchIndex, refreshKey]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
-  if (error) return <div style={{ color: '#dc2626', padding: '2rem' }}>{error}</div>;
-  if (!data) return <div style={{ padding: '2rem', color: '#888' }}>Loading…</div>;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (data?.groups ?? []).map(group => ({
+      ...group,
+      specs: group.specs.filter(spec => {
+        if (methodFilter !== 'ALL' && spec.method !== methodFilter) return false;
+        if (!q) return true;
+        return spec.path.toLowerCase().includes(q) || spec.title.toLowerCase().includes(q) || spec.method.toLowerCase().includes(q);
+      }),
+    })).filter(group => group.specs.length > 0);
+  }, [data, methodFilter, query]);
+
+  if (error) return <div className="index-wrap"><div className="empty fail-text">{error}</div></div>;
+  if (!data) return <div className="index-wrap"><div className="empty">Loading endpoints…</div></div>;
+
+  const totals = { total: data.spec_count, passing: 0, failing: 0, never: data.spec_count };
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '2rem 1.5rem', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#1a1a1a', lineHeight: 1.5 }}>
-      <header style={{ borderBottom: '1px solid #e5e5e5', marginBottom: '2rem', paddingBottom: '1.25rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{data.project_name}</h1>
-        <p style={{ color: '#666', fontSize: '.875rem', marginTop: '.25rem' }}>
-          {data.spec_count} endpoint{data.spec_count !== 1 ? 's' : ''} · Trellis web preview
+    <div className="index-wrap">
+      <header className="page-head">
+        <h1 className="page-title">Endpoints</h1>
+        <p className="page-sub">
+          Every contract in <b>{data.project_name}</b> lives as a single markdown file. Click an endpoint to inspect, fill runtime inputs, and run it against <b>{env}</b>.
         </p>
       </header>
 
-      {data.groups.length === 0 ? (
-        <p style={{ color: '#aaa', textAlign: 'center', padding: '3rem 0', fontSize: '.9rem' }}>
-          No endpoints found. Run <code>trellis init</code> to scaffold a project.
-        </p>
-      ) : (
-        data.groups.map(group => (
-          <div key={group.resource} style={{ marginBottom: '2rem' }}>
-            <h2 style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: '#888', marginBottom: '.65rem' }}>
-              {group.resource}
-            </h2>
-            {group.specs.map(spec => (
-              <div key={spec.rel_path} onClick={() => navigate(`/spec/${spec.rel_path}`)}
-                style={{ display: 'flex', alignItems: 'center', gap: '.75rem', background: '#fff', border: '1px solid #e8e8e8', borderRadius: 8, padding: '.65rem 1rem', marginBottom: '.35rem', cursor: 'pointer', transition: 'border-color .15s, box-shadow .15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#bbb'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 4px rgba(0,0,0,.06)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#e8e8e8'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'; }}>
-                <MethodBadge method={spec.method} />
-                <span style={{ fontFamily: 'monospace', fontSize: '.85rem', color: '#333' }}>{spec.path}</span>
-                <span style={{ marginLeft: 'auto', color: '#aaa', fontSize: '.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-                  {spec.title}
-                </span>
+      <div className="stats">
+        <div className="stat"><div className="lab">Total</div><div className="val">{totals.total}</div></div>
+        <div className="stat"><div className="lab">Passing</div><div className="val ok-num">{totals.passing}<span className="delta ok">0%</span></div></div>
+        <div className="stat"><div className="lab">Failing</div><div className="val fail-num">{totals.failing}</div></div>
+        <div className="stat"><div className="lab">Not run</div><div className="val muted-num">{totals.never}</div></div>
+      </div>
+
+      <div className="searchbar">
+        <span className="ic"><Icon.search /></span>
+        <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by path, title, or method…" />
+        <span className="kbd">⌘K</span>
+      </div>
+
+      <div className="filter-row">
+        <span className="filter-ic"><Icon.filter /></span>
+        {METHODS.map(method => (
+          <button key={method} className={`chip-filter ${methodFilter === method ? 'is-on' : ''}`} onClick={() => setMethodFilter(method)}>
+            {method === 'ALL' ? 'All methods' : method}
+          </button>
+        ))}
+      </div>
+
+      {filtered.map(group => {
+        const open = !collapsed[group.resource];
+        return (
+          <section key={group.resource} className="group">
+            <header className="group-h" onClick={() => setCollapsed(prev => ({ ...prev, [group.resource]: open }))}>
+              <span className="chev"><Icon.chev open={open} /></span>
+              <span className="name">{group.resource}</span>
+              <span className="count">{group.specs.length}</span>
+              <span className="health"><span className="health-bar" /></span>
+            </header>
+            {open && (
+              <div className="rows fade-in">
+                {group.specs.map(spec => (
+                  <div key={spec.rel_path} className="row" onClick={() => navigate(`/spec/${spec.rel_path}`)}>
+                    <MethodBadge method={spec.method} />
+                    <div className="r-main">
+                      <div className="r-path"><PathStr path={spec.path} /></div>
+                      <div className="r-title">{spec.title}</div>
+                    </div>
+                    <div className="r-last">Not run</div>
+                    <div className="r-status never"><span className="dot" /><span>—</span></div>
+                    <div className="row-go"><Icon.arr /></div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ))
+            )}
+          </section>
+        );
+      })}
+
+      {filtered.length === 0 && (
+        <div className="empty">{query ? `No endpoints match "${query}".` : 'No endpoints yet. Scan the project or import a curl command.'}</div>
       )}
-
-      <CurlImportSection onImported={() => { fetchIndex(); }} />
-      <VariablesSection onVarsLoaded={setEnvVars} />
-      <BrowserVarsSection vars={browserVars} onSave={saveBrowserVars} />
-
-      <footer style={{ marginTop: '3rem', paddingTop: '1rem', borderTop: '1px solid #eee', fontSize: '.75rem', color: '#bbb' }}>
-        Trellis {data.version} · <a href="https://trellis.dev" style={{ color: '#bbb' }}>trellis.dev</a>
-      </footer>
     </div>
   );
 }

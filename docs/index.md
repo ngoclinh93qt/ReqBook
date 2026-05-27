@@ -23,7 +23,7 @@ cargo install trellis
 trellis init --name=my-api --dev-url=http://localhost:8080
 
 # Execute an endpoint
-trellis exec api-docs/posts/get-posts.md --env=dev
+trellis exec api-docs/apis/posts/get-posts.md --env=dev
 ```
 
 ## Documentation pages
@@ -32,4 +32,6 @@ trellis exec api-docs/posts/get-posts.md --env=dev
 - [CLI reference](cli.md) — every command, flag, and exit code.
 - [Configuration reference](configuration.md) — project config, environment config, variables, secrets, and auth.
 - [Spec convention](spec/convention.md) — the canonical specification for endpoint files, pipelines, and project layout.
+- [Release checklist](release.md) — release gates and smoke tests.
+- [Launch plan](launch.md) — open-source launch strategy.
 - [Migration guide](guides/migration.md) — importing from Postman, Insomnia, and OpenAPI.

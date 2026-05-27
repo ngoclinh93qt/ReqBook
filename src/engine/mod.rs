@@ -170,6 +170,13 @@ pub async fn execute_with_client(
             path: path.clone(),
             source,
         })?;
+    let resolved_request =
+        resolve_path_params(&resolved_request, &opts.context).map_err(|source| {
+            EngineError::Resolve {
+                path: path.clone(),
+                source,
+            }
+        })?;
     let expected = parse_expected(&endpoint.expected_response).map_err(|message| {
         EngineError::InvalidExpected {
             path: path.clone(),
@@ -315,6 +322,56 @@ fn parse_request(source: &str) -> Result<ParsedRequest, String> {
         headers,
         body,
     })
+}
+
+fn resolve_path_params(source: &str, ctx: &Context) -> Result<String, ResolveError> {
+    let mut parts = source.splitn(2, '\n');
+    let request_line = parts.next().unwrap_or_default();
+    let rest = parts.next();
+    let mut request_parts = request_line.split_whitespace();
+    let Some(method) = request_parts.next() else {
+        return Ok(source.to_string());
+    };
+    let Some(url) = request_parts.next() else {
+        return Ok(source.to_string());
+    };
+    if request_parts.next().is_some() {
+        return Ok(source.to_string());
+    }
+
+    let param_re = regex::Regex::new(r":([A-Za-z_][A-Za-z0-9_]*)").expect("valid path param regex");
+    let mut resolved_url = String::with_capacity(url.len());
+    let mut last = 0;
+    for caps in param_re.captures_iter(url) {
+        let mat = caps.get(0).expect("whole match exists");
+        resolved_url.push_str(&url[last..mat.start()]);
+        let name = caps.get(1).expect("name match exists").as_str();
+        let value = ctx.get(name).ok_or_else(|| ResolveError::MissingVariable {
+            name: name.to_string(),
+            env_name: to_env_name(name),
+        })?;
+        resolved_url.push_str(value);
+        last = mat.end();
+    }
+    resolved_url.push_str(&url[last..]);
+
+    let mut out = format!("{method} {resolved_url}");
+    if let Some(rest) = rest {
+        out.push('\n');
+        out.push_str(rest);
+    }
+    Ok(out)
+}
+
+fn to_env_name(name: &str) -> String {
+    let mut out = String::new();
+    for (idx, ch) in name.chars().enumerate() {
+        if ch.is_uppercase() && idx > 0 {
+            out.push('_');
+        }
+        out.push(ch.to_ascii_uppercase());
+    }
+    out
 }
 
 fn parse_expected(source: &str) -> Result<ParsedExpected, String> {
@@ -547,6 +604,33 @@ Content-Type: application/json
         .await
         .unwrap();
         endpoint.source = None;
+        assert_eq!(execution.response.unwrap().status, 200);
+    }
+
+    #[tokio::test]
+    async fn resolves_colon_path_params_from_context() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/users/1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
+            .mount(&server)
+            .await;
+        let mut endpoint = endpoint("{{baseUrl}}");
+        endpoint.request = "GET {{baseUrl}}/users/:userId\nAccept: application/json".to_string();
+        let mut context = Context::default();
+        context.insert(SourceKind::Cli, "baseUrl", server.uri());
+        context.insert(SourceKind::Cli, "userId", "1");
+        let execution = execute(
+            &endpoint,
+            "dev",
+            ExecOpts {
+                context,
+                ..ExecOpts::default()
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(execution.request.url, format!("{}/users/1", server.uri()));
         assert_eq!(execution.response.unwrap().status, 200);
     }
 

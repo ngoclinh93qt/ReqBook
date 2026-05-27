@@ -25,9 +25,10 @@ api-docs/
 │   ├── env.md
 │   ├── auth.md
 │   └── variables.md
-├── <resource>/
-│   └── <method>-<slug>.md
-└── pipelines/
+├── apis/
+│   └── <resource>/
+│       └── <method>-<slug>.md
+└── flows/
     └── <pipeline-name>.md
 ```
 
@@ -41,9 +42,9 @@ api-docs/
 
 `api-docs/_shared/variables.md` contains shared named variables that are safe to commit.
 
-Each resource folder contains endpoint files. The recommended filename format is `<method-lower>-<slug>.md`, for example `get-user-by-id.md`, `post-login.md`, or `delete-subscription-by-id.md`.
+Each resource folder under `api-docs/apis/` contains endpoint files. The recommended filename format is `<method-lower>-<slug>.md`, for example `get-user-by-id.md`, `post-login.md`, or `delete-subscription-by-id.md`.
 
-Pipeline files live in `api-docs/pipelines/` and describe multi-step flows.
+Pipeline files live in `api-docs/flows/` and describe multi-step flows.
 
 ## Project config: `trellis.md`
 
@@ -353,7 +354,7 @@ When the same variable is defined in multiple places, the highest-priority sourc
 Example:
 
 ```bash
-TRELLIS_USER_ID=from-os trellis exec api-docs/users/get-user.md --var userId=from-cli
+TRELLIS_USER_ID=from-os trellis exec api-docs/apis/users/get-user.md --var userId=from-cli
 ```
 
 `{{userId}}` resolves to `from-cli` because CLI variables outrank OS environment variables.
@@ -388,7 +389,7 @@ If a variable is referenced and not found, Trellis returns a validation error be
 Error example:
 
 ```text
-api-docs/users/get-user.md: unresolved variable "authToken"
+api-docs/apis/users/get-user.md: unresolved variable "authToken"
 Fix: define authToken in .env.local, pass --var authToken=..., or set TRELLIS_AUTH_TOKEN.
 ```
 
@@ -413,7 +414,7 @@ To show literal `{{name}}` text in notes or examples, wrap it in an inline code 
 
 A pipeline chains endpoint files and passes captured values between steps.
 
-Pipeline files live in `api-docs/pipelines/`.
+Pipeline files live in `api-docs/flows/`.
 
 Example:
 
@@ -430,12 +431,12 @@ parallel: false
 
 ## Steps
 
-1. **Create user** -> `users/create-user.md`
+1. **Create user** -> `apis/users/create-user.md`
    - Capture: `response.body.id` as `userId`
-2. **Login** -> `users/login.md`
+2. **Login** -> `apis/users/login.md`
    - Inject: `userId`
    - Capture: `response.body.token` as `authToken`
-3. **Pair device** -> `devices/pair-device.md`
+3. **Pair device** -> `apis/devices/pair-device.md`
    - Inject: `authToken`, `userId`
    - Assert: `response.status == 201`
 ```
@@ -455,7 +456,7 @@ parallel: false
 Each ordered list item names a step and points to an endpoint file relative to `api-docs/`.
 
 ```markdown
-1. **Create user** -> `users/create-user.md`
+1. **Create user** -> `apis/users/create-user.md`
 ```
 
 Supported step directives:
@@ -483,7 +484,7 @@ Trellis validates before execution.
 Endpoint and pipeline files must start with frontmatter. A file whose first non-empty line is not `---` is invalid.
 
 ```text
-api-docs/users/get-user.md:1: missing frontmatter
+api-docs/apis/users/get-user.md:1: missing frontmatter
 Fix: add YAML frontmatter delimited by --- at the start of the file.
 ```
 
@@ -512,7 +513,7 @@ Endpoint files must include `## Request` and `## Expected response`.
 `## Request` must contain exactly one `http` block. `## Expected response` must contain exactly one `http` block. Multiple `http` blocks in either section are an error because the engine would not know which one to execute or compare.
 
 ```text
-api-docs/users/get-user.md: multiple http blocks in ## Request
+api-docs/apis/users/get-user.md: multiple http blocks in ## Request
 Fix: keep one executable request block and move alternatives to ## Notes using a non-http code fence.
 ```
 
@@ -572,7 +573,7 @@ Examples:
 Running against production requires confirmation in interactive mode.
 
 ```bash
-trellis exec api-docs/users/delete-user.md --env=prod
+trellis exec api-docs/apis/users/delete-user.md --env=prod
 ```
 
 Trellis prompts before sending the request. Use `--yes` to skip confirmation in CI.
@@ -667,8 +668,10 @@ api-docs/
 ├── trellis.md
 ├── _shared/
 │   └── env.md
-└── users/
-    └── get-user-by-id.md
+├── apis/
+│   └── users/
+│       └── get-user-by-id.md
+└── flows/
 ```
 
 `api-docs/trellis.md`:
@@ -723,7 +726,7 @@ userId: 1
 ```
 ````
 
-`api-docs/users/get-user-by-id.md`:
+`api-docs/apis/users/get-user-by-id.md`:
 
 ````markdown
 ---
@@ -776,6 +779,5 @@ Run:
 
 ```bash
 trellis validate api-docs/
-trellis exec api-docs/users/get-user-by-id.md --env=dev
+trellis exec api-docs/apis/users/get-user-by-id.md --env=dev
 ```
-

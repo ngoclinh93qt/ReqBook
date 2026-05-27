@@ -1,4 +1,4 @@
-import type { ExecResult, ImportResult, IndexData, SpecData, VarsData } from './types';
+import type { ExecResult, FlowData, FlowEntry, FlowRunResult, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData } from './types';
 
 const BASE = '/api';
 
@@ -16,11 +16,29 @@ export const api = {
   getSpec: (relPath: string) =>
     fetch(`${BASE}/spec/${relPath}`).then(r => json<SpecData>(r)),
 
-  execSpec: (relPath: string, vars: Record<string, string>) =>
+  getFlows: () => fetch(`${BASE}/flows`).then(r => json<{ flows: FlowEntry[] }>(r)),
+
+  getFlow: (relPath: string) =>
+    fetch(`${BASE}/flow/${relPath}`).then(r => json<FlowData>(r)),
+
+  saveFlow: (relPath: string, content: string) =>
+    fetch(`${BASE}/flow/${relPath}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: content,
+    }).then(r => json<{ status: string }>(r)),
+
+  runFlow: (relPath: string) =>
+    fetch(`${BASE}/flow/${relPath}`, { method: 'POST' }).then(r => json<FlowRunResult>(r)),
+
+  validate: (relPath: string) =>
+    fetch(`${BASE}/validate/${relPath}`).then(r => json<ValidateResult>(r)),
+
+  execSpec: (relPath: string, options: RuntimeExecOptions) =>
     fetch(`${BASE}/exec/${relPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vars }),
+      body: JSON.stringify(options),
     }).then(r => json<ExecResult>(r)),
 
   getVariables: () => fetch(`${BASE}/variables`).then(r => json<VarsData>(r)),
@@ -45,4 +63,9 @@ export const api = {
       headers: { 'Content-Type': 'text/plain' },
       body: curlText,
     }).then(r => json<ImportResult>(r)),
+
+  scanProject: () => fetch(`${BASE}/scan/project`).then(r => json<ScanProjectResult>(r)),
+
+  importProjectRoutes: () =>
+    fetch(`${BASE}/scan/project`, { method: 'POST' }).then(r => json<ScanProjectResult>(r)),
 };

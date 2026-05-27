@@ -31,10 +31,33 @@ impl Reporter for ConsoleReporter {
         } else {
             status.red().to_string()
         };
-        Ok(format!(
+        let mut out = format!(
             "{} {}\nstatus: {}\nduration: {}ms",
             result.request.method, result.request.url, status_text, result.duration_ms
-        ))
+        );
+        if result.response.is_none() {
+            if !result.request.headers.is_empty() {
+                out.push_str("\nheaders:");
+                for (name, value) in &result.request.headers {
+                    out.push_str(&format!("\n  {name}: {value}"));
+                }
+            }
+            if !result.request.body.is_empty() {
+                out.push_str("\nbody:\n");
+                out.push_str(&result.request.body);
+            }
+        } else if !result.diff.passed {
+            if let Some(status) = &result.diff.status {
+                out.push_str(&format!("\ndiff.status: {status}"));
+            }
+            for header in &result.diff.headers {
+                out.push_str(&format!("\ndiff.header: {header}"));
+            }
+            if let Some(body) = &result.diff.body {
+                out.push_str(&format!("\ndiff.body: {body}"));
+            }
+        }
+        Ok(out)
     }
 }
 

@@ -23,7 +23,7 @@ The installer places the `trellis` binary in `~/.local/bin` and prints instructi
 ### npm
 
 ```bash
-npm install -g @trellis-md/trellis
+npm install -g @trellistrellis-md
 ```
 
 The npm package bundles a prebuilt binary and works on macOS, Linux, and Windows.
@@ -37,8 +37,8 @@ brew install trellis-md/tap/trellis
 ### Docker
 
 ```bash
-docker pull ghcr.io/trellis-md/trellis:latest
-docker run --rm -v "$(pwd)":/work -w /work ghcr.io/trellis-md/trellis:latest validate api-docs/
+docker pull ghcr.io/trellistrellis-md:latest
+docker run --rm -v "$(pwd)":/work -w /work ghcr.io/trellistrellis-md:latest validate api-docs/
 ```
 
 Replace `validate api-docs/` with any `trellis` subcommand and flags.
@@ -82,9 +82,10 @@ api-docs/
 ├── trellis.md              # project config (name, default env, defaults)
 ├── _shared/
 │   └── env.md              # non-secret environment values (baseUrl, etc.)
-├── posts/
-│   └── get-posts.md        # example endpoint file
-└── pipelines/              # empty, ready for pipeline files
+├── apis/
+│   └── posts/
+│       └── get-posts.md    # example endpoint file
+└── flows/                  # empty, ready for flow files
 .gitignore                  # .env.local appended if not already present
 ```
 
@@ -117,13 +118,13 @@ If any file contains an error, Trellis prints the file path, line number, and a 
 Run the example endpoint that `trellis init` created:
 
 ```bash
-trellis exec api-docs/posts/get-posts.md --env=dev
+trellis exec api-docs/apis/posts/get-posts.md --env=dev
 ```
 
 Pass variables with `--var`:
 
 ```bash
-trellis exec api-docs/posts/get-posts.md --env=dev --var postId=5
+trellis exec api-docs/apis/posts/get-posts.md --env=dev --var postId=5
 ```
 
 You can pass `--var` multiple times. CLI variables override values from `env.md` and `.env.local`. See [Variable resolution priority](configuration.md#variable-resolution-priority) for the full order.
@@ -131,7 +132,7 @@ You can pass `--var` multiple times. CLI variables override values from `env.md`
 Use `--dry-run` to print the resolved request without sending it:
 
 ```bash
-trellis exec api-docs/posts/get-posts.md --dry-run
+trellis exec api-docs/apis/posts/get-posts.md --dry-run
 ```
 
 ## Opening the web preview

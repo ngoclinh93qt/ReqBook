@@ -149,18 +149,42 @@ pub async fn run(
 
 fn capture_value(execution: &Execution, source: &str) -> Option<String> {
     let response = execution.response.as_ref()?;
-    if source == "response.status" {
-        return Some(response.status.to_string());
-    }
-    let path = source.strip_prefix("response.body.")?;
-    let json: Value = serde_json::from_str(&response.body).ok()?;
-    let json_path = JsonPath::parse(&format!("$.{path}")).ok()?;
-    let nodes = json_path.query(&json);
+    let json: Value = serde_json::from_str(&response.body).unwrap_or(Value::Null);
+    let wrapper = serde_json::json!({
+        "response": {
+            "status": response.status,
+            "body": json.clone(),
+        },
+        "status": response.status,
+        "body": json,
+    });
+    let expression = normalize_capture_expression(source)?;
+    let json_path = JsonPath::parse(&expression).ok()?;
+    let nodes = json_path.query(&wrapper);
     let first = nodes.first()?;
     match first {
         Value::String(value) => Some(value.clone()),
         other => Some(other.to_string()),
     }
+}
+
+fn normalize_capture_expression(source: &str) -> Option<String> {
+    if source.starts_with('$') {
+        return Some(source.to_string());
+    }
+    if let Some(rest) = source.strip_prefix("response.body") {
+        return if rest.is_empty() {
+            Some("$.response.body".to_string())
+        } else if rest.starts_with('.') || rest.starts_with('[') {
+            Some(format!("$.response.body{rest}"))
+        } else {
+            None
+        };
+    }
+    if let Some(rest) = source.strip_prefix("response.") {
+        return Some(format!("$.response.{rest}"));
+    }
+    None
 }
 
 #[cfg(test)]
@@ -343,5 +367,80 @@ name: demo
         .await
         .unwrap();
         assert_eq!(result.captures["statusCode"], "204");
+    }
+
+    #[tokio::test]
+    async fn captures_array_value_from_response_body() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/users"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!([{"id": 1, "name": "Ada"}])),
+            )
+            .mount(&server)
+            .await;
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("users")).unwrap();
+        fs::write(
+            dir.path().join("users/get-users.md"),
+            format!(
+                r#"---
+resource: users
+protocol: http
+method: GET
+path: /users
+version: 1
+---
+# Get users
+
+Fetches users.
+
+## Request
+
+```http
+GET {}/users
+```
+
+## Expected response
+
+```http
+HTTP/1.1 200 OK
+
+[
+  {{"id": 1}}
+]
+```
+"#,
+                server.uri()
+            ),
+        )
+        .unwrap();
+        let pipeline = parse_pipeline(
+            r#"---
+type: pipeline
+name: demo
+---
+# Demo
+
+## Steps
+
+1. **Get users** -> `users/get-users.md`
+   - Capture: `response.body[0].id` as `firstUserId`
+"#,
+            "pipeline.md",
+        )
+        .unwrap();
+        let result = run(
+            &pipeline,
+            "dev",
+            PipelineOpts {
+                root: dir.path().to_path_buf(),
+                exec: ExecOpts::default(),
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.captures["firstUserId"], "1");
     }
 }

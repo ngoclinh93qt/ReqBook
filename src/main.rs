@@ -57,6 +57,10 @@ enum Command {
     },
     /// Launch web preview.
     Serve(ServeArgs),
+    /// Start mock HTTP server from recorded spec responses.
+    Mock(MockArgs),
+    /// Start MCP server (stdio transport) for AI agent tool integration.
+    Mcp,
     /// Diagnose project setup.
     Doctor(DoctorArgs),
     /// Generate shell completion.
@@ -139,6 +143,19 @@ struct ServeArgs {
 }
 
 #[derive(Debug, Args)]
+struct MockArgs {
+    /// api-docs/ root directory containing the spec files.
+    #[arg(default_value = "api-docs")]
+    dir: PathBuf,
+    /// TCP port to listen on.
+    #[arg(long, default_value_t = 4001)]
+    port: u16,
+    /// Artificial response delay in milliseconds (useful for latency testing).
+    #[arg(long)]
+    latency: Option<u64>,
+}
+
+#[derive(Debug, Args)]
 struct DoctorArgs {
     /// Automatically fix supported issues.
     #[arg(long)]
@@ -216,6 +233,8 @@ async fn main() -> Result<()> {
         Command::Import { command } => import(command)?,
         Command::Skills { command } => skills(command)?,
         Command::Serve(args) => serve(args).await?,
+        Command::Mock(args) => mock(args).await?,
+        Command::Mcp => trellis::mcp::run_mcp_server().await?,
         Command::Doctor(args) => doctor(args)?,
         Command::Completion { shell } => {
             let mut cmd = Cli::command();
@@ -364,11 +383,11 @@ fn init(args: InitArgs) -> Result<()> {
 
     let root = Path::new("api-docs");
     fs::create_dir_all(root.join("_shared"))?;
-    fs::create_dir_all(root.join("posts"))?;
-    fs::create_dir_all(root.join("pipelines"))?;
+    fs::create_dir_all(root.join("apis/posts"))?;
+    fs::create_dir_all(root.join("flows"))?;
     write_new(&root.join("trellis.md"), &project_config(&name))?;
     write_new(&root.join("_shared/env.md"), &env_config(&dev_url))?;
-    write_new(&root.join("posts/get-posts.md"), example_endpoint())?;
+    write_new(&root.join("apis/posts/get-posts.md"), example_endpoint())?;
     ensure_gitignore_has_env_local()?;
     regenerate_index(root)?;
 
@@ -551,9 +570,8 @@ fn validate_file(path: &Path) -> Result<()> {
     {
         Ok(())
     } else if path
-        .parent()
-        .and_then(|parent| parent.file_name())
-        .is_some_and(|name| name == "pipelines")
+        .components()
+        .any(|component| matches!(component.as_os_str().to_str(), Some("flows" | "pipelines")))
     {
         parse_pipeline(&source, path).map(|_| ())
     } else {
@@ -583,11 +601,12 @@ fn markdown_files(path: &Path) -> Result<Vec<PathBuf>> {
 async fn exec(args: ExecArgs) -> Result<()> {
     let source = read_text(&args.file, "executing endpoint")?;
     let endpoint = parse_endpoint(&source, &args.file)?;
+    let context = execution_context(&args.file, &args.env, &args.vars)?;
     let execution = engine::execute(
         &endpoint,
         &args.env,
         ExecOpts {
-            context: context_from_vars(&args.vars)?,
+            context,
             timeout_ms: args.timeout,
             dry_run: args.dry_run,
         },
@@ -611,13 +630,14 @@ async fn flow(args: FlowArgs) -> Result<()> {
         .nth(2)
         .unwrap_or_else(|| Path::new("api-docs"))
         .to_path_buf();
+    let context = execution_context(&args.pipeline, &args.env, &args.vars)?;
     let result = pipeline::run(
         &parsed,
         &args.env,
         PipelineOpts {
             root,
             exec: ExecOpts {
-                context: context_from_vars(&args.vars)?,
+                context,
                 timeout_ms: args.timeout,
                 dry_run: false,
             },
@@ -645,6 +665,107 @@ fn context_from_vars(vars: &[String]) -> Result<Context> {
         context.insert(SourceKind::Cli, key.trim(), value.trim());
     }
     Ok(context)
+}
+
+fn execution_context(path: &Path, env: &str, vars: &[String]) -> Result<Context> {
+    let mut context = Context::default();
+    load_env_file(path, env, &mut context)?;
+    load_dotenv_local(path, &mut context)?;
+    load_trellis_env(&mut context);
+    let cli_context = context_from_vars(vars)?;
+    merge_context(&mut context, cli_context, SourceKind::Cli);
+    Ok(context)
+}
+
+fn load_env_file(path: &Path, env: &str, context: &mut Context) -> Result<()> {
+    let Some(root) = find_api_docs_root(path) else {
+        return Ok(());
+    };
+    let env_path = root.join("_shared/env.md");
+    if !env_path.exists() {
+        return Ok(());
+    }
+    let source = read_text(&env_path, "reading environment variables")?;
+    let config = parser::parse_env_config(&source, &env_path)?;
+    if let Some(values) = config.envs.get(env) {
+        for (key, value) in values {
+            context.insert(SourceKind::Env, key, value);
+        }
+    }
+    Ok(())
+}
+
+fn load_dotenv_local(path: &Path, context: &mut Context) -> Result<()> {
+    let Some(root) = find_api_docs_root(path) else {
+        return Ok(());
+    };
+    let Some(project_root) = root.parent() else {
+        return Ok(());
+    };
+    let dotenv = project_root.join(".env.local");
+    if !dotenv.exists() {
+        return Ok(());
+    }
+    let source = read_text(&dotenv, "reading .env.local")?;
+    for line in source.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once('=') {
+            context.insert(
+                SourceKind::DotEnvLocal,
+                key.trim(),
+                value.trim().trim_matches('"').trim_matches('\''),
+            );
+        }
+    }
+    Ok(())
+}
+
+fn load_trellis_env(context: &mut Context) {
+    for (key, value) in std::env::vars() {
+        if let Some(name) = key.strip_prefix("TRELLIS_") {
+            context.insert(SourceKind::OsEnv, env_name_to_var(name), value);
+        }
+    }
+}
+
+fn merge_context(target: &mut Context, source: Context, kind: SourceKind) {
+    for (key, value) in source.entries_for(kind) {
+        target.insert(kind, key, value);
+    }
+}
+
+fn find_api_docs_root(path: &Path) -> Option<PathBuf> {
+    let start = if path.is_dir() {
+        path
+    } else {
+        path.parent().unwrap_or(path)
+    };
+    for ancestor in start.ancestors() {
+        if ancestor.file_name().is_some_and(|name| name == "api-docs") {
+            return Some(ancestor.to_path_buf());
+        }
+    }
+    let candidate = Path::new("api-docs");
+    candidate.exists().then(|| candidate.to_path_buf())
+}
+
+fn env_name_to_var(name: &str) -> String {
+    let mut parts = name.split('_').filter(|part| !part.is_empty());
+    let Some(first) = parts.next() else {
+        return String::new();
+    };
+    let mut out = first.to_ascii_lowercase();
+    for part in parts {
+        let mut chars = part.chars();
+        if let Some(first) = chars.next() {
+            out.push(first.to_ascii_uppercase());
+            out.push_str(&chars.as_str().to_ascii_lowercase());
+        }
+    }
+    out
 }
 
 fn print_report(format: OutputFormat, execution: &trellis::Execution) -> Result<()> {
@@ -688,7 +809,9 @@ fn doctor(args: DoctorArgs) -> Result<()> {
     println!("Project");
     check("api-docs/ exists", Path::new("api-docs").exists());
     let gitignore = fs::read_to_string(".gitignore").unwrap_or_default();
-    let env_ignored = gitignore.lines().any(|line| line.trim() == ".env.local");
+    let env_ignored = gitignore
+        .lines()
+        .any(|line| matches!(line.trim(), ".env.local" | "/.env.local"));
     check(".env.local in .gitignore", env_ignored);
     if args.fix && !env_ignored {
         let mut file = fs::OpenOptions::new()
@@ -895,6 +1018,20 @@ async fn serve(args: ServeArgs) -> Result<()> {
     bail!(
         "web preview is not compiled into this binary\nFix: install Trellis with default features."
     )
+}
+
+async fn mock(args: MockArgs) -> Result<()> {
+    #[cfg(feature = "web")]
+    {
+        trellis::mock::run_mock_server(args.dir, args.port, args.latency).await
+    }
+    #[cfg(not(feature = "web"))]
+    {
+        let _ = args;
+        bail!(
+            "mock server is not compiled into this binary\nFix: install Trellis with default features."
+        )
+    }
 }
 
 fn read_text(path: &Path, action: &str) -> Result<String> {

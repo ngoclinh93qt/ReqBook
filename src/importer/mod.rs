@@ -29,7 +29,7 @@ pub struct ImportedEndpoint {
     pub tags: Vec<String>,
 }
 
-/// Write imported endpoints under `root/api-docs/` and return paths written.
+/// Write imported endpoints under `root/api-docs/apis/` and return paths written.
 /// Never overwrites existing files.
 pub fn write_endpoints(root: &Path, endpoints: &[ImportedEndpoint]) -> Result<Vec<PathBuf>> {
     let mut written = Vec::new();
@@ -39,7 +39,7 @@ pub fn write_endpoints(root: &Path, endpoints: &[ImportedEndpoint]) -> Result<Ve
         } else {
             ep.resource.clone()
         };
-        let dir = root.join("api-docs").join(&resource);
+        let dir = root.join("api-docs/apis").join(&resource);
         fs::create_dir_all(&dir)
             .with_context(|| format!("creating directory {}", dir.display()))?;
 

@@ -72,7 +72,7 @@ trellis validate <path>
 Trellis classifies each file by location and name:
 
 - Files named `env.md` are validated as environment config.
-- Files under `pipelines/` are validated as pipeline files.
+- Files under `flows/` are validated as pipeline files.
 - `trellis.md` and `README.md` are checked for frontmatter only.
 - All other `.md` files are validated as endpoint files.
 
@@ -82,7 +82,7 @@ Each error message includes the file path, line number when known, and a suggest
 
 ```bash
 trellis validate api-docs/
-trellis validate api-docs/users/get-user-by-id.md
+trellis validate api-docs/apis/users/get-user-by-id.md
 ```
 
 **Exit codes**: 0 if all files are valid, 2 if any spec is invalid, 5 if a secret is detected.
@@ -114,19 +114,19 @@ If a referenced variable is not resolved from any source, Trellis exits with cod
 
 ```bash
 # Basic execution
-trellis exec api-docs/users/get-user-by-id.md
+trellis exec api-docs/apis/users/get-user-by-id.md
 
 # With environment and variable override
-trellis exec api-docs/users/get-user-by-id.md --env=staging --var userId=42
+trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var userId=42
 
 # CI: JUnit output for test reporters
-trellis exec api-docs/users/get-user-by-id.md --output=junit > results.xml
+trellis exec api-docs/apis/users/get-user-by-id.md --output=junit > results.xml
 
 # Dry run to inspect the resolved request
-trellis exec api-docs/users/create-user.md --dry-run --var email=test@example.com
+trellis exec api-docs/apis/users/create-user.md --dry-run --var email=test@example.com
 
 # Timeout override
-trellis exec api-docs/users/get-user-by-id.md --timeout=10000
+trellis exec api-docs/apis/users/get-user-by-id.md --timeout=10000
 ```
 
 **Exit codes**: 0 if the response matches the expected response, 1 if any assertion fails, 2 if the spec is invalid, 3 on engine error, 4 on network error, 5 if a secret is detected.
@@ -157,13 +157,13 @@ trellis flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--para
 
 ```bash
 # Run a pipeline
-trellis flow api-docs/pipelines/user-onboarding.md --env=staging
+trellis flow api-docs/flows/user-onboarding.md --env=staging
 
 # Force sequential execution
-trellis flow api-docs/pipelines/user-onboarding.md --no-parallel
+trellis flow api-docs/flows/user-onboarding.md --no-parallel
 
 # JSON output for programmatic consumption
-trellis flow api-docs/pipelines/user-onboarding.md --output=json
+trellis flow api-docs/flows/user-onboarding.md --output=json
 ```
 
 **Exit codes**: 0 if all steps pass (or `continue-on-error` is true), 1 if any step fails, 2 if the pipeline spec is invalid, 3 on engine error, 4 on network error.

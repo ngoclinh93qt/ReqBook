@@ -1,11 +1,11 @@
 ---
 name: trellis-exec
-description: Use this skill when the user wants to test, run, verify, hit, or execute an API endpoint that has an existing Trellis spec in api-docs/. Triggers on phrases like "test GET /users/:id", "run this endpoint", "does the /webhook API work", "verify response shape". Do NOT use for authoring new endpoints (use trellis-author) or multi-step pipelines (use trellis-flow).
+description: Use this skill when the user wants to test, run, verify, hit, or execute one existing Trellis endpoint spec in api-docs/. Triggers on phrases like "test GET /users/:id", "run this endpoint", "does /webhook work", "verify response shape", or "dry-run this request". Do NOT use for authoring endpoint specs (use trellis-author), creating workflows (use trellis-workflow), or running multi-step pipelines (use trellis-flow).
 ---
 
 # Trellis exec
 
-Use this skill to execute one existing Trellis endpoint spec. The endpoint file must already exist under `api-docs/`. If the user asks to create or document a missing endpoint, use `trellis-author` instead.
+Use this skill to execute one existing Trellis endpoint spec. The endpoint file must already exist under `api-docs/`. If the user asks to create or document a missing endpoint, use `trellis-author`. If the user asks to chain multiple endpoints or create a workflow, use `trellis-workflow`. If the workflow already exists and the user wants to run it, use `trellis-flow`.
 
 ## Operating rules
 
@@ -64,7 +64,7 @@ Variables may come from:
 If a required variable is missing, either ask for it or run:
 
 ```bash
-trellis exec api-docs/users/get-user-by-id.md --env=dev --dry-run
+trellis exec api-docs/apis/users/get-user-by-id.md --env=dev --dry-run
 ```
 
 ## Execute
@@ -78,19 +78,19 @@ trellis exec <file> --env=<env>
 Add repeated variables as needed:
 
 ```bash
-trellis exec api-docs/users/get-user-by-id.md --env=dev --var id=usr_123
+trellis exec api-docs/apis/users/get-user-by-id.md --env=dev --var id=usr_123
 ```
 
 For machine-readable output:
 
 ```bash
-trellis exec api-docs/users/get-user-by-id.md --env=dev --output=json
+trellis exec api-docs/apis/users/get-user-by-id.md --env=dev --output=json
 ```
 
 For CI reports:
 
 ```bash
-trellis exec api-docs/users/get-user-by-id.md --env=dev --output=junit
+trellis exec api-docs/apis/users/get-user-by-id.md --env=dev --output=junit
 ```
 
 ## Parse output
@@ -128,12 +128,12 @@ Test GET /users/:id in dev with id usr_123.
 
 Steps:
 
-1. Locate `api-docs/users/get-user-by-id.md`.
+1. Locate `api-docs/apis/users/get-user-by-id.md`.
 2. Confirm env is `dev`.
 3. Run:
 
 ```bash
-trellis exec api-docs/users/get-user-by-id.md --env=dev --var id=usr_123
+trellis exec api-docs/apis/users/get-user-by-id.md --env=dev --var id=usr_123
 ```
 
 Response summary:
@@ -162,7 +162,7 @@ Verify the order detail endpoint.
 Run:
 
 ```bash
-trellis exec api-docs/orders/get-order-by-id.md --env=staging --var orderId=ord_123
+trellis exec api-docs/apis/orders/get-order-by-id.md --env=staging --var orderId=ord_123
 ```
 
 Trellis reports:
@@ -175,7 +175,7 @@ body: response body did not match expected shape
 Final response to user:
 
 ```text
-The order detail endpoint did not match the spec in staging. `api-docs/orders/get-order-by-id.md` expected 200, but the API returned 404 for `orderId=ord_123`. Check whether the fixture order exists in staging or update the expected response if 404 is now correct.
+The order detail endpoint did not match the spec in staging. `api-docs/apis/orders/get-order-by-id.md` expected 200, but the API returned 404 for `orderId=ord_123`. Check whether the fixture order exists in staging or update the expected response if 404 is now correct.
 ```
 
 ## Masking examples
@@ -195,3 +195,45 @@ Authorization: Bearer real-token-value
 
 Never include the unsafe form in your response.
 
+## MCP mode
+
+When the Trellis MCP server is registered (`claude mcp add trellis -- trellis mcp`), you can call
+`trellis_exec` directly as an MCP tool — no bash required.
+
+**Locate the spec first** using `trellis_list_specs`:
+
+```json
+{
+  "tool": "trellis_list_specs",
+  "arguments": { "dir": "api-docs/" }
+}
+```
+
+Returns:
+
+```json
+{
+  "count": 12,
+  "specs": [
+    { "method": "GET", "path": "/users/:id", "spec_path": "api-docs/apis/users/get-user-by-id.md" }
+  ]
+}
+```
+
+**Execute** using `trellis_exec`:
+
+```json
+{
+  "tool": "trellis_exec",
+  "arguments": {
+    "spec_path": "api-docs/apis/users/get-user-by-id.md",
+    "env": "dev",
+    "vars": { "id": "usr_123" }
+  }
+}
+```
+
+Returns a JSON result with `status`, `duration_ms`, `diff_passed`, and any assertion failures.
+
+**Prefer MCP tools over bash** when the Trellis MCP server is available — responses are structured
+JSON, secrets are masked, and no shell escaping is needed.
