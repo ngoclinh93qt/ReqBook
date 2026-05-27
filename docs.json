@@ -1,0 +1,85 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Trellis",
+  "logo": {
+    "dark": "/assets/brand/trellis-wordmark-dark.svg",
+    "light": "/assets/brand/trellis-wordmark.svg"
+  },
+  "favicon": "/assets/brand/trellis-mark.svg",
+  "colors": {
+    "primary": "#059669",
+    "light": "#10b981",
+    "dark": "#047857"
+  },
+  "navbar": {
+    "links": [
+      { "label": "GitHub", "href": "https://github.com/trellis-md/trellis" }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get started",
+      "href": "/docs/quickstart"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      { "tab": "Documentation", "href": "/docs" },
+      { "tab": "Reference", "href": "/docs/reference" }
+    ],
+    "anchors": [
+      {
+        "anchor": "GitHub",
+        "icon": "github",
+        "href": "https://github.com/trellis-md/trellis"
+      },
+      {
+        "anchor": "Changelog",
+        "icon": "list",
+        "href": "https://github.com/trellis-md/trellis/releases"
+      },
+      {
+        "anchor": "Community",
+        "icon": "discord",
+        "href": "https://github.com/trellis-md/trellis/discussions"
+      }
+    ],
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["docs/introduction", "docs/quickstart", "docs/installation"]
+      },
+      {
+        "group": "Essentials",
+        "pages": [
+          "docs/essentials/endpoint-files",
+          "docs/essentials/pipelines",
+          "docs/essentials/variables",
+          "docs/essentials/security"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "docs/reference/cli",
+          "docs/reference/configuration",
+          "docs/reference/exit-codes"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "docs/guides/ai-agents",
+          "docs/guides/web-preview",
+          "docs/guides/ci-cd",
+          "docs/guides/migration"
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/trellis-md/trellis"
+    }
+  }
+}
