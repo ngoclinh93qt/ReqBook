@@ -1,0 +1,97 @@
+---
+title: "Security"
+description: "Trellis prevents secrets from being committed to version control. Learn about secret detection, allowed secret locations, and output masking."
+icon: "shield"
+---
+
+## Never commit secrets
+
+Trellis treats all markdown spec files as safe-to-commit artifacts. Secrets belong in `.env.local`, CI environment variables, or a secret manager — never in `env.md`, endpoint files, pipeline files, or `trellis.md`. The parser actively enforces this before any request is sent.
+
+---
+
+## Secret detection
+
+Trellis scans `env.md`, endpoint files, pipeline files, and `trellis.md` for common secret patterns during `trellis validate` and before every execution. If a match is found, the command exits with **code 5** — no network request is made.
+
+### Patterns that trigger exit code 5
+
+| Pattern | Example | Reason |
+|---|---|---|
+| `Bearer eyJ...` | `Authorization: Bearer eyJhbGc...` | JWT-like bearer token |
+| Hex strings > 32 chars | `a3f9c2d1b4e8...` (33+ hex chars) | Typical API key encoding |
+| Prefix `sk_` | `sk_live_abc123` | Stripe-style secret key |
+| Prefix `pk_live_` | `pk_live_abc123` | Stripe-style live publishable key |
+
+### Error format
+
+```
+api-docs/_shared/env.md:12: possible secret detected
+Fix: move this value to .env.local or TRELLIS_* environment variables.
+```
+
+The error includes the file path and line number so you can find and move the offending value immediately.
+
+---
+
+## Allowed secret locations
+
+| Location | When to use |
+|---|---|
+| `.env.local` | Local development. Must be listed in `.gitignore`. Never committed. |
+| `TRELLIS_*` OS env vars | CI/CD pipelines and shared environments. Set in your CI provider's secret store. |
+| Secret manager + env | `TRELLIS_AUTH_TOKEN=$(vault read secret/api-token)` — inject at runtime from HashiCorp Vault, AWS Secrets Manager, or similar. |
+
+<Tip>
+  `trellis doctor` checks that `.env.local` is listed in `.gitignore` and reports an error with a fix suggestion if it is not. Run it after `trellis init` and before onboarding new contributors.
+</Tip>
+
+---
+
+## Output masking
+
+Trellis masks auth header values and known secret variable names in all output surfaces: CLI console, JSON reports, JUnit XML, markdown reports, and the web preview response history.
+
+| Input | Masked output |
+|---|---|
+| `Authorization: Bearer abc123` | `Authorization: Bearer ****` |
+| `Authorization: Basic dXNlcjpwYXNz` | `Authorization: Basic ****` |
+| `authToken=abc123` | `authToken=****` |
+
+Masking is applied before writing to any file, stream, or storage. Unmasked values are never written to disk by Trellis.
+
+---
+
+## Production confirmation
+
+Running against a `prod` environment requires explicit confirmation in an interactive terminal. Trellis prompts before sending any request when `--env=prod` is passed.
+
+```bash
+trellis exec api-docs/apis/users/delete-user.md --env=prod
+# Trellis: You are about to run against prod. Confirm? [y/N]
+```
+
+Pass `--yes` to skip the confirmation prompt in automated pipelines:
+
+```bash
+trellis exec api-docs/apis/users/get-users.md --env=prod --yes
+```
+
+<Warning>
+  Never pass `--yes` to destructive endpoints (`DELETE`, or `POST` to production data) in automated pipelines without deliberate human review of the entire workflow. Production confirmation exists to prevent accidental data loss from misconfigured CI jobs.
+</Warning>
+
+---
+
+## Exit codes
+
+Every Trellis command exits with a stable, machine-readable code. CI pipelines can branch on these codes to distinguish test failures from spec errors.
+
+| Code | Meaning |
+|---|---|
+| `0` | Passed |
+| `1` | Test failed — response did not match expected |
+| `2` | Invalid spec — missing field, unresolved variable, or malformed file |
+| `3` | Engine error — internal Trellis error |
+| `4` | Network error — connection refused, timeout, or DNS failure |
+| `5` | Secret detected — a versioned file contains a possible credential |

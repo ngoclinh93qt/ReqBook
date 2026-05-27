@@ -1,0 +1,59 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Trellis",
+  "logo": {
+    "dark": "/assets/brand/trellis-wordmark-dark.svg",
+    "light": "/assets/brand/trellis-wordmark.svg"
+  },
+  "favicon": "/assets/brand/trellis-mark.svg",
+  "colors": {
+    "primary": "#059669",
+    "light": "#10b981",
+    "dark": "#047857",
+    "anchors": { "from": "#059669", "to": "#10b981" }
+  },
+  "topbarLinks": [
+    { "name": "GitHub", "url": "https://github.com/trellis-md/trellis" }
+  ],
+  "topbarCtaButton": { "name": "Get started", "url": "docs/quickstart" },
+  "tabs": [
+    { "name": "Documentation", "url": "docs" },
+    { "name": "Reference", "url": "docs/reference" }
+  ],
+  "anchors": [
+    { "name": "GitHub", "icon": "github", "url": "https://github.com/trellis-md/trellis" },
+    { "name": "Changelog", "icon": "list", "url": "https://github.com/trellis-md/trellis/releases" },
+    { "name": "Community", "icon": "discord", "url": "https://github.com/trellis-md/trellis/discussions" }
+  ],
+  "navigation": [
+    {
+      "group": "Get started",
+      "pages": ["docs/introduction", "docs/quickstart", "docs/installation"]
+    },
+    {
+      "group": "Essentials",
+      "pages": [
+        "docs/essentials/endpoint-files",
+        "docs/essentials/pipelines",
+        "docs/essentials/variables",
+        "docs/essentials/security"
+      ]
+    },
+    {
+      "group": "Reference",
+      "pages": ["docs/reference/cli", "docs/reference/configuration", "docs/reference/exit-codes"]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "docs/guides/ai-agents",
+        "docs/guides/web-preview",
+        "docs/guides/ci-cd",
+        "docs/guides/migration"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/trellis-md/trellis"
+  }
+}

@@ -1,0 +1,105 @@
+---
+title: "Introduction"
+description: "Trellis is a markdown-native API spec system — write endpoint specs as markdown files, execute them with the Rust CLI, test in CI, and let AI agents author and run them."
+---
+
+# Markdown-native API specs that execute, validate, and teach AI agents.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
+    Install Trellis and run your first endpoint in under 5 minutes.
+  </Card>
+  <Card title="Endpoint files" icon="file-code" href="/docs/essentials/endpoint-files">
+    Learn the structure of a Trellis endpoint spec file.
+  </Card>
+  <Card title="Pipelines" icon="workflow" href="/docs/essentials/pipelines">
+    Chain endpoints together, capture values, and inject them between steps.
+  </Card>
+  <Card title="AI agent skills" icon="bot" href="/docs/guides/ai-agents">
+    Install Trellis skills for Claude Code, Cursor, and GitHub Copilot.
+  </Card>
+</CardGroup>
+
+---
+
+## What is Trellis?
+
+Trellis stores API specs as plain markdown files — the same files that developers read are the files the CLI executes. There is no separate schema format, no generated client, and no proprietary runtime. If you can open a text editor, you can write a Trellis spec.
+
+The same markdown file is read by four consumers at once: the Rust CLI runs it as an HTTP request, the browser UI renders and executes it interactively, AI agents author and invoke it via installed skills, and CI validates it against your live API on every push. All four share a single source of truth.
+
+Trellis is designed to stay out of your way. It is a single static binary with no cloud dependency, no signup, and no lock-in. Your specs are markdown — they will be readable long after any tool is gone.
+
+{/* TODO: screenshot of trellis serve web preview showing endpoint list */}
+
+---
+
+## Key features
+
+<CardGroup cols={3}>
+  <Card title="Executable markdown" icon="play">
+    Endpoint files are documentation AND runnable HTTP requests. The `## Request` section defines the call; `## Expected response` defines the assertion. No duplication.
+  </Card>
+  <Card title="Pipeline flows" icon="git-merge">
+    Chain endpoints into multi-step flows. Capture values from one response and inject them as variables into the next request — auth tokens, resource IDs, pagination cursors.
+  </Card>
+  <Card title="Variable system" icon="variable">
+    Six-level priority resolution: pipeline overrides CLI overrides frontmatter overrides `env.md` overrides `.env.local` overrides `TRELLIS_*` environment variables. Predictable, explicit, no surprises.
+  </Card>
+  <Card title="Secret detection" icon="shield-alert">
+    The parser detects API keys, tokens, and credentials before any request is made. If a secret is found in a versioned file, Trellis exits with code 5 — nothing is sent to the network.
+  </Card>
+  <Card title="AI-native skills" icon="cpu">
+    One command installs Trellis skills for Claude Code, Cursor, or GitHub Copilot. Agents can author specs, execute endpoints, and run pipelines without leaving their context.
+  </Card>
+  <Card title="Local-first" icon="hard-drive">
+    A single Rust binary. No cloud, no signup, no proprietary format. Your specs are markdown files in your repo — version them, diff them, review them like any other code.
+  </Card>
+</CardGroup>
+
+---
+
+## How it works
+
+<Steps>
+  <Step title="Write a markdown spec">
+    Create an endpoint file with a `## Request` section describing the HTTP call and an `## Expected response` section defining what a successful response looks like.
+
+    ```markdown filename="api-docs/apis/posts/get-posts.md"
+    ---
+    title: Get posts
+    method: GET
+    url: "{{base_url}}/posts"
+    ---
+
+    ## Request
+
+    No request body.
+
+    ## Expected response
+
+    ```json
+    [{ "id": 1, "title": "..." }]
+    ```
+    ```
+  </Step>
+  <Step title="Execute with the CLI">
+    Pass the file to `trellis exec` with the target environment. Trellis resolves all variables, sends the request, and diffs the response against your expected shape.
+
+    ```bash
+    trellis exec api-docs/apis/posts/get-posts.md --env=dev
+    ```
+  </Step>
+  <Step title="Get a pass/fail diff">
+    The CLI prints a structured result: HTTP status, response time, and a field-level diff showing exactly which parts of the response matched or diverged from your spec.
+
+    ```
+    GET https://jsonplaceholder.typicode.com/posts
+    status: 200
+    duration: 180ms
+    diff: passed
+    ```
+  </Step>
+</Steps>
+
+{/* TODO: GIF of terminal showing trellis exec running and returning 200 */}

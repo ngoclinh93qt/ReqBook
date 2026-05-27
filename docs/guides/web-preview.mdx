@@ -1,0 +1,91 @@
+---
+title: "Web preview"
+description: "Browse, edit, and execute your API specs in a local browser UI with no build step."
+icon: "monitor"
+---
+
+## Starting the web preview
+
+```bash
+trellis serve
+# ➜ Local:  http://127.0.0.1:8080
+```
+
+{/* TODO: full-page screenshot of trellis serve showing the spec browser with sidebar, request panel, and response panel */}
+
+Pass flags to customise the port, environment, or project path:
+
+```bash
+trellis serve --port=9000 --env=staging
+trellis serve /path/to/other-project
+```
+
+---
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Browse specs" icon="list">
+    Sidebar tree of all endpoint files, searchable by name, HTTP method, path, or tag. Navigate directly to any endpoint without leaving the browser.
+  </Card>
+  <Card title="Execute endpoints" icon="play">
+    Click **Run** to send a request using the selected environment's variables. The response panel shows status, duration, headers, and a diff against the expected response.
+  </Card>
+  <Card title="Flow canvas" icon="git-branch">
+    Visual drag-and-drop canvas for designing pipelines. Connect endpoint nodes, configure captures, and save directly to `api-docs/flows/`.
+  </Card>
+  <Card title="Import from cURL" icon="terminal">
+    Paste a cURL command from browser DevTools. Trellis creates a new endpoint spec file, validates it, and adds it to the index automatically.
+  </Card>
+</CardGroup>
+
+{/* TODO: screenshot of the Flow canvas showing nodes connected with arrows */}
+
+---
+
+## Configuration in trellis.md
+
+The `## Web preview` section in `api-docs/trellis.md` sets the default server configuration. CLI flags override these values at runtime.
+
+```yaml filename="api-docs/trellis.md (## Web preview section)"
+port: 8080
+host: 127.0.0.1
+theme: auto       # auto | light | dark
+autosave: 2s      # debounce interval for live-reload
+```
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `port` | integer | `8080` | TCP port for the preview server. |
+| `host` | string | `127.0.0.1` | Host to bind to. |
+| `theme` | string | `auto` | Color theme: `auto`, `light`, or `dark`. `auto` follows the OS preference. |
+| `autosave` | string | `2s` | Debounce interval before a file change triggers a browser reload. |
+
+<Tip>
+To expose the preview to other devices on your local network, run `trellis serve --host=0.0.0.0`. Trellis prints a warning because this makes your local secrets context accessible to other machines on the network.
+</Tip>
+
+---
+
+## Live reload
+
+The server watches every file under `api-docs/` for changes and reloads connected browsers automatically. The debounce interval is controlled by the `autosave` setting in `trellis.md` (default: 2 seconds). No browser extension or build step is needed.
+
+Changes to endpoint files, environment config, and pipeline files are all picked up automatically. If you rename or delete a file, reload the browser sidebar manually to refresh the file tree.
+
+---
+
+## Variables and environments
+
+The web preview resolves variables using the same priority order as the CLI. The active environment is set by the `--env` flag when starting the server (default: `dev`).
+
+Secrets from `.env.local` are available in the preview and are masked in the response history panel — they appear as `****` in displayed headers and are never written to the browser's localStorage.
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Clean shutdown (Ctrl-C). |
+| `3` | Startup error — port already in use, `api-docs/` not found, or file permission issue. |

@@ -1,0 +1,176 @@
+---
+title: "AI agent integration"
+description: "Install Trellis skills into Claude Code, Cursor, and GitHub Copilot so your AI coding agent can author, validate, and execute API specs."
+icon: "bot"
+---
+
+## What are skills?
+
+Trellis skills are markdown playbooks that teach AI agents how to work with Trellis. They are embedded in the binary and installed into your agent's config directory with a single command.
+
+Once installed, your agent knows how to:
+
+- Create new endpoint specs in the correct format without guessing field names or structure.
+- Execute and debug endpoints using `trellis exec`.
+- Run multi-step pipelines with `trellis flow`.
+- Detect missing variables or stale specs before they cause failures.
+
+---
+
+## Installing skills
+
+One command installs skills for all detected AI agents in your project:
+
+```bash
+trellis skills install
+```
+
+To install for a specific agent:
+
+```bash
+trellis skills install --agent=claude-code
+trellis skills install --agent=cursor
+trellis skills install --agent=copilot
+```
+
+Supported agents: `claude-code`, `cursor`, `copilot`, `codex-cli`, `antigravity`, `opencode`.
+
+Trellis detects which agents are present by checking for their config directories (`.claude/`, `.cursor/`, `.github/`, etc.) in your project root.
+
+<Tip>
+After upgrading Trellis, run `trellis doctor --fix` to update installed skills to the new binary version automatically. Stale skills are the most common cause of agents generating incorrect spec paths or outdated syntax.
+</Tip>
+
+---
+
+## Keeping skills up-to-date
+
+Run `trellis doctor` to check whether installed skills match the current binary:
+
+```bash
+trellis doctor
+# Project
+#   ✓ api-docs/ found
+#   ✓ .env.local in .gitignore
+# Agents
+#   ✓ Claude Code (.claude/)
+#   ✗ Skills out-of-date: trellis-flow
+#     Fix: run `trellis skills install` to update installed skills.
+# Network
+#   ✓ Outbound connection reachable
+```
+
+<Warning>
+Stale skills can cause agents to look for files in the wrong paths or use outdated command syntax. Always run `trellis doctor --fix` after upgrading Trellis to a new version.
+</Warning>
+
+---
+
+## Available skills
+
+<CardGroup cols={2}>
+  <Card title="trellis-exec" icon="play">
+    Execute an existing endpoint spec and report the result. Trigger phrases: "test GET /users/:id", "run this endpoint", "does /webhook work", "verify the response shape".
+  </Card>
+  <Card title="trellis-author" icon="file-pen">
+    Create or update a single endpoint spec file. Trigger phrases: "add POST /orders", "document this route", "scaffold GET /users/:id", "create a spec for this endpoint".
+  </Card>
+  <Card title="trellis-flow" icon="workflow">
+    Run an existing pipeline file and report step results. Trigger phrases: "run the onboarding flow", "execute demo-post-flow", "test the signup scenario".
+  </Card>
+  <Card title="trellis-workflow" icon="git-branch">
+    Create a new pipeline from existing endpoint specs. Trigger phrases: "chain these endpoints", "build a signup flow", "connect endpoint A to endpoint B", "capture the id then use it".
+  </Card>
+</CardGroup>
+
+---
+
+## Claude Code
+
+After installing skills, the following slash commands are available in Claude Code:
+
+| Command | What it does |
+|---|---|
+| `/trellis-exec` | Execute an endpoint spec and report the result |
+| `/trellis-flow` | Run a pipeline and report step results |
+| `/trellis-validate` | Validate specs in a file or directory |
+| `/trellis-import` | Scan project source code for API routes and import them |
+| `/trellis-import-curl` | Import a cURL command as an endpoint spec |
+| `/trellis-serve` | Start the web preview server |
+| `/trellis-init` | Initialise a new Trellis project |
+
+**Example session — executing an endpoint**
+
+```
+User: test GET /users/1
+
+Agent: [uses trellis-exec skill]
+       → runs: trellis exec api-docs/apis/users/get-user-by-id.md --var id=1
+       → result: 200 OK in 180ms, diff: passed
+```
+
+**Example session — authoring a new endpoint**
+
+```
+User: add a POST /comments endpoint for creating blog comments
+
+Agent: [uses trellis-author skill]
+       → creates: api-docs/apis/comments/post-comments.md
+       → runs: trellis validate api-docs/apis/comments/post-comments.md
+       → runs: trellis index
+       → reports: spec created and validated
+```
+
+{/* TODO: GIF of Claude Code session showing /trellis-exec running and reporting results */}
+
+---
+
+## MCP mode
+
+For deeper integration, register the Trellis MCP server with Claude Code. This exposes Trellis as native structured tools — no shell output parsing required.
+
+```bash
+claude mcp add trellis -- trellis mcp
+```
+
+Verify the registration:
+
+```bash
+claude mcp list
+# trellis  trellis mcp  (running)
+```
+
+Available MCP tools:
+
+| Tool | Description |
+|---|---|
+| `trellis_exec` | Execute an endpoint spec |
+| `trellis_flow` | Run a pipeline |
+| `trellis_validate` | Validate specs in a file or directory |
+| `trellis_list_specs` | List all endpoint specs with method and path |
+| `trellis_read_spec` | Read the full content of a spec file |
+| `trellis_author` | Create or update a spec file |
+
+<Note>
+MCP mode is the recommended approach for Claude Code users. Responses are structured JSON, so the agent does not need to parse shell output or handle terminal formatting. Slash command skills and MCP tools work independently — you can use both.
+</Note>
+
+{/* TODO: screenshot of Claude Code MCP tools panel showing trellis tools listed */}
+
+---
+
+## Cursor and GitHub Copilot
+
+Trellis installs rule files into agent-specific directories (`.cursor/rules/`, `.github/instructions/`) that give Cursor and Copilot context about the Trellis spec format and file conventions. These agents do not support slash commands, but they will suggest `trellis exec` and `trellis validate` based on file context when you are editing a spec file.
+
+```bash
+trellis skills install --agent=cursor
+trellis skills install --agent=copilot
+```
+
+After installation, the agents understand:
+
+- The frontmatter fields required for an endpoint file.
+- Where spec files live (`api-docs/apis/<resource>/`).
+- How to structure `## Request` and `## Expected response` sections.
+- When to suggest running `trellis validate` before committing changes.

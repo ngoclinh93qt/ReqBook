@@ -1,0 +1,152 @@
+---
+title: "Variables & environments"
+description: "Trellis resolves {{variable}} placeholders from six sources in strict priority order. Learn how to configure environments, use .env.local, and pass secrets safely."
+icon: "sliders"
+---
+
+## Variable syntax
+
+Trellis supports two placeholder forms that can appear anywhere in request blocks, response blocks, and pipeline definitions.
+
+**Inline variable** — resolved from any variable source:
+
+```http
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{authToken}}
+```
+
+**Path parameter** — shorthand for URL path segments, resolved from the same sources:
+
+```http
+GET {{baseUrl}}/users/:id
+```
+
+Both forms are interchangeable from a resolution standpoint. Use `:param` in the `path` frontmatter field and URL paths; use `{{name}}` everywhere else.
+
+---
+
+## Resolution priority
+
+When the same variable name appears in more than one source, the highest-priority source wins. Trellis resolves variables in this order, from highest to lowest:
+
+{/* TODO: visual priority pyramid diagram showing 6 levels */}
+
+| Priority | Source | Example |
+|---|---|---|
+| 1 (highest) | Pipeline step capture | `Capture: response.body.id as userId` |
+| 2 | CLI `--var` flag | `--var userId=42` |
+| 3 | Endpoint frontmatter | `userId: 42` in the YAML block |
+| 4 | `_shared/env.md` for the selected env | `## dev` section |
+| 5 | `.env.local` | `authToken=local-token` |
+| 6 (lowest) | `TRELLIS_*` OS environment variables | `TRELLIS_AUTH_TOKEN=...` |
+
+### Priority in practice
+
+```bash
+TRELLIS_USER_ID=from-os trellis exec api-docs/apis/users/get-user.md --var userId=from-cli
+# {{userId}} resolves to "from-cli" — CLI outranks OS env
+```
+
+---
+
+## env.md — non-secret per-environment values
+
+`api-docs/_shared/env.md` stores base URLs and non-secret configuration per environment. Select an environment at runtime with `--env=<name>`.
+
+````markdown filename="api-docs/_shared/env.md"
+# Environments
+
+## dev
+
+```yaml
+baseUrl: http://localhost:8080
+pageSize: 20
+```
+
+## staging
+
+```yaml
+baseUrl: https://staging.example.com
+pageSize: 20
+```
+
+## prod
+
+```yaml
+baseUrl: https://api.example.com
+pageSize: 50
+```
+````
+
+<Warning>
+  Do not put tokens, passwords, or API keys in `env.md`. The Trellis parser detects common secret patterns and exits with code 5 before any network request is made.
+</Warning>
+
+---
+
+## .env.local — local secrets
+
+`.env.local` uses standard dotenv syntax. It is gitignored by default and is never committed to version control.
+
+```dotenv filename=".env.local"
+authToken=local-development-token
+webhookSecret=local-development-secret
+stripeKey=sk_test_...
+```
+
+<Tip>
+  `trellis init` adds `.env.local` to `.gitignore` automatically. Run `trellis doctor` to confirm it is listed — the command reports an error with a suggested fix if it's missing.
+</Tip>
+
+---
+
+## TRELLIS_* environment variables
+
+Trellis reads only variables prefixed with `TRELLIS_` from the OS environment. The prefix is stripped and the remainder is converted to lower camelCase before resolution.
+
+| OS variable | Trellis variable |
+|---|---|
+| `TRELLIS_AUTH_TOKEN` | `authToken` |
+| `TRELLIS_BASE_URL` | `baseUrl` |
+| `TRELLIS_USER_ID` | `userId` |
+
+### CI/CD pattern
+
+Set secrets as masked CI environment variables and map them with the `TRELLIS_` prefix:
+
+```yaml filename=".github/workflows/api-tests.yml"
+env:
+  TRELLIS_AUTH_TOKEN: ${{ secrets.API_TOKEN }}
+  TRELLIS_BASE_URL: https://staging.example.com
+```
+
+This keeps secrets out of spec files entirely and works with any CI provider that supports environment variable injection.
+
+---
+
+## Missing variables
+
+If a variable cannot be resolved from any source, Trellis exits with code 2 before making any network request. The error message names the variable and lists the ways to fix it.
+
+```
+api-docs/apis/users/get-user.md: unresolved variable "authToken"
+Fix: define authToken in .env.local, pass --var authToken=..., or set TRELLIS_AUTH_TOKEN.
+```
+
+<Tip>
+  Use `--dry-run` to check which variables are resolved and see the fully-rendered request without sending anything to the network. This is the fastest way to catch missing variables before running in CI.
+</Tip>
+
+---
+
+## Nested variables
+
+Trellis v1.0.0 does not resolve variables recursively. If resolving `{{baseUrl}}` produces a string that contains another `{{variable}}`, Trellis returns an error rather than performing a second resolution pass.
+
+```yaml
+# Invalid — nested variable reference
+apiHost: "{{host}}"
+baseUrl: "https://{{apiHost}}"
+```
+
+This restriction is intentional. Recursive resolution can cause secret values to be embedded inside other values in ways that bypass output masking. Define each variable as a concrete value in the appropriate source instead.

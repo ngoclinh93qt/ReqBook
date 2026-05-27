@@ -1,0 +1,225 @@
+---
+title: "Endpoint files"
+description: "Every Trellis endpoint is a markdown file with a YAML frontmatter header, a Request block, and an Expected response block."
+icon: "file-text"
+---
+
+## What is an endpoint file?
+
+An endpoint file is a `.md` file that serves as both documentation and an executable HTTP request. The CLI, web preview, CI, and AI agents all read the same file — there is no separate schema, generated client, or runtime artifact.
+
+{/* TODO: annotated diagram of an endpoint file anatomy showing frontmatter, Request, Expected response sections */}
+
+---
+
+## File location and naming
+
+Endpoint files live under `api-docs/apis/<resource>/`. The recommended filename format is `<method-lower>-<slug>.md`.
+
+| HTTP method + path | Filename |
+|---|---|
+| `GET /users/:id` | `get-user-by-id.md` |
+| `POST /orders` | `post-orders.md` |
+| `DELETE /subscriptions/:id` | `delete-subscription-by-id.md` |
+| `PATCH /orders/:orderId/items/:itemId` | `patch-order-by-order-id-item-by-item-id.md` |
+
+---
+
+## Frontmatter reference
+
+Every endpoint file must begin with YAML frontmatter delimited by `---`.
+
+```yaml filename="api-docs/apis/users/get-user-by-id.md"
+---
+resource: users
+protocol: http
+method: GET
+path: /users/:id
+tags: [users, read]
+version: 1
+env: [dev, staging, prod]
+auth: bearer
+timeout: 5000
+retry:
+  attempts: 0
+  backoff: fixed
+---
+```
+
+| Field | Required | Type | Description | Default |
+|---|---|---|---|---|
+| `resource` | yes | string | Resource group and folder name | — |
+| `protocol` | yes | enum | `http`, `ws`, or `sse`. Only `http` executes in v1.0.0 | — |
+| `method` | yes | enum | `GET` `POST` `PUT` `PATCH` `DELETE` `HEAD` `OPTIONS` | — |
+| `path` | yes | string | Path with `:param` for path params | — |
+| `tags` | no | string[] | Searchable labels shown in web preview and reports | `[]` |
+| `version` | yes | integer | Spec version (must be `1`) | — |
+| `env` | no | string[] | Environments where this endpoint is valid. Empty = all | `[]` |
+| `auth` | no | enum | `none` / `bearer` / `basic` / `custom` | project default |
+| `timeout` | no | integer (ms) | Per-request timeout in milliseconds | `5000` |
+| `retry.attempts` | no | integer | Retry count after failure | `0` |
+| `retry.backoff` | no | enum | `fixed` or `exponential` | `fixed` |
+
+<Note>
+  Unknown frontmatter keys produce a warning and are ignored. This forward-compatible behavior means future Trellis versions can introduce new fields without breaking existing spec files.
+</Note>
+
+---
+
+## The Request block
+
+`## Request` must contain exactly one `http` fenced code block. The first line is the request line; subsequent lines are headers; a blank line separates headers from the optional body.
+
+### Request line forms
+
+```http
+GET {{baseUrl}}/users/:id
+GET /users/:id
+POST https://api.example.com/users
+```
+
+<Note>
+  Relative URLs are resolved against the selected environment's `baseUrl` from `api-docs/_shared/env.md`. Absolute URLs are used as-is.
+</Note>
+
+### Full request with headers and body
+
+```http
+POST {{baseUrl}}/users
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{email}}",
+  "name": "{{name}}"
+}
+```
+
+---
+
+## The Expected response block
+
+`## Expected response` must contain exactly one `http` fenced code block. Trellis diffs the actual response against this block after every execution.
+
+### Comparison behavior
+
+| Part | Comparison |
+|---|---|
+| Status | Strict equality |
+| Headers | Subset match — listed headers must be present; extra response headers are allowed |
+| Body | JSON shape when both sides are valid JSON; exact string match otherwise |
+
+### Example
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "usr_123",
+  "email": "user@example.com"
+}
+```
+
+---
+
+## The Tests block (optional)
+
+`## Tests` contains an `agent-task` fenced code block with a checklist of validation instructions for humans and AI agents.
+
+````markdown
+## Tests
+
+```agent-task
+- Verify the response status is 201.
+- Verify response.body.id is present.
+- Verify duplicate email returns 409.
+```
+````
+
+<Note>
+  Trellis v1.0.0 does not execute `agent-task` code. The block is read by AI agents as instructions and reviewed by humans during development and code review.
+</Note>
+
+---
+
+## Notes section (optional)
+
+`## Notes` is free-form markdown for team context: rate limits, edge cases, links to related endpoints, and migration notes. The Trellis parser ignores this section entirely.
+
+---
+
+## Complete example
+
+````markdown filename="api-docs/apis/users/get-user-by-id.md"
+---
+resource: users
+protocol: http
+method: GET
+path: /users/:id
+tags: [users, read]
+version: 1
+env: [dev, staging]
+auth: bearer
+timeout: 5000
+retry:
+  attempts: 0
+  backoff: fixed
+---
+
+# Get user by id
+
+Fetch a single user record by stable user identifier.
+
+## Request
+
+```http
+GET {{baseUrl}}/users/:id
+Authorization: Bearer {{authToken}}
+Accept: application/json
+```
+
+## Expected response
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": "usr_123",
+  "name": "Ada Lovelace",
+  "email": "ada@example.com"
+}
+```
+
+## Tests
+
+```agent-task
+- Verify the response status is 200.
+- Verify response.body.id equals the requested id.
+- Verify response.body.email is a valid email address.
+- Verify Authorization header is masked in all output.
+```
+
+## Notes
+
+Use this endpoint after login to fetch the current user's profile.
+````
+
+---
+
+## Running an endpoint
+
+```bash
+# Basic execution
+trellis exec api-docs/apis/users/get-user-by-id.md
+
+# With environment and variable override
+trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
+
+# Dry run — print the resolved request without sending
+trellis exec api-docs/apis/users/get-user-by-id.md --dry-run
+```
+
+{/* TODO: screenshot of trellis exec output showing green 200 status and diff:passed */}
