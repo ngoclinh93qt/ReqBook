@@ -1,0 +1,20 @@
+# Exclude non-docs directories from Mintlify scanning
+web/
+src/
+target/
+api-docs/
+tests/
+benches/
+packages/
+scripts/
+skills/
+skill-templates/
+wix/
+assets/
+.git/
+.github/
+.claude/
+node_modules/
+
+# Internal spec/legacy docs not in navigation
+docs/spec/

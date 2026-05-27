@@ -24,8 +24,46 @@
   },
   "navigation": {
     "tabs": [
-      { "tab": "Documentation", "href": "/docs" },
-      { "tab": "Reference", "href": "/docs/reference" }
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": ["docs/introduction", "docs/quickstart", "docs/installation"]
+          },
+          {
+            "group": "Essentials",
+            "pages": [
+              "docs/essentials/endpoint-files",
+              "docs/essentials/pipelines",
+              "docs/essentials/variables",
+              "docs/essentials/security"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "docs/guides/ai-agents",
+              "docs/guides/web-preview",
+              "docs/guides/ci-cd",
+              "docs/guides/migration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "docs/reference/cli",
+              "docs/reference/configuration",
+              "docs/reference/exit-codes"
+            ]
+          }
+        ]
+      }
     ],
     "anchors": [
       {
@@ -42,38 +80,6 @@
         "anchor": "Community",
         "icon": "discord",
         "href": "https://github.com/trellis-md/trellis/discussions"
-      }
-    ],
-    "groups": [
-      {
-        "group": "Get started",
-        "pages": ["docs/introduction", "docs/quickstart", "docs/installation"]
-      },
-      {
-        "group": "Essentials",
-        "pages": [
-          "docs/essentials/endpoint-files",
-          "docs/essentials/pipelines",
-          "docs/essentials/variables",
-          "docs/essentials/security"
-        ]
-      },
-      {
-        "group": "Reference",
-        "pages": [
-          "docs/reference/cli",
-          "docs/reference/configuration",
-          "docs/reference/exit-codes"
-        ]
-      },
-      {
-        "group": "Guides",
-        "pages": [
-          "docs/guides/ai-agents",
-          "docs/guides/web-preview",
-          "docs/guides/ci-cd",
-          "docs/guides/migration"
-        ]
       }
     ]
   },

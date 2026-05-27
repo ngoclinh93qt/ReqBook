@@ -65,7 +65,7 @@ Trellis is designed to stay out of your way. It is a single static binary with n
   <Step title="Write a markdown spec">
     Create an endpoint file with a `## Request` section describing the HTTP call and an `## Expected response` section defining what a successful response looks like.
 
-    ```markdown filename="api-docs/apis/posts/get-posts.md"
+    ````markdown filename="api-docs/apis/posts/get-posts.md"
     ---
     title: Get posts
     method: GET
@@ -81,7 +81,7 @@ Trellis is designed to stay out of your way. It is a single static binary with n
     ```json
     [{ "id": 1, "title": "..." }]
     ```
-    ```
+    ````
   </Step>
   <Step title="Execute with the CLI">
     Pass the file to `trellis exec` with the target environment. Trellis resolves all variables, sends the request, and diffs the response against your expected shape.
