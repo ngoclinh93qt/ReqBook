@@ -1,12 +1,12 @@
 ---
 name: trellis-debug
-description: Use this skill to trace, test, and debug API calls using Trellis specs. Triggers on phrases like "test this endpoint", "why is GET /users returning 404", "debug the onboarding flow", "response doesn't match", "run this spec", "verify the API", or when an API call is failing and a Trellis spec exists for it.
+description: Use this skill to diagnose failing API calls or pipelines using Trellis specs. Triggers on phrases like "test this endpoint", "why is GET /users returning 404", "debug the onboarding flow", "response doesn't match", "run this spec", "verify the API", or when an API call is failing and a Trellis spec exists for it.
 ---
 
 # Trellis debug
 
-Use this skill to trace and debug API calls through Trellis specs. Covers single endpoint
-execution, pipeline tracing, spec validation, and response diff analysis.
+Use this skill to diagnose API issues through Trellis specs. Covers single endpoint execution,
+pipeline tracing, spec validation, and response diff analysis.
 
 ## Decision tree
 
@@ -29,7 +29,7 @@ rg -n "^method:\|^path:" api-docs/apis/ | grep -i "GET\|/users"
 rg --files api-docs/apis/ | grep -i "users\|get-user"
 ```
 
-Match by method + path, filename, or title. If no spec exists, use `trellis-sync` first.
+Match by method + path, filename, or title. If no spec exists, run `/trellis-scan` first to import routes.
 
 ### Validate the spec before running
 

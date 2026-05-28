@@ -1,7 +1,7 @@
 ---
 title: "Endpoint files"
 description: "Every Trellis endpoint is a markdown file with a YAML frontmatter header, a Request block, and an Expected response block."
-icon: "file-text"
+icon: "file-lines"
 ---
 
 ## What is an endpoint file?
@@ -9,10 +9,10 @@ icon: "file-text"
 An endpoint file is a `.md` file that serves as both documentation and an executable HTTP request. The CLI, web preview, CI, and AI agents all read the same file — there is no separate schema, generated client, or runtime artifact.
 
 <CardGroup cols={3}>
-  <Card title="Browser UI" icon="monitor">
+  <Card title="Browser UI" icon="desktop">
     The web preview renders the file, lets you run it, and provides runtime-only params, headers, and body overrides.
   </Card>
-  <Card title="Coding agents" icon="bot">
+  <Card title="Coding agents" icon="robot">
     Agent skills use this structure to create specs safely and validate them before reporting back.
   </Card>
   <Card title="Terminal and CI" icon="terminal">
@@ -131,6 +131,30 @@ Content-Type: application/json
   "email": "user@example.com"
 }
 ```
+
+---
+
+## Error responses (optional)
+
+Use `## Error responses` to document representative error contracts such as validation failures, missing auth, not found, or conflict cases.
+
+````markdown
+## Error responses
+
+```http
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "not_found",
+  "message": "User not found"
+}
+```
+````
+
+<Note>
+  Trellis v1.0.0 executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
+</Note>
 
 ---
 

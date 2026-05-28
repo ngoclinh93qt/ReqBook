@@ -11,10 +11,11 @@ type HeaderRow = { id: string; name: string; value: string; enabled: boolean; lo
 
 const rid = () => Math.random().toString(36).slice(2, 9);
 
-export function SpecPage({ env, varsData, browserVars }: {
+export function SpecPage({ env, varsData, browserVars, mockMode }: {
   env: string;
   varsData: VarsData | null;
   browserVars: Record<string, string>;
+  mockMode?: boolean;
 }) {
   const { '*': relPath = '' } = useParams();
   const navigate = useNavigate();
@@ -124,13 +125,14 @@ export function SpecPage({ env, varsData, browserVars }: {
           resultTab={resultTab}
           setResultTab={setResultTab}
           relPath={relPath}
+          mockMode={mockMode}
         />
       </div>
     </div>
   );
 }
 
-function Runner({ spec, env, envVars, browserVars, running, setRunning, result, setResult, resultTab, setResultTab, relPath }: {
+function Runner({ spec, env, envVars, browserVars, running, setRunning, result, setResult, resultTab, setResultTab, relPath, mockMode }: {
   spec: SpecData;
   env: string;
   envVars: Record<string, string>;
@@ -142,7 +144,9 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
   resultTab: 'diff' | 'response' | 'headers' | 'request';
   setResultTab: (tab: 'diff' | 'response' | 'headers' | 'request') => void;
   relPath: string;
+  mockMode?: boolean;
 }) {
+  const isMock = !!mockMode;
   const detectedVars = useMemo(() => uniqueMatches(spec.request, /\{\{([a-zA-Z0-9_]+)\}\}/g), [spec.request]);
   const detectedParams = useMemo(() => uniqueMatches(spec.path, /:([a-zA-Z0-9_*]+)/g), [spec.path]);
   const parsed = useMemo(() => parseRequest(spec.request), [spec.request]);
@@ -162,10 +166,10 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     setResult(null);
   }, [detectedParams, detectedVars, parsed.body, parsed.headers, setResult, spec.rel_path]);
 
-  // Auto-detect vars typed into body / headers / params and add them to varRows
+  // Auto-detect vars typed into headers / params and add them to varRows.
+  // Body variables are suggested in the JSON editor instead of being synced here.
   useEffect(() => {
     const allText = [
-      bodyDirty ? bodyText : '',
       ...headerRows.map(row => row.value),
       ...paramRows.map(row => row.value),
     ].join('\n');
@@ -177,7 +181,22 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
       if (missing.length === 0) return rows;
       return [...rows, ...missing.map(name => ({ id: rid(), name, override: '', locked: false }))];
     });
-  }, [bodyDirty, bodyText, headerRows, paramRows]);
+  }, [headerRows, paramRows]);
+
+  const availableVariableNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const row of varRows) {
+      const name = row.name.trim();
+      if (name) names.add(name);
+    }
+    for (const name of Object.keys(browserVars)) {
+      if (name.trim()) names.add(name.trim());
+    }
+    for (const name of Object.keys(envVars)) {
+      if (name.trim()) names.add(name.trim());
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [browserVars, envVars, varRows]);
 
   function valueOf(row: VarRow) {
     if (row.override) return { value: row.override, src: 'runtime' };
@@ -187,7 +206,21 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
   }
 
   function buildOptions(): RuntimeExecOptions {
-    const vars = Object.fromEntries(varRows.filter(row => row.name).map(row => [row.name, valueOf(row).value]));
+    const referencedVars = new Set(detectedVars);
+    const overrideText = [
+      bodyDirty ? bodyText : '',
+      ...headerRows.map(row => row.value),
+      ...paramRows.map(row => row.value),
+    ].join('\n');
+    for (const name of uniqueMatches(overrideText, /\{\{([a-zA-Z0-9_]+)\}\}/g)) referencedVars.add(name);
+
+    const vars: Record<string, string> = {};
+    for (const name of referencedVars) {
+      if (browserVars[name] != null) vars[name] = browserVars[name];
+    }
+    for (const row of varRows) {
+      if (row.name) vars[row.name] = valueOf(row).value;
+    }
     const path_params = Object.fromEntries(paramRows.filter(row => row.name && row.value).map(row => [row.name, resolve(row.value)]));
     const headers = Object.fromEntries(headerRows.filter(row => row.enabled && row.name).map(row => [row.name, resolve(row.value)]));
     return { vars, path_params, headers, body: bodyDirty ? bodyText : undefined };
@@ -285,18 +318,18 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
         {(parsed.body || !['GET', 'DELETE', 'HEAD'].includes(spec.method)) && (
           <div className="run-section">
             <div className="sec-h"><span>Body</span><span className="tag">{bodyDirty ? 'edited' : 'from spec'}</span></div>
-            <JsonEditor value={bodyText} onChange={value => { setBodyText(value); setBodyDirty(value !== parsed.body); }} placeholder="Empty body" minHeight={140} />
+            <JsonEditor value={bodyText} onChange={value => { setBodyText(value); setBodyDirty(value !== parsed.body); }} placeholder="Empty body" minHeight={140} variableNames={availableVariableNames} />
             {bodyDirty && <button className="btn ghost sm reset-body" onClick={() => { setBodyText(parsed.body); setBodyDirty(false); }}>Reset to spec body</button>}
           </div>
         )}
 
         <div className="run-actions">
-          <button className="btn-primary run-button" onClick={run} disabled={running}>{running ? <><span className="pulse-dot" />Sending request…</> : <><Icon.play />Send {spec.method} {spec.path}</>}</button>
+          <button className="btn-primary run-button" onClick={run} disabled={running}>{running ? <><span className="pulse-dot" />{isMock ? 'Loading mock…' : 'Sending request…'}</> : <><Icon.play />{isMock ? 'Mock' : 'Send'} {spec.method} {spec.path}</>}</button>
           <button className="btn" onClick={() => setCurlOpen(true)} title="Copy as curl"><Icon.copy /> Copy as curl</button>
         </div>
       </div>
 
-      {running && !result && <div className="card result-card"><div className="empty compact"><span className="pulse-dot" />Sending {spec.method}…</div></div>}
+      {running && !result && <div className="card result-card"><div className="empty compact"><span className="pulse-dot" />{isMock ? 'Loading mock…' : `Sending ${spec.method}…`}</div></div>}
       {result && <ResultCard result={result} resultTab={resultTab} setResultTab={setResultTab} tabs={resultTabs} spec={spec} />}
       {curlOpen && <CurlPreview curl={buildCurl(spec, envVars, buildOptions())} onClose={() => setCurlOpen(false)} />}
     </div>
@@ -359,6 +392,7 @@ function ResultCard({ result, resultTab, setResultTab, tabs, spec }: {
     <div className="card result-card">
       <div className={`result-status ${passed ? 'ok' : 'fail'}`}>
         <span className="verdict">{passed ? <Icon.check /> : <Icon.cross />}{passed ? 'Passed' : 'Failed'}</span>
+        {result.mock && <span className="mock-badge">MOCK</span>}
         <span className="sep">·</span><span>{result.response?.status ?? 'No response'}</span>
         <span className="sep">·</span><span>{result.duration_ms}ms</span>
       </div>

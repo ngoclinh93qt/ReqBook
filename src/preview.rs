@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     engine::{self, ExecOpts},
     importer::{self, curl as curl_importer, project as project_importer},
+    mock::{collect_entries, path_matches, MockEntry},
     parser::{parse_endpoint, parse_env_config, parse_pipeline, EnvConfig},
     pipeline::{self, PipelineOpts},
     resolver::{Context, SourceKind},
@@ -78,6 +79,13 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 struct AppState {
     root: PathBuf,
     env: String,
+    mock_entries: Option<Vec<MockEntry>>,
+}
+
+impl AppState {
+    fn mock_mode(&self) -> bool {
+        self.mock_entries.is_some()
+    }
 }
 
 // ─── Data types for API responses ────────────────────────────────────────────
@@ -102,6 +110,7 @@ struct IndexResponse {
     groups: Vec<ResourceGroup>,
     spec_count: usize,
     version: &'static str,
+    mock_mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -221,6 +230,7 @@ async fn api_index_handler(State(state): State<Arc<AppState>>) -> impl IntoRespo
         spec_count,
         groups,
         version: env!("CARGO_PKG_VERSION"),
+        mock_mode: state.mock_mode(),
     })
 }
 
@@ -440,6 +450,13 @@ async fn exec_handler(
     AxumPath(rel_path): AxumPath<String>,
     body: Bytes,
 ) -> impl IntoResponse {
+    let file_path = spec_path(&state.root, &rel_path);
+
+    // Mock mode: return mock response directly from spec's expected response block.
+    if let Some(ref entries) = state.mock_entries {
+        return mock_exec_response(&file_path, entries);
+    }
+
     let overrides: RuntimeOverrides = if body.is_empty() {
         RuntimeOverrides::default()
     } else {
@@ -452,12 +469,70 @@ async fn exec_handler(
             })
             .unwrap_or_default()
     };
-    let file_path = spec_path(&state.root, &rel_path);
     match run_exec(&file_path, &state.root, &state.env, overrides).await {
         Ok(execution) => Json(execution).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": e.to_string(), "diff": {"passed": false}})),
+        )
+            .into_response(),
+    }
+}
+
+fn mock_exec_response(file_path: &std::path::Path, entries: &[MockEntry]) -> Response {
+    let source = match fs::read_to_string(file_path) {
+        Ok(s) => s,
+        Err(e) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": e.to_string(), "diff": {"passed": false}, "mock": true})),
+            )
+                .into_response()
+        }
+    };
+    let endpoint = match parse_endpoint(&source, file_path) {
+        Ok(ep) => ep,
+        Err(e) => {
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(serde_json::json!({"error": e.to_string(), "diff": {"passed": false}, "mock": true})),
+            )
+                .into_response()
+        }
+    };
+    let method = endpoint.schema.method.as_str().to_string();
+    let pattern = &endpoint.schema.path;
+
+    match entries.iter().find(|e| e.method == method && path_matches(&e.pattern, pattern)) {
+        Some(entry) => {
+            let body_str = String::from_utf8_lossy(&entry.body).to_string();
+            let size = entry.body.len();
+            Json(serde_json::json!({
+                "request": {
+                    "method": method,
+                    "url": format!("(mock) {}", pattern),
+                    "headers": {},
+                    "body": ""
+                },
+                "response": {
+                    "status": entry.status.as_u16(),
+                    "headers": {"content-type": entry.content_type.clone()},
+                    "body": body_str,
+                    "size": size
+                },
+                "duration_ms": 0,
+                "diff": {"passed": true},
+                "mock": true
+            }))
+            .into_response()
+        }
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": format!("no mock response defined for {} {}", method, pattern),
+                "diff": {"passed": false},
+                "mock": true
+            })),
         )
             .into_response(),
     }
@@ -1052,10 +1127,24 @@ fn render_env_config(config: &EnvConfig) -> String {
 
 // ─── Server entry point ───────────────────────────────────────────────────────
 
-pub async fn run(root: PathBuf, host: &str, port: u16, env: &str) -> Result<()> {
+pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) -> Result<()> {
+    let mock_entries = if mock {
+        let api_docs = root.join("api-docs");
+        let dir = if api_docs.exists() { api_docs } else { root.clone() };
+        let entries = collect_entries(&dir)?;
+        println!(
+            "{} Mock mode — {} route(s) loaded",
+            "→".cyan(),
+            entries.len()
+        );
+        Some(entries)
+    } else {
+        None
+    };
     let state = Arc::new(AppState {
         root,
         env: env.to_string(),
+        mock_entries,
     });
     let app = Router::new()
         // JSON API

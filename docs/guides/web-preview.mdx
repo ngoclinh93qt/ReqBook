@@ -1,7 +1,7 @@
 ---
 title: "Web preview"
 description: "Use the Trellis browser UI to browse, execute, tweak, edit, import, and connect markdown API specs."
-icon: "monitor"
+icon: "desktop"
 ---
 
 # Browser UI for markdown API specs.
@@ -27,19 +27,19 @@ The CLI is great for CI and automation. The UI is better when you are actively d
   <Card title="Runtime request builder" icon="sliders">
     Add path params, variables, headers, and body overrides for one execution without changing the markdown file.
   </Card>
-  <Card title="Response inspection" icon="panel-right">
+  <Card title="Response inspection" icon="magnifying-glass">
     Inspect formatted response body, headers, raw output, duration, and diff against the expected response.
   </Card>
   <Card title="Markdown edit mode" icon="file-pen">
     Switch to edit mode when you want to persist a spec change. Save writes the markdown file back to disk.
   </Card>
-  <Card title="Flow canvas" icon="workflow">
+  <Card title="Flow canvas" icon="diagram-project">
     Design workflows visually by connecting endpoint blocks, captures, and injections. The result is saved as `api-docs/flows/*.md`.
   </Card>
   <Card title="cURL import" icon="terminal">
     Paste a cURL command from DevTools and generate a Trellis endpoint spec.
   </Card>
-  <Card title="Agent review loop" icon="bot">
+  <Card title="Agent review loop" icon="robot">
     Keep the UI open while your agent edits specs. Review and run the changed files immediately.
   </Card>
 </CardGroup>
@@ -120,10 +120,43 @@ Use `.env.local` or `TRELLIS_*` for secrets. Trellis masks auth values in UI res
 
 ---
 
+## Mock mode
+
+Start the preview with `--mock` when the real backend is unavailable — during frontend development, on an airplane, or before the API exists:
+
+```bash
+trellis serve --mock
+```
+
+In mock mode:
+
+- Clicking **Send** returns the `## Expected response` recorded in the spec file. No HTTP request is made.
+- A purple **MOCK** badge appears on every response card so you always know you are looking at recorded data, not a live response.
+- A **mock** chip appears in the top navigation bar while mock mode is active.
+- Path parameters such as `/users/:id` are matched automatically — any ID value returns the same recorded body.
+
+Mock mode reads the same `## Expected response` blocks that `trellis mock` uses on the standalone mock server. Both features share the same source of truth.
+
+<Tip>
+  If your specs have empty `## Expected response` blocks (stub `{}`), run `/trellis-sync` to enrich them with real field names, or execute against a live server once and copy the response body into the spec manually.
+</Tip>
+
+### Mock mode vs standalone mock server
+
+| | `trellis serve --mock` | `trellis mock` |
+|---|---|---|
+| Use case | Interactive review in the browser | Frontend app points to a mock base URL |
+| Backend traffic | None | None |
+| Port | Same as the preview (8080) | Separate port (4001 by default) |
+| Latency simulation | No | Yes (`--latency`) |
+
+---
+
 ## Server flags
 
 ```bash
 trellis serve --port=9000 --env=staging
+trellis serve --mock
 trellis serve /path/to/other-project
 ```
 
@@ -132,4 +165,5 @@ trellis serve /path/to/other-project
 | `--port` | Local preview port. |
 | `--host` | Host to bind. Defaults to `127.0.0.1`. |
 | `--env` | Environment selected from `_shared/env.md`. |
+| `--mock` | Return recorded responses instead of making real HTTP requests. |
 | `[path]` | Project directory containing `api-docs/`. |

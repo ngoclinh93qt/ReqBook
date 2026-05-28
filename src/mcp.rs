@@ -1,9 +1,9 @@
 //! MCP (Model Context Protocol) server over stdio.
 //!
 //! Exposes three tools to any MCP-compatible AI agent:
-//! - `trellis_exec`     — execute one endpoint spec
-//! - `trellis_flow`     — execute a pipeline
-//! - `trellis_validate` — validate a spec file or directory
+//! - `trellis_exec`    — execute one endpoint spec
+//! - `trellis_flow`    — execute a pipeline
+//! - `trellis_author`  — create or update a spec file
 //!
 //! Transport: JSON-RPC 2.0 over stdio (NDJSON, one message per line).
 //! Protocol version: 2024-11-05.
@@ -126,48 +126,6 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_validate",
-                "description": "Validate a Trellis spec file or directory.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "string",
-                            "description": "Path to a .md spec file or a directory containing specs."
-                        }
-                    },
-                    "required": ["path"]
-                }
-            },
-            {
-                "name": "trellis_list_specs",
-                "description": "List all endpoint specs in api-docs/. Returns method, path, title, and file path for each spec.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "dir": {
-                            "type": "string",
-                            "description": "api-docs/ root directory (default: \"api-docs\")."
-                        }
-                    },
-                    "required": []
-                }
-            },
-            {
-                "name": "trellis_read_spec",
-                "description": "Read the full markdown content of one endpoint spec file, plus its parsed metadata.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "spec_path": {
-                            "type": "string",
-                            "description": "Path to the endpoint .md spec file."
-                        }
-                    },
-                    "required": ["spec_path"]
-                }
-            },
-            {
                 "name": "trellis_author",
                 "description": "Create a new Trellis endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.",
                 "inputSchema": {
@@ -269,189 +227,6 @@ async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
     .map_err(|e| (-32000, e.to_string()))?;
 
     let text = serde_json::to_string_pretty(&result).map_err(|e| (-32000, e.to_string()))?;
-    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
-}
-
-fn handle_validate(args: &Value) -> Result<Value, (i32, String)> {
-    let path_str = args
-        .get("path")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| (-32602, "Invalid params: path is required".to_string()))?;
-
-    let path = Path::new(path_str);
-    if !path.exists() {
-        return Err((-32000, format!("{path_str}: path not found")));
-    }
-
-    if path.is_file() {
-        let source =
-            std::fs::read_to_string(path).map_err(|e| (-32000, format!("{path_str}: {e}")))?;
-        let result = parse_endpoint(&source, path);
-        let text = match result {
-            Ok(_) => json!({ "valid": true }).to_string(),
-            Err(e) => json!({ "valid": false, "error": e.to_string() }).to_string(),
-        };
-        Ok(json!({ "content": [{ "type": "text", "text": text }] }))
-    } else {
-        let mut errors: Vec<Value> = Vec::new();
-        let mut file_count = 0usize;
-        collect_validate_errors(path, &mut errors, &mut file_count)
-            .map_err(|e| (-32000, e.to_string()))?;
-
-        let text = if errors.is_empty() {
-            json!({ "valid": true, "file_count": file_count }).to_string()
-        } else {
-            json!({
-                "valid": false,
-                "file_count": file_count,
-                "errors": errors
-            })
-            .to_string()
-        };
-        Ok(json!({ "content": [{ "type": "text", "text": text }] }))
-    }
-}
-
-/// Recursively walk `dir` and validate every `.md` spec file.
-fn collect_validate_errors(
-    dir: &Path,
-    errors: &mut Vec<Value>,
-    count: &mut usize,
-) -> anyhow::Result<()> {
-    let mut entries: Vec<_> = std::fs::read_dir(dir)?.filter_map(|e| e.ok()).collect();
-    entries.sort_by_key(|e| e.path());
-
-    for entry in entries {
-        let p = entry.path();
-        if p.is_dir() {
-            collect_validate_errors(&p, errors, count)?;
-        } else if p.extension().is_some_and(|ext| ext == "md") {
-            let name = p.file_name().unwrap_or_default().to_string_lossy();
-            if matches!(name.as_ref(), "README.md" | "trellis.md" | "env.md") {
-                continue;
-            }
-            *count += 1;
-            let Ok(source) = std::fs::read_to_string(&p) else {
-                continue;
-            };
-            let is_pipeline = p
-                .components()
-                .any(|c| matches!(c.as_os_str().to_str(), Some("flows" | "pipelines")));
-            let result = if is_pipeline {
-                parse_pipeline(&source, &p).map(|_| ())
-            } else {
-                parse_endpoint(&source, &p).map(|_| ())
-            };
-            if let Err(e) = result {
-                errors.push(json!({
-                    "file": p.display().to_string(),
-                    "error": e.to_string()
-                }));
-            }
-        }
-    }
-    Ok(())
-}
-
-// ─── New tool handlers ────────────────────────────────────────────────────────
-
-fn handle_list_specs(args: &Value) -> Result<Value, (i32, String)> {
-    let dir_str = args
-        .get("dir")
-        .and_then(|v| v.as_str())
-        .unwrap_or("api-docs");
-    let dir = Path::new(dir_str);
-
-    // Mirror the layout convention: prefer <dir>/apis/ when present (same as
-    // preview.rs and mock.rs).
-    let apis_root = {
-        let nested = dir.join("apis");
-        if nested.exists() {
-            nested
-        } else {
-            dir.to_path_buf()
-        }
-    };
-
-    if !apis_root.exists() {
-        let text = json!({ "specs": [], "count": 0 }).to_string();
-        return Ok(json!({ "content": [{ "type": "text", "text": text }] }));
-    }
-
-    let mut specs: Vec<Value> = Vec::new();
-    collect_spec_list(&apis_root, &mut specs).map_err(|e| (-32000, e.to_string()))?;
-
-    let count = specs.len();
-    let text = json!({ "specs": specs, "count": count }).to_string();
-    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
-}
-
-/// Walk `dir` recursively and collect spec metadata, skipping non-endpoint dirs.
-fn collect_spec_list(dir: &Path, out: &mut Vec<Value>) -> anyhow::Result<()> {
-    let mut entries: Vec<_> = std::fs::read_dir(dir)?.filter_map(|e| e.ok()).collect();
-    entries.sort_by_key(|e| e.path());
-
-    for entry in entries {
-        let p = entry.path();
-        if p.is_dir() {
-            let name = p.file_name().unwrap_or_default().to_string_lossy();
-            if matches!(name.as_ref(), "_shared" | "flows" | "pipelines") {
-                continue;
-            }
-            collect_spec_list(&p, out)?;
-        } else if p.extension().is_some_and(|e| e == "md") {
-            let name = p.file_name().unwrap_or_default().to_string_lossy();
-            if matches!(name.as_ref(), "README.md" | "trellis.md" | "env.md") {
-                continue;
-            }
-            let Ok(source) = std::fs::read_to_string(&p) else {
-                continue;
-            };
-            let Ok(ep) = parse_endpoint(&source, &p) else {
-                continue;
-            };
-            out.push(json!({
-                "file":     p.display().to_string(),
-                "method":   ep.schema.method.as_str(),
-                "path":     ep.schema.path,
-                "title":    ep.title,
-                "resource": ep.schema.resource,
-                "tags":     ep.schema.tags,
-            }));
-        }
-    }
-    Ok(())
-}
-
-fn handle_read_spec(args: &Value) -> Result<Value, (i32, String)> {
-    let spec_path = args
-        .get("spec_path")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| (-32602, "Invalid params: spec_path is required".to_string()))?;
-
-    let path = Path::new(spec_path);
-    if !path.exists() {
-        return Err((-32000, format!("{spec_path}: file not found")));
-    }
-
-    let content =
-        std::fs::read_to_string(path).map_err(|e| (-32000, format!("{spec_path}: {e}")))?;
-
-    // Best-effort parse for metadata; don't fail if the file isn't a spec.
-    let meta = parse_endpoint(&content, path).ok();
-    let text = if let Some(ep) = meta {
-        json!({
-            "file":    spec_path,
-            "method":  ep.schema.method.as_str(),
-            "path":    ep.schema.path,
-            "title":   ep.title,
-            "content": content,
-        })
-        .to_string()
-    } else {
-        json!({ "file": spec_path, "content": content }).to_string()
-    };
-
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
@@ -637,18 +412,6 @@ async fn dispatch(req: McpRequest) -> String {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_validate" => match handle_validate(&args) {
-                    Ok(r) => McpResponse::ok(id, r),
-                    Err((code, msg)) => McpResponse::err(id, code, msg),
-                },
-                "trellis_list_specs" => match handle_list_specs(&args) {
-                    Ok(r) => McpResponse::ok(id, r),
-                    Err((code, msg)) => McpResponse::err(id, code, msg),
-                },
-                "trellis_read_spec" => match handle_read_spec(&args) {
-                    Ok(r) => McpResponse::ok(id, r),
-                    Err((code, msg)) => McpResponse::err(id, code, msg),
-                },
                 "trellis_author" => match handle_author(&args) {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
@@ -759,10 +522,10 @@ mod tests {
     // ── tools/list ──
 
     #[test]
-    fn tools_list_has_exactly_six_tools() {
+    fn tools_list_has_exactly_three_tools() {
         let list = tools_list_result();
         let tools = list["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 6);
+        assert_eq!(tools.len(), 3);
     }
 
     #[test]
@@ -776,9 +539,6 @@ mod tests {
             .collect();
         assert!(names.contains(&"trellis_exec"));
         assert!(names.contains(&"trellis_flow"));
-        assert!(names.contains(&"trellis_validate"));
-        assert!(names.contains(&"trellis_list_specs"));
-        assert!(names.contains(&"trellis_read_spec"));
         assert!(names.contains(&"trellis_author"));
     }
 
@@ -817,7 +577,7 @@ mod tests {
         let req = make_req(2, "tools/list", json!({}));
         let s = dispatch(req).await;
         let v: Value = serde_json::from_str(&s).unwrap();
-        assert_eq!(v["result"]["tools"].as_array().unwrap().len(), 6);
+        assert_eq!(v["result"]["tools"].as_array().unwrap().len(), 3);
     }
 
     // ── dispatch: notifications ──
@@ -867,17 +627,6 @@ mod tests {
         assert_eq!(v["error"]["code"], -32602);
     }
 
-    #[tokio::test]
-    async fn validate_missing_path_returns_32602() {
-        let req = make_req(
-            6,
-            "tools/call",
-            json!({"name": "trellis_validate", "arguments": {}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        assert_eq!(v["error"]["code"], -32602);
-    }
-
     // ── dispatch: tools/call — path errors ──
 
     #[tokio::test]
@@ -886,17 +635,6 @@ mod tests {
             7,
             "tools/call",
             json!({"name": "trellis_exec", "arguments": {"spec_path": "/no/such/file.md"}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        assert_eq!(v["error"]["code"], -32000);
-    }
-
-    #[tokio::test]
-    async fn validate_nonexistent_path_returns_32000() {
-        let req = make_req(
-            8,
-            "tools/call",
-            json!({"name": "trellis_validate", "arguments": {"path": "/no/such/path"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32000);
@@ -913,145 +651,6 @@ mod tests {
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32601);
-    }
-
-    // ── validate: valid spec file ──
-
-    #[tokio::test]
-    async fn validate_valid_spec_file_returns_valid_true() {
-        // Use the bundled example spec
-        let path = "examples/jsonplaceholder/api-docs/apis/posts/get-posts.md";
-        if !std::path::Path::new(path).exists() {
-            return; // skip if not available in this environment
-        }
-        let req = make_req(
-            10,
-            "tools/call",
-            json!({"name": "trellis_validate", "arguments": {"path": path}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        let text = v["result"]["content"][0]["text"].as_str().unwrap();
-        let result: Value = serde_json::from_str(text).unwrap();
-        assert_eq!(result["valid"], true);
-    }
-
-    // ── validate: valid spec directory ──
-
-    #[tokio::test]
-    async fn validate_valid_spec_directory_returns_file_count() {
-        let dir = "examples/jsonplaceholder/api-docs";
-        if !std::path::Path::new(dir).exists() {
-            return;
-        }
-        let req = make_req(
-            11,
-            "tools/call",
-            json!({"name": "trellis_validate", "arguments": {"path": dir}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        let text = v["result"]["content"][0]["text"].as_str().unwrap();
-        let result: Value = serde_json::from_str(text).unwrap();
-        assert_eq!(result["valid"], true);
-        assert!(result["file_count"].as_u64().unwrap_or(0) > 0);
-    }
-
-    // ── trellis_list_specs ──
-
-    #[tokio::test]
-    async fn list_specs_omitting_dir_uses_default() {
-        // `dir` is optional; omitting it defaults to "api-docs/".
-        // In a temp test env api-docs/ likely doesn't exist → count is 0.
-        let req = make_req(
-            20,
-            "tools/call",
-            json!({"name": "trellis_list_specs", "arguments": {}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        // Must succeed (no error) even when api-docs/ is absent.
-        assert!(v["error"].is_null(), "unexpected error: {v}");
-        let text = v["result"]["content"][0]["text"].as_str().unwrap();
-        let result: Value = serde_json::from_str(text).unwrap();
-        assert!(result["specs"].is_array());
-    }
-
-    #[tokio::test]
-    async fn list_specs_nonexistent_dir_returns_empty_list() {
-        let req = make_req(
-            21,
-            "tools/call",
-            json!({"name": "trellis_list_specs", "arguments": {"dir": "/no/such/dir"}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        let text = v["result"]["content"][0]["text"].as_str().unwrap();
-        let result: Value = serde_json::from_str(text).unwrap();
-        assert_eq!(result["count"], 0);
-    }
-
-    #[tokio::test]
-    async fn list_specs_example_project_returns_entries() {
-        let dir = "examples/jsonplaceholder/api-docs";
-        if !std::path::Path::new(dir).exists() {
-            return;
-        }
-        let req = make_req(
-            22,
-            "tools/call",
-            json!({"name": "trellis_list_specs", "arguments": {"dir": dir}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        let text = v["result"]["content"][0]["text"].as_str().unwrap();
-        let result: Value = serde_json::from_str(text).unwrap();
-        assert!(result["count"].as_u64().unwrap_or(0) > 0);
-        // Each entry must have method, path, file
-        let specs = result["specs"].as_array().unwrap();
-        for s in specs {
-            assert!(s["method"].is_string());
-            assert!(s["path"].is_string());
-            assert!(s["file"].is_string());
-        }
-    }
-
-    // ── trellis_read_spec ──
-
-    #[tokio::test]
-    async fn read_spec_missing_param_returns_32602() {
-        let req = make_req(
-            30,
-            "tools/call",
-            json!({"name": "trellis_read_spec", "arguments": {}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        assert_eq!(v["error"]["code"], -32602);
-    }
-
-    #[tokio::test]
-    async fn read_spec_nonexistent_file_returns_32000() {
-        let req = make_req(
-            31,
-            "tools/call",
-            json!({"name": "trellis_read_spec", "arguments": {"spec_path": "/no/such/spec.md"}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        assert_eq!(v["error"]["code"], -32000);
-    }
-
-    #[tokio::test]
-    async fn read_spec_valid_file_returns_content() {
-        let path = "examples/jsonplaceholder/api-docs/apis/posts/get-posts.md";
-        if !std::path::Path::new(path).exists() {
-            return;
-        }
-        let req = make_req(
-            32,
-            "tools/call",
-            json!({"name": "trellis_read_spec", "arguments": {"spec_path": path}}),
-        );
-        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
-        let text = v["result"]["content"][0]["text"].as_str().unwrap();
-        let result: Value = serde_json::from_str(text).unwrap();
-        assert!(result["content"].is_string());
-        assert!(result["method"].is_string());
-        assert!(result["path"].is_string());
     }
 
     // ── trellis_author ──

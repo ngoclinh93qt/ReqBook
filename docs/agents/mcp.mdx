@@ -1,0 +1,174 @@
+---
+title: "MCP server"
+description: "Three structured tools for Claude Code — exec, flow, and author. The agent reads files directly and runs CLI commands; MCP tools cover the operations that return structured data or need a write-guard."
+icon: "plug"
+---
+
+The MCP server exposes a minimal set of Trellis operations as structured JSON-RPC tools. The design is intentional: operations where the agent can read files or run CLI commands directly don't need MCP wrappers. MCP tools exist only where structured output or a write-guard makes a real difference.
+
+---
+
+## Register with Claude Code
+
+<Steps>
+  <Step title="Add the MCP server">
+    ```bash
+    claude mcp add trellis -- trellis mcp
+    ```
+  </Step>
+
+  <Step title="Verify registration">
+    ```bash
+    claude mcp list
+    ```
+
+    Expected output:
+
+    ```
+    trellis: trellis mcp - ✓ Connected
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Available tools
+
+| Tool | Purpose |
+|---|---|
+| `trellis_exec` | Execute one endpoint spec, return structured HTTP result |
+| `trellis_flow` | Run a pipeline, return per-step results |
+| `trellis_author` | Create or update a spec (validates before writing, refuses to silently overwrite) |
+
+**Not in MCP — use these directly:**
+
+| Operation | How |
+|---|---|
+| List specs | `ls api-docs/apis/**/*.md` or `rg -rn "^method:\|^path:" api-docs/` |
+| Read a spec | Read the file directly |
+| Validate | `trellis validate <path>` |
+| Start the server | `trellis serve` |
+
+---
+
+## Tool reference
+
+### trellis_exec
+
+Execute one endpoint spec and return the full HTTP result as structured data.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `spec_path` | string | yes | — | Path to the spec file |
+| `env` | string | no | `"dev"` | Environment name |
+| `vars` | object | no | `{}` | Runtime variable overrides |
+
+**Output** — HTTP result plus a diff report comparing the actual response to `## Expected response`:
+
+```json
+{
+  "status": 200,
+  "duration_ms": 143,
+  "headers": { "content-type": "application/json" },
+  "body": { "id": "usr_123", "email": "ada@example.com" },
+  "diff": { "passed": true, "mismatches": [] },
+  "exit_code": 0
+}
+```
+
+**Why MCP instead of CLI:** The structured result — especially the `diff` field — is easier for the agent to act on than parsing ANSI terminal output.
+
+---
+
+### trellis_flow
+
+Run a pipeline and return per-step results.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `pipeline_path` | string | yes | — | Path to the pipeline file |
+| `env` | string | no | `"dev"` | Environment name |
+
+**Output** — Per-step results: endpoint, status, captured values (secrets masked), assertion outcomes, and the index of the first failing step.
+
+**Why MCP instead of CLI:** Multi-step flows produce structured state (captured variables, per-step pass/fail) that the agent needs to reason about for debugging the failure.
+
+---
+
+### trellis_author
+
+Create a new spec file or update an existing one.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `spec_path` | string | yes | — | Destination file path |
+| `content` | string | yes | — | Full markdown content of the spec |
+| `overwrite` | boolean | no | `false` | Allow replacing an existing file |
+
+**Output** — On success: `{ "created": true, "file": "api-docs/..." }`
+
+On validation failure: the error from the parser. The file is not created or modified.
+
+<Note>
+  `trellis_author` validates the spec before touching the filesystem. If validation fails, nothing is written. This prevents agents from creating silently broken specs during broad operations. To replace an existing spec, pass `overwrite: true` explicitly — this forces an intentional decision at each overwrite.
+</Note>
+
+---
+
+## MCP resources
+
+Specs are also accessible as MCP Resources under the `trellis://spec/` URI scheme. Agents can browse and read spec content directly through the protocol without calling any tool.
+
+---
+
+## Typical workflow
+
+```text
+1. Agent reads api-docs/apis/ via filesystem or rg
+   → Finds api-docs/apis/orders/post-orders.md
+
+2. Agent reads the spec file directly
+   → Sees the request body is missing "customerId"
+
+3. trellis_exec { "spec_path": "api-docs/apis/orders/post-orders.md", "env": "dev" }
+   → Returns HTTP 422, diff shows body mismatch
+
+4. Agent reads the handler source to find the correct body shape
+
+5. trellis_author {
+     "spec_path": "api-docs/apis/orders/post-orders.md",
+     "content": "...(corrected spec with customerId)...",
+     "overwrite": true
+   }
+   → Validates and writes the corrected spec
+```
+
+---
+
+## Prompts for MCP-enabled sessions
+
+```text
+Run the create order endpoint in dev. If it fails, tell me whether
+the spec, the variables, or the API response is wrong.
+```
+
+```text
+Add a spec for POST /subscriptions. Read the handler in
+src/routes/subscriptions.ts to get the correct request and response shapes.
+```
+
+```text
+Run the checkout flow and tell me which step fails first and what
+the captured values were at that point.
+```
+
+```text
+Find all specs that have a stub {} Expected response and enrich them
+by executing against dev and rewriting the block with the real shape.
+```

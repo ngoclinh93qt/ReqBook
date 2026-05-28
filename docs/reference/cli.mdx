@@ -368,7 +368,7 @@ trellis skills uninstall --agent=claude-code
 Start the local web preview server.
 
 ```bash
-trellis serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>]
+trellis serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
 ```
 
 | Flag / Argument | Type | Default | Description |
@@ -377,12 +377,14 @@ trellis serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>]
 | `--port` | integer | `8080` | TCP port to listen on. |
 | `--host` | string | `127.0.0.1` | Host to bind to. Use `0.0.0.0` to expose on the local network (a warning is printed). |
 | `--env` | string | `dev` | Environment used when executing endpoints from the preview UI. |
+| `--mock` | bool | `false` | Start in mock mode. The "Send" button returns the recorded `## Expected response` instead of making a real HTTP request. |
 
 The web preview reads the same markdown files as the CLI. No build step is required. The server watches for file changes and refreshes connected browsers automatically.
 
 ```bash
 trellis serve
 trellis serve --port=9000 --env=staging
+trellis serve --mock
 trellis serve /path/to/other-project
 ```
 

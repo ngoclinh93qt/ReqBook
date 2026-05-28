@@ -29,14 +29,14 @@ use crate::parser::parse_endpoint;
 /// A single recorded response, built once at startup from the spec's
 /// `## Expected response` block.
 #[derive(Debug, Clone)]
-struct MockEntry {
+pub struct MockEntry {
     /// HTTP method in uppercase, e.g. "GET".
-    method: String,
+    pub method: String,
     /// Path pattern with `:param` segments, e.g. "/users/:userId".
-    pattern: String,
-    status: StatusCode,
-    content_type: String,
-    body: Bytes,
+    pub pattern: String,
+    pub status: StatusCode,
+    pub content_type: String,
+    pub body: Bytes,
 }
 
 // ─── Path matching ────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ struct MockEntry {
 /// - `/users/:id` matches `/users/42`   → `true`
 /// - `/users/:id` matches `/users/`     → `false` (empty segment)
 /// - `/users`     matches `/users/42`   → `false` (different segment count)
-fn path_matches(pattern: &str, actual: &str) -> bool {
+pub fn path_matches(pattern: &str, actual: &str) -> bool {
     let pp: Vec<&str> = pattern.split('/').collect();
     let ap: Vec<&str> = actual.split('/').collect();
     if pp.len() != ap.len() {
@@ -101,7 +101,7 @@ fn parse_expected_response(raw: &str) -> Option<(StatusCode, String, Bytes)> {
 
 // ─── Route collection ──────────────────────────────────────────────────────────
 
-fn collect_entries(dir: &std::path::Path) -> Result<Vec<MockEntry>> {
+pub fn collect_entries(dir: &std::path::Path) -> Result<Vec<MockEntry>> {
     // Mirror the layout logic from preview.rs: prefer `<dir>/apis/` when it
     // exists; otherwise fall back to `<dir>` itself (legacy flat layout where
     // resource folders live directly under api-docs/).

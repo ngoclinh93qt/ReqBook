@@ -6,7 +6,7 @@ import { SpecPage } from './pages/SpecPage';
 import { FlowsPage } from './pages/FlowsPage';
 import { FlowCanvasPage } from './pages/FlowCanvasPage';
 import { Icon } from './ui';
-import type { VarsData } from './types';
+import type { IndexData, VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
 import { TrellisMark } from './brand';
 
@@ -25,6 +25,7 @@ function TrellisShell() {
   const [varsData, setVarsData] = useState<VarsData | null>(null);
   const [env, setEnv] = useState('dev');
   const [theme, setTheme] = useState(() => localStorage.getItem('trellis-theme') ?? 'light');
+  const [mockMode, setMockMode] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
   const [curlOpen, setCurlOpen] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
@@ -41,6 +42,9 @@ function TrellisShell() {
     api.getVariables().then(data => {
       setVarsData(data);
       setEnv(data.env || data.envs[0] || 'dev');
+    }).catch(() => {});
+    api.getIndex().then((data: IndexData) => {
+      setMockMode(data.mock_mode ?? false);
     }).catch(() => {});
   }, []);
 
@@ -97,13 +101,14 @@ function TrellisShell() {
         onScanProject={scanProject}
         scanning={scanning}
         scanMsg={scanMsg}
+        mockMode={mockMode}
       />
       <main className="main">
         <Routes>
           <Route path="/" element={<IndexPage env={env} refreshKey={refreshIndexKey} />} />
           <Route path="/flows" element={<FlowsPage />} />
           <Route path="/flows/*" element={<FlowCanvasPage />} />
-          <Route path="/spec/*" element={<SpecPage env={env} varsData={varsData} browserVars={browserVars} />} />
+          <Route path="/spec/*" element={<SpecPage env={env} varsData={varsData} browserVars={browserVars} mockMode={mockMode} />} />
         </Routes>
       </main>
       <VariablesDrawer
@@ -141,7 +146,7 @@ function TrellisShell() {
   );
 }
 
-function TopBar({ projectName, relPath, onHome, onFlows, theme, setTheme, env, setEnv, envs, onOpenVars, onOpenCurl, onAddEnvironment, onScanProject, scanning, scanMsg }: {
+function TopBar({ projectName, relPath, onHome, onFlows, theme, setTheme, env, setEnv, envs, onOpenVars, onOpenCurl, onAddEnvironment, onScanProject, scanning, scanMsg, mockMode }: {
   projectName: string;
   relPath: string;
   onHome: () => void;
@@ -157,6 +162,7 @@ function TopBar({ projectName, relPath, onHome, onFlows, theme, setTheme, env, s
   onScanProject: () => void;
   scanning: boolean;
   scanMsg: string;
+  mockMode?: boolean;
 }) {
   return (
     <header className="topbar">
@@ -178,6 +184,7 @@ function TopBar({ projectName, relPath, onHome, onFlows, theme, setTheme, env, s
           {scanning ? 'Scanning' : 'Scan'}
         </button>
         {scanMsg && <span className={`top-msg ${scanMsg.startsWith('Imported') || scanMsg.includes('nothing') ? 'ok' : 'fail'}`}>{scanMsg}</span>}
+        {mockMode && <span className="mock-pill">mock</span>}
         <label className="env-pill">
             <span className={`env-dot ${env}`} />
             <span className="lab">env</span>

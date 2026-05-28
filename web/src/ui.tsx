@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 export const Icon = {
   play: () => <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor" aria-hidden><path d="M2.5 1.5 L9 5.5 L2.5 9.5 Z" /></svg>,
@@ -37,9 +37,16 @@ export function PathStr({ path }: { path: string }) {
   return <>{parts}</>;
 }
 
-export function highlight(text: string) {
+type HighlightOptions = {
+  knownVariables?: ReadonlySet<string>;
+};
+
+export function highlight(text: string, options: HighlightOptions = {}) {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const hVar = (s: string) => s.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, '<span class="v">{{$1}}</span>');
+  const hVar = (s: string) => s.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, name) => {
+    const className = options.knownVariables && !options.knownVariables.has(name) ? 'v var-missing' : 'v';
+    return `<span class="${className}">{{${name}}}</span>`;
+  });
   const hParam = (s: string) => s.replace(/(:[a-zA-Z0-9_*]+)(?=[/\s?\\.]|$)/g, '<span class="v">$1</span>');
   return text.split('\n').map(line => {
     if (/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s/.test(line)) {
@@ -86,6 +93,23 @@ export function uniqueMatches(text: string, pattern: RegExp) {
 }
 
 const TVAR_RE = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+const VAR_CHAR_RE = /[a-zA-Z0-9_]/;
+
+function variableTokenAtCursor(text: string, cursor: number) {
+  const before = text.slice(0, cursor);
+  const match = before.match(/\{\{([a-zA-Z0-9_]*)$/);
+  if (!match) return null;
+
+  let end = cursor;
+  while (end < text.length && VAR_CHAR_RE.test(text[end])) end += 1;
+  if (text.slice(end, end + 2) === '}}') end += 2;
+
+  return {
+    start: cursor - match[0].length,
+    end,
+    prefix: match[1] ?? '',
+  };
+}
 
 function jsonValidateWithVars(text: string): boolean {
   try { JSON.parse(text.replace(TVAR_RE, '0')); return true; } catch { return false; }
@@ -113,20 +137,70 @@ function jsonFormatWithVars(text: string): string | null {
   return result;
 }
 
-export function JsonEditor({ value, onChange, placeholder, minHeight = 120, language = 'json' }: {
+export function JsonEditor({ value, onChange, placeholder, minHeight = 120, language = 'json', variableNames }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   minHeight?: number;
   language?: string;
+  variableNames?: readonly string[];
 }) {
   const [copied, setCopied] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [cursor, setCursor] = useState(0);
+  const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [dismissedTokenStart, setDismissedTokenStart] = useState<number | null>(null);
+  const [scroll, setScroll] = useState({ left: 0, top: 0 });
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const knownVariables = useMemo(() => new Set((variableNames ?? []).filter(Boolean)), [variableNames]);
+  const sortedVariables = useMemo(() => Array.from(knownVariables).sort((a, b) => a.localeCompare(b)), [knownVariables]);
   const validation = useMemo(() => {
     if (language !== 'json' || !value.trim()) return null;
     return { ok: jsonValidateWithVars(value) };
   }, [language, value]);
+  const overlay = useMemo(() => {
+    const text = value + (value.endsWith('\n') ? '' : '\n');
+    return highlight(text, variableNames ? { knownVariables } : {});
+  }, [knownVariables, value, variableNames]);
+  const activeToken = useMemo(() => variableTokenAtCursor(value, cursor), [cursor, value]);
+  const suggestions = useMemo(() => {
+    if (!activeToken || sortedVariables.length === 0) return [];
+    const query = activeToken.prefix.toLowerCase();
+    const starts = sortedVariables.filter(name => name.toLowerCase().startsWith(query));
+    const contains = query
+      ? sortedVariables.filter(name => !starts.includes(name) && name.toLowerCase().includes(query))
+      : [];
+    return [...starts, ...contains].slice(0, 8);
+  }, [activeToken, sortedVariables]);
+  const showSuggestions = focused && suggestions.length > 0 && activeToken?.start !== dismissedTokenStart;
+  const selectedSuggestion = suggestions[Math.min(activeSuggestion, Math.max(0, suggestions.length - 1))];
+  const suggestionPosition = useMemo(() => {
+    const before = value.slice(0, cursor);
+    const line = (before.match(/\n/g) ?? []).length;
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const col = cursor - lineStart;
+    const rawLeft = 52 + col * 7.6 - scroll.left;
+    const rawTop = 12 + (line + 1) * 20 - scroll.top;
+    const maxLeft = Math.max(52, (inputRef.current?.clientWidth ?? 320) - 270);
+    const maxTop = Math.max(40, (inputRef.current?.clientHeight ?? minHeight) - 12);
+    return {
+      left: Math.max(48, Math.min(rawLeft, maxLeft)),
+      top: Math.max(34, Math.min(rawTop, maxTop)),
+    };
+  }, [cursor, minHeight, scroll.left, scroll.top, value]);
   const lines = (value.match(/\n/g) ?? []).length + 1;
   const gutter = Array.from({ length: lines }, (_, index) => index + 1).join('\n');
+
+  function syncCursor(target: HTMLTextAreaElement) {
+    const nextCursor = target.selectionStart;
+    if (nextCursor !== cursor) {
+      const nextToken = variableTokenAtCursor(target.value, nextCursor);
+      if (!nextToken || nextToken.start !== dismissedTokenStart) setDismissedTokenStart(null);
+    }
+    setCursor(nextCursor);
+    setScroll({ left: target.scrollLeft, top: target.scrollTop });
+  }
+
   function format() {
     const formatted = jsonFormatWithVars(value);
     if (formatted != null) onChange(formatted);
@@ -136,6 +210,40 @@ export function JsonEditor({ value, onChange, placeholder, minHeight = 120, lang
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1200);
     }).catch(() => {});
+  }
+  function applySuggestion(name: string) {
+    const textarea = inputRef.current;
+    const nextCursor = textarea?.selectionStart ?? cursor;
+    const token = variableTokenAtCursor(value, nextCursor);
+    if (!token) return;
+
+    const inserted = `{{${name}}}`;
+    const next = `${value.slice(0, token.start)}${inserted}${value.slice(token.end)}`;
+    const selection = token.start + inserted.length;
+    onChange(next);
+    setCursor(selection);
+    setActiveSuggestion(0);
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(selection, selection);
+    });
+  }
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!showSuggestions) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setActiveSuggestion(index => (index + 1) % suggestions.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveSuggestion(index => (index - 1 + suggestions.length) % suggestions.length);
+    } else if ((event.key === 'Enter' || event.key === 'Tab') && selectedSuggestion) {
+      event.preventDefault();
+      applySuggestion(selectedSuggestion);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setDismissedTokenStart(activeToken?.start ?? null);
+    }
   }
   return (
     <div className="json-editor with-toolbar">
@@ -150,8 +258,47 @@ export function JsonEditor({ value, onChange, placeholder, minHeight = 120, lang
       </div>
       <div className="je-body">
         <div className="je-gutter">{gutter}</div>
-        <pre className="je-overlay" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlight(value + (value.endsWith('\n') ? '' : '\n')) }} />
-        <textarea className="je-input" value={value} onChange={e => onChange(e.target.value)} spellCheck={false} placeholder={placeholder} style={{ minHeight }} />
+        <pre className="je-overlay" aria-hidden="true" dangerouslySetInnerHTML={{ __html: overlay }} />
+        <textarea
+          ref={inputRef}
+          className="je-input"
+          value={value}
+          onChange={event => {
+            onChange(event.target.value);
+            setDismissedTokenStart(null);
+            syncCursor(event.target);
+            setActiveSuggestion(0);
+          }}
+          onFocus={event => {
+            setFocused(true);
+            syncCursor(event.currentTarget);
+          }}
+          onBlur={() => setFocused(false)}
+          onClick={event => syncCursor(event.currentTarget)}
+          onKeyDown={handleKeyDown}
+          onKeyUp={event => syncCursor(event.currentTarget)}
+          onScroll={event => syncCursor(event.currentTarget)}
+          onSelect={event => syncCursor(event.currentTarget)}
+          spellCheck={false}
+          placeholder={placeholder}
+          style={{ minHeight }}
+        />
+        {showSuggestions && (
+          <div className="je-suggestions" style={suggestionPosition}>
+            {suggestions.map((name, index) => (
+              <button
+                key={name}
+                className={`je-suggestion ${name === selectedSuggestion && index === Math.min(activeSuggestion, suggestions.length - 1) ? 'is-active' : ''}`}
+                onMouseDown={event => {
+                  event.preventDefault();
+                  applySuggestion(name);
+                }}
+              >
+                <span className="br">{'{{'}</span>{name}<span className="br">{'}}'}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

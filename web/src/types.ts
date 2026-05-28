@@ -15,6 +15,7 @@ export interface IndexData {
   groups: ResourceGroup[];
   spec_count: number;
   version: string;
+  mock_mode?: boolean;
 }
 
 export interface SpecData {
@@ -57,6 +58,7 @@ export interface ExecResult {
     headers: Record<string, string>;
   };
   error?: string;
+  mock?: boolean;
 }
 
 export interface RuntimeExecOptions {

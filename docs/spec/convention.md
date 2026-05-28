@@ -190,8 +190,9 @@ Endpoint body sections must appear in this order:
 2. One-paragraph description
 3. `## Request` with exactly one `http` code block
 4. `## Expected response` with exactly one `http` code block
-5. `## Tests` with exactly one `agent-task` code block, optional but encouraged
-6. `## Notes`, optional
+5. `## Error responses` with one or more `http` code blocks, optional reference examples
+6. `## Tests` with exactly one `agent-task` code block, optional but encouraged
+7. `## Notes`, optional
 
 Example:
 
@@ -217,6 +218,18 @@ Content-Type: application/json
 {
   "id": "{{id}}",
   "email": "user@example.com"
+}
+```
+
+## Error responses
+
+```http
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "not_found",
+  "message": "User not found"
 }
 ```
 
@@ -285,6 +298,22 @@ Trellis compares:
 - Status strictly.
 - Headers as subset match. Expected headers must be present in the actual response, but extra response headers are allowed.
 - Body as JSON shape when both expected and actual bodies are valid JSON. Otherwise, body is compared as an exact string.
+
+### Error responses section
+
+The optional `## Error responses` section documents representative error contracts. It may contain one or more fenced `http` examples.
+
+```http
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "not_found",
+  "message": "User not found"
+}
+```
+
+Trellis v1.0.0 does not execute `## Error responses`; only `## Expected response` is compared during `trellis exec`. Error responses are reference examples for humans, web source view, and AI agents.
 
 ### Tests block
 

@@ -50,10 +50,10 @@ enum Command {
         #[command(subcommand)]
         command: ImportCommand,
     },
-    /// Install, list, or uninstall AI agent skills.
-    Skills {
+    /// Install skills, slash commands, or the MCP server for AI agent integration.
+    Install {
         #[command(subcommand)]
-        command: SkillsCommand,
+        command: InstallCommand,
     },
     /// Launch web preview.
     Serve(ServeArgs),
@@ -140,6 +140,9 @@ struct ServeArgs {
     /// Environment.
     #[arg(long, default_value = "dev")]
     env: String,
+    /// Start in mock mode: serve recorded responses from ## Expected response blocks instead of making real HTTP requests.
+    #[arg(long, default_value_t = false)]
+    mock: bool,
 }
 
 #[derive(Debug, Args)]
@@ -204,27 +207,39 @@ enum ImportCommand {
 }
 
 #[derive(Debug, Subcommand)]
-enum SkillsCommand {
-    /// Install Trellis skills.
-    Install {
-        /// Agent name.
-        #[arg(long)]
-        agent: Option<String>,
+enum InstallCommand {
+    /// Install AI agent skills (all or by name).
+    ///
+    /// Examples:
+    ///   trellis install skills
+    ///   trellis install skills trellis-sync
+    ///   trellis install skills --agent=cursor
+    Skills {
         /// Install only one specific skill by name (e.g. trellis-sync, trellis-debug).
-        #[arg(long)]
-        skill: Option<String>,
-    },
-    /// List detected agents and skill status.
-    List,
-    /// Uninstall installed Trellis skills.
-    Uninstall {
-        /// Agent name.
+        name: Option<String>,
+        /// Agent name (e.g. claude-code, cursor, copilot).
         #[arg(long)]
         agent: Option<String>,
-        /// Uninstall only one specific skill by name.
-        #[arg(long)]
-        skill: Option<String>,
     },
+    /// Install slash commands for Claude Code and Codex CLI (all or by name).
+    ///
+    /// Examples:
+    ///   trellis install slashcmd
+    ///   trellis install slashcmd trellis-scan
+    ///   trellis install slashcmd --agent=codex-cli
+    Slashcmd {
+        /// Install only one specific command by slug (e.g. trellis-scan, trellis-debug).
+        name: Option<String>,
+        /// Agent name (claude-code or codex-cli).
+        #[arg(long)]
+        agent: Option<String>,
+    },
+    /// Register the Trellis MCP server with Claude Code.
+    ///
+    /// Runs: claude mcp add trellis -- trellis mcp
+    Mcp,
+    /// List detected agents and installation status.
+    List,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -242,13 +257,18 @@ async fn main() -> Result<()> {
         std::env::set_var("NO_COLOR", "1");
     }
     match cli.command {
-        Command::Init(args) => init(args)?,
+        Command::Init(args) => {
+            init(args)?;
+            println!("\nScanning for existing API routes...");
+            import(ImportCommand::Project { path: None, port: None, url: None }).await?;
+            println!("\nRun `trellis serve` to open the web preview.");
+        }
         Command::Validate { path } => validate_path(path)?,
         Command::Exec(args) => exec(args).await?,
         Command::Flow(args) => flow(args).await?,
         Command::Index => regenerate_index(Path::new("api-docs"))?,
         Command::Import { command } => import(command).await?,
-        Command::Skills { command } => skills(command)?,
+        Command::Install { command } => install(command).await?,
         Command::Serve(args) => serve(args).await?,
         Command::Mock(args) => mock(args).await?,
         Command::Mcp => trellis::mcp::run_mcp_server().await?,
@@ -410,7 +430,6 @@ fn init(args: InitArgs) -> Result<()> {
 
     println!("{} Created trellis.md (project config)", "✓".green());
     println!("{} Created api-docs/ with 1 example", "✓".green());
-    println!("Run `trellis serve` to open the web preview.");
     Ok(())
 }
 
@@ -864,7 +883,7 @@ fn doctor(args: DoctorArgs) -> Result<()> {
 /// Compare installed skill files against what this binary embeds.
 /// Prints a warning and reinstalls when `--fix` is passed.
 fn check_skills_freshness(fix: bool) {
-    use trellis::installer::{install, Agent};
+    use trellis::installer::Agent;
 
     let skill_dir = Path::new(".claude/skills");
     if !skill_dir.exists() {
@@ -895,9 +914,9 @@ fn check_skills_freshness(fix: bool) {
             "✗".red(),
             stale.join(", ")
         );
-        println!("  Fix: run `trellis skills install` to update installed skills.");
+        println!("  Fix: run `trellis install skills` to update installed skills.");
         if fix {
-            match install(Path::new("."), Some(Agent::ClaudeCode.name())) {
+            match trellis::installer::install(Path::new("."), Some(Agent::ClaudeCode.name())) {
                 Ok(files) => {
                     for f in &files {
                         println!("  reinstalled: {}", f.path.display());
@@ -1090,53 +1109,74 @@ fn run_import(
     Ok(())
 }
 
-fn skills(command: SkillsCommand) -> Result<()> {
+async fn install(command: InstallCommand) -> Result<()> {
     #[cfg(not(feature = "install"))]
     {
         let _ = command;
         bail!(
-            "skills support is not compiled into this binary\nFix: install Trellis with default features."
+            "install support is not compiled into this binary\nFix: install Trellis with default features."
         );
     }
 
     #[cfg(feature = "install")]
     match command {
-        SkillsCommand::Install { agent, skill } => {
-            let installed = if let Some(skill_name) = skill {
+        InstallCommand::Skills { name, agent } => {
+            let installed = if let Some(skill_name) = name {
                 trellis::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
             } else {
-                trellis::installer::install(Path::new("."), agent.as_deref())?
+                trellis::installer::install_skills(Path::new("."), agent.as_deref())?
             };
-            for file in installed {
+            for file in &installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
             }
+            println!("{} skill(s) installed", installed.len());
             Ok(())
         }
-        SkillsCommand::List => {
+        InstallCommand::Slashcmd { name, agent } => {
+            let installed = if let Some(slug) = name {
+                trellis::installer::install_command(Path::new("."), agent.as_deref(), &slug)?
+            } else {
+                trellis::installer::install_commands(Path::new("."), agent.as_deref())?
+            };
+            for file in &installed {
+                println!("installed {}: {}", file.agent.name(), file.path.display());
+            }
+            println!("{} command(s) installed", installed.len());
+            Ok(())
+        }
+        InstallCommand::Mcp => install_mcp(),
+        InstallCommand::List => {
             for status in trellis::installer::detect_agents(Path::new(".")) {
                 println!(
                     "{}: {}",
                     status.agent.name(),
-                    if status.detected {
-                        "detected"
-                    } else {
-                        "not detected"
-                    }
+                    if status.detected { "detected" } else { "not detected" }
                 );
             }
             Ok(())
         }
-        SkillsCommand::Uninstall { agent, skill } => {
-            let removed = if let Some(skill_name) = skill {
-                trellis::installer::uninstall_skill(Path::new("."), agent.as_deref(), &skill_name)?
-            } else {
-                trellis::installer::uninstall(Path::new("."), agent.as_deref())?
-            };
-            for path in removed {
-                println!("removed: {}", path.display());
-            }
+    }
+}
+
+fn install_mcp() -> Result<()> {
+    println!("Registering Trellis MCP server with Claude Code...");
+    let status = std::process::Command::new("claude")
+        .args(["mcp", "add", "trellis", "--", "trellis", "mcp"])
+        .status();
+    match status {
+        Ok(s) if s.success() => {
+            println!("{} Registered. Verify with: claude mcp list", "✓".green());
             Ok(())
         }
+        Ok(_) => bail!(
+            "claude mcp add failed\nFix: run `claude mcp add trellis -- trellis mcp` manually."
+        ),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => bail!(
+            "claude CLI not found\nFix: install Claude Code, then run `claude mcp add trellis -- trellis mcp`."
+        ),
+        Err(e) => bail!(
+            "failed to run claude: {e}\nFix: run `claude mcp add trellis -- trellis mcp` manually."
+        ),
     }
 }
 
@@ -1147,7 +1187,7 @@ async fn serve(args: ServeArgs) -> Result<()> {
     #[cfg(feature = "web")]
     {
         let root = args.path.unwrap_or_else(|| Path::new(".").to_path_buf());
-        return trellis::preview::run(root, &args.host, args.port, &args.env).await;
+        return trellis::preview::run(root, &args.host, args.port, &args.env, args.mock).await;
     }
     #[cfg(not(feature = "web"))]
     bail!(
