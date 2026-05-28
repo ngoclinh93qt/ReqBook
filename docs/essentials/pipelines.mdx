@@ -8,7 +8,15 @@ icon: "git-branch"
 
 A pipeline is a markdown file in `api-docs/flows/` that chains endpoint specs into sequential or parallel steps. Each step can capture values from a response and inject them as variables into later steps — auth tokens, resource IDs, pagination cursors, and anything else extracted from a live response.
 
-{/* TODO: diagram showing pipeline flow: Step 1 captures userId → Step 2 injects userId → Step 3 injects authToken */}
+```text
+Create user ── capture response.body.id as userId
+    ↓
+Login ── inject userId, capture response.body.token as authToken
+    ↓
+Get profile ── inject userId and authToken
+```
+
+You can write this markdown by hand, ask an agent to create it, or design it visually in the [Web preview](/docs/guides/web-preview) flow canvas.
 
 ---
 
@@ -107,7 +115,7 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
     - Steps with no `Inject` dependency may run at the same time as other independent steps.
     - Use parallel pipelines for independent setup steps such as seeding multiple test fixtures before a main flow begins.
 
-    {/* TODO: diagram comparing sequential vs parallel step execution order */}
+    Prefer a simple rule: if a step injects a captured value, keep it after the step that captures that value. Independent setup steps can run in parallel.
   </Tab>
 </Tabs>
 
@@ -115,21 +123,30 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
 
 ## Running a pipeline
 
-```bash
-# Run a pipeline
-trellis flow api-docs/flows/user-onboarding.md --env=dev
+<Tabs>
+  <Tab title="Web UI">
+    ```bash
+    trellis serve
+    ```
 
-# Inject additional variables at the CLI level
-trellis flow api-docs/flows/user-onboarding.md --env=staging --var email=test@example.com
+    Open the flow canvas, select a flow, run it, and inspect each step result. Use the canvas when you are designing captures and connections.
+  </Tab>
+  <Tab title="CLI">
+    ```bash
+    # Run a pipeline
+    trellis flow api-docs/flows/user-onboarding.md --env=dev
 
-# Force sequential execution even if parallel: true is set
-trellis flow api-docs/flows/user-onboarding.md --no-parallel
+    # Inject additional variables at the CLI level
+    trellis flow api-docs/flows/user-onboarding.md --env=staging --var email=test@example.com
 
-# Structured JSON output for CI
-trellis flow api-docs/flows/user-onboarding.md --output=json
-```
+    # Force sequential execution even if parallel: true is set
+    trellis flow api-docs/flows/user-onboarding.md --no-parallel
 
-{/* TODO: screenshot of trellis flow console output showing step-by-step results with captured values */}
+    # Structured JSON output for CI
+    trellis flow api-docs/flows/user-onboarding.md --output=json
+    ```
+  </Tab>
+</Tabs>
 
 ---
 

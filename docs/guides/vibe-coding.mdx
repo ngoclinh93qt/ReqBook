@@ -1,0 +1,139 @@
+---
+title: "Vibe coding workflow"
+description: "Use Trellis as the API memory and execution layer for coding agents."
+icon: "bot"
+---
+
+# Make your coding agent API-aware.
+
+Trellis is strongest when a coding agent is part of your API workflow. The agent can read source routes, create markdown specs, validate them, run requests, and build flows. You still keep control because every result is saved as reviewable markdown in the repo.
+
+<Note>
+  If you only want terminal commands, use the [CLI reference](/docs/reference/cli). If you want to inspect and run specs visually, use the [Web preview](/docs/guides/web-preview). This guide focuses on agent-first development.
+</Note>
+
+---
+
+## Set up the project
+
+<Steps>
+  <Step title="Initialise Trellis">
+    ```bash
+    trellis init --name=my-api --dev-url=http://localhost:8080 --yes
+    ```
+
+    This creates `api-docs/`, an example endpoint, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
+  </Step>
+
+  <Step title="Install agent skills">
+    ```bash
+    trellis skills install
+    ```
+
+    Or target one agent:
+
+    ```bash
+    trellis skills install --agent=claude-code
+    trellis skills install --agent=cursor
+    trellis skills install --agent=copilot
+    ```
+  </Step>
+
+  <Step title="Register MCP for Claude Code">
+    MCP mode gives the agent structured Trellis tools instead of asking it to parse terminal output.
+
+    ```bash
+    claude mcp add trellis -- trellis mcp
+    ```
+  </Step>
+
+  <Step title="Open the UI beside your agent">
+    ```bash
+    trellis serve
+    ```
+
+    Keep the browser preview open while your agent edits files. The UI reads the same markdown files and updates as they change.
+  </Step>
+</Steps>
+
+---
+
+## Prompts that work well
+
+Use prompts that describe the API intent and let the Trellis skill choose the correct operation.
+
+<CardGroup cols={2}>
+  <Card title="Create one endpoint" icon="file-pen">
+    ```text
+    Add a Trellis spec for GET /users/:userId. Use bearer auth and make userId a path param.
+    ```
+  </Card>
+  <Card title="Scan existing routes" icon="search">
+    ```text
+    Scan this project for API routes and add missing Trellis specs. Do not overwrite existing specs.
+    ```
+  </Card>
+  <Card title="Run and debug" icon="play">
+    ```text
+    Test the get user endpoint in dev. If variables are missing, tell me exactly where to define them.
+    ```
+  </Card>
+  <Card title="Create a workflow" icon="workflow">
+    ```text
+    Build a signup flow: create user, login, capture token, then fetch profile with the captured token.
+    ```
+  </Card>
+</CardGroup>
+
+---
+
+## Agent responsibilities
+
+When the skills are installed, the agent should follow this pattern:
+
+| Task | Trellis surface | Expected behavior |
+|---|---|---|
+| Add an endpoint | `trellis-author` skill or `trellis_author` MCP tool | Create `api-docs/apis/<resource>/<method>-<slug>.md`, validate it, regenerate the index. |
+| Run one endpoint | `trellis-exec` skill or `trellis_exec` MCP tool | Resolve env variables, path params, and runtime vars; report status, duration, and diff. |
+| Create a workflow | `trellis-workflow` skill | Save a markdown flow under `api-docs/flows/`. |
+| Run a workflow | `trellis-flow` skill or `trellis_flow` MCP tool | Execute steps, capture values, inject them downstream, and report the first failure. |
+| Review in browser | `trellis serve` | Use the UI for request tweaks, response inspection, and visual flow editing. |
+
+---
+
+## What stays under your control
+
+- Agents should not overwrite existing specs unless you explicitly ask for that exact file to be replaced.
+- Secrets belong in `.env.local` or `TRELLIS_*`, not in markdown committed to the repo.
+- The browser request builder can override params, headers, and body for one run without changing the markdown file.
+- Persistent changes happen only when the agent edits markdown or you use the UI edit mode and save.
+- `trellis validate api-docs/` is the final safety check before commit.
+
+---
+
+## Example session
+
+```text
+You: Scan this repo and add missing API specs.
+
+Agent: Uses Trellis project scanner.
+Agent: Creates api-docs/apis/orders/post-orders.md.
+Agent: Runs trellis validate api-docs/.
+Agent: Runs trellis index.
+
+You: Create a checkout flow from the order endpoints.
+
+Agent: Reads existing specs.
+Agent: Creates api-docs/flows/checkout.md.
+Agent: Captures response.body.id as orderId.
+Agent: Validates the flow.
+
+You: Run it in dev.
+
+Agent: Runs trellis flow api-docs/flows/checkout.md --env=dev.
+Agent: Reports each step, captured values, and the first mismatch.
+```
+
+<Tip>
+  Keep `trellis serve` open during this loop. It gives you a visual review layer while the agent edits markdown behind the scenes.
+</Tip>

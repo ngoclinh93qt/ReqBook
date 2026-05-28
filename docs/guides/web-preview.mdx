@@ -1,91 +1,135 @@
 ---
 title: "Web preview"
-description: "Browse, edit, and execute your API specs in a local browser UI with no build step."
+description: "Use the Trellis browser UI to browse, execute, tweak, edit, import, and connect markdown API specs."
 icon: "monitor"
 ---
 
-## Starting the web preview
+# Browser UI for markdown API specs.
+
+`trellis serve` starts a local browser workspace over the markdown files in `api-docs/`. It is designed to sit beside your editor and coding agent: agents can write files, you can inspect and run them visually, and everything stays in sync through the filesystem.
 
 ```bash
 trellis serve
-# ➜ Local:  http://127.0.0.1:8080
+# Preview: http://127.0.0.1:8080
 ```
 
-{/* TODO: full-page screenshot of trellis serve showing the spec browser with sidebar, request panel, and response panel */}
+<Note>
+  Trellis binds to `127.0.0.1` by default. Use `--host=0.0.0.0` only when you intentionally want to share the preview on your local network.
+</Note>
 
-Pass flags to customise the port, environment, or project path:
+---
+
+## Why use the UI?
+
+The CLI is great for CI and automation. The UI is better when you are actively designing, debugging, or reviewing specs.
+
+<CardGroup cols={2}>
+  <Card title="Runtime request builder" icon="sliders">
+    Add path params, variables, headers, and body overrides for one execution without changing the markdown file.
+  </Card>
+  <Card title="Response inspection" icon="panel-right">
+    Inspect formatted response body, headers, raw output, duration, and diff against the expected response.
+  </Card>
+  <Card title="Markdown edit mode" icon="file-pen">
+    Switch to edit mode when you want to persist a spec change. Save writes the markdown file back to disk.
+  </Card>
+  <Card title="Flow canvas" icon="workflow">
+    Design workflows visually by connecting endpoint blocks, captures, and injections. The result is saved as `api-docs/flows/*.md`.
+  </Card>
+  <Card title="cURL import" icon="terminal">
+    Paste a cURL command from DevTools and generate a Trellis endpoint spec.
+  </Card>
+  <Card title="Agent review loop" icon="bot">
+    Keep the UI open while your agent edits specs. Review and run the changed files immediately.
+  </Card>
+</CardGroup>
+
+---
+
+## Request tweaks do not rewrite markdown
+
+The request builder is intentionally temporary:
+
+| UI control | Used for current run | Written to markdown automatically |
+|---|---:|---:|
+| Path params | yes | no |
+| Variable overrides | yes | no |
+| Extra headers | yes | no |
+| Body override | yes | no |
+| Edit mode save | yes | yes |
+
+This lets you try an ID, token, header, or body shape without accidentally modifying the canonical spec. When a runtime tweak should become permanent, switch to edit mode and save the markdown.
+
+---
+
+## Flow canvas
+
+The flow canvas is the UI surface for `api-docs/flows/`.
+
+Use it to:
+
+- add endpoint nodes,
+- connect one endpoint result to another endpoint input,
+- capture values such as `response.body.id` or `response.body[0].id`,
+- inject captured variables into downstream nodes,
+- save the workflow as markdown.
+
+The saved flow can then be run from either surface:
+
+```bash
+trellis flow api-docs/flows/checkout.md --env=dev
+```
+
+or from the browser UI with the Run flow action.
+
+---
+
+## Environment and variables
+
+The UI reads `api-docs/_shared/env.md` for non-secret environment values:
+
+````markdown filename="api-docs/_shared/env.md"
+## dev
+
+```yaml
+baseUrl: https://jsonplaceholder.typicode.com
+postId: 1
+```
+````
+
+Use `.env.local` or `TRELLIS_*` for secrets. Trellis masks auth values in UI responses and reports.
+
+---
+
+## Common workflow with an agent
+
+<Steps>
+  <Step title="Agent creates or updates specs">
+    Ask your agent to add endpoint specs or scan the project for missing routes.
+  </Step>
+  <Step title="UI refreshes from disk">
+    Open `trellis serve` and inspect the new files in the sidebar.
+  </Step>
+  <Step title="Run with temporary inputs">
+    Fill runtime-only params and headers, click Run, and inspect the response.
+  </Step>
+  <Step title="Persist only intentional changes">
+    If the spec needs correction, use edit mode or ask the agent to update the markdown and validate again.
+  </Step>
+</Steps>
+
+---
+
+## Server flags
 
 ```bash
 trellis serve --port=9000 --env=staging
 trellis serve /path/to/other-project
 ```
 
----
-
-## Features
-
-<CardGroup cols={2}>
-  <Card title="Browse specs" icon="list">
-    Sidebar tree of all endpoint files, searchable by name, HTTP method, path, or tag. Navigate directly to any endpoint without leaving the browser.
-  </Card>
-  <Card title="Execute endpoints" icon="play">
-    Click **Run** to send a request using the selected environment's variables. The response panel shows status, duration, headers, and a diff against the expected response.
-  </Card>
-  <Card title="Flow canvas" icon="git-branch">
-    Visual drag-and-drop canvas for designing pipelines. Connect endpoint nodes, configure captures, and save directly to `api-docs/flows/`.
-  </Card>
-  <Card title="Import from cURL" icon="terminal">
-    Paste a cURL command from browser DevTools. Trellis creates a new endpoint spec file, validates it, and adds it to the index automatically.
-  </Card>
-</CardGroup>
-
-{/* TODO: screenshot of the Flow canvas showing nodes connected with arrows */}
-
----
-
-## Configuration in trellis.md
-
-The `## Web preview` section in `api-docs/trellis.md` sets the default server configuration. CLI flags override these values at runtime.
-
-```yaml filename="api-docs/trellis.md (## Web preview section)"
-port: 8080
-host: 127.0.0.1
-theme: auto       # auto | light | dark
-autosave: 2s      # debounce interval for live-reload
-```
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `port` | integer | `8080` | TCP port for the preview server. |
-| `host` | string | `127.0.0.1` | Host to bind to. |
-| `theme` | string | `auto` | Color theme: `auto`, `light`, or `dark`. `auto` follows the OS preference. |
-| `autosave` | string | `2s` | Debounce interval before a file change triggers a browser reload. |
-
-<Tip>
-To expose the preview to other devices on your local network, run `trellis serve --host=0.0.0.0`. Trellis prints a warning because this makes your local secrets context accessible to other machines on the network.
-</Tip>
-
----
-
-## Live reload
-
-The server watches every file under `api-docs/` for changes and reloads connected browsers automatically. The debounce interval is controlled by the `autosave` setting in `trellis.md` (default: 2 seconds). No browser extension or build step is needed.
-
-Changes to endpoint files, environment config, and pipeline files are all picked up automatically. If you rename or delete a file, reload the browser sidebar manually to refresh the file tree.
-
----
-
-## Variables and environments
-
-The web preview resolves variables using the same priority order as the CLI. The active environment is set by the `--env` flag when starting the server (default: `dev`).
-
-Secrets from `.env.local` are available in the preview and are masked in the response history panel — they appear as `****` in displayed headers and are never written to the browser's localStorage.
-
----
-
-## Exit codes
-
-| Code | Meaning |
+| Flag | Description |
 |---|---|
-| `0` | Clean shutdown (Ctrl-C). |
-| `3` | Startup error — port already in use, `api-docs/` not found, or file permission issue. |
+| `--port` | Local preview port. |
+| `--host` | Host to bind. Defaults to `127.0.0.1`. |
+| `--env` | Environment selected from `_shared/env.md`. |
+| `[path]` | Project directory containing `api-docs/`. |

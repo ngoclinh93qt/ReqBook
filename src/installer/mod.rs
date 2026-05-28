@@ -8,10 +8,8 @@ use std::{
 use serde::Deserialize;
 use thiserror::Error;
 
-const AUTHOR: &str = include_str!("../../skills/trellis-author/SKILL.md");
-const EXEC: &str = include_str!("../../skills/trellis-exec/SKILL.md");
-const FLOW: &str = include_str!("../../skills/trellis-flow/SKILL.md");
-const WORKFLOW: &str = include_str!("../../skills/trellis-workflow/SKILL.md");
+const SYNC: &str = include_str!("../../skills/trellis-sync/SKILL.md");
+const DEBUG: &str = include_str!("../../skills/trellis-debug/SKILL.md");
 
 // ─── Slash-command definitions ────────────────────────────────────────────────
 
@@ -24,6 +22,50 @@ struct CommandDef {
 
 /// All Trellis slash commands, in order.
 const COMMANDS: &[CommandDef] = &[
+    CommandDef {
+        slug: "trellis-sync",
+        description: "Sync Trellis api-docs/ specs with source code — init, import, enrich, or author",
+        prompt: r#"Follow the trellis-sync skill decision tree to keep api-docs/ aligned with source code.
+
+If `api-docs/` does not exist, initialise first:
+- Detect project name (package.json → Cargo.toml → pyproject.toml → go.mod → pom.xml → README heading → git remote → dirname).
+- Detect base URL (.env PORT/HOST → docker-compose ports → framework default → ask).
+- Run: `trellis init --name "<name>" --dev-url "<url>" --yes`
+
+Then import routes:
+```bash
+trellis import project ${ARGUMENTS:-.}
+```
+
+Read output:
+- `✓ Found OpenAPI spec` or `✓ Fetched live spec` → done, run `trellis index`.
+- `⚠ No OpenAPI spec` → enrich each partial spec by reading handler source (params, body, response shape).
+- `no routes found` → scan manually: `rg --files src/ | rg -i "route\|controller\|handler"`, extract each route, create spec via MCP `trellis_author`.
+
+Always validate after writing: `trellis validate <file>`. Run `trellis index` at the end."#,
+    },
+    CommandDef {
+        slug: "trellis-debug",
+        description: "Trace and debug an API call or pipeline using Trellis specs",
+        prompt: r#"Follow the trellis-debug skill decision tree to diagnose the API issue in $ARGUMENTS.
+
+Single endpoint:
+1. Locate the spec: `rg -n "^method:\|^path:" api-docs/apis/` or use MCP `trellis_list_specs`.
+2. Validate: `trellis validate <file>` — fix any structural errors first.
+3. Dry-run to inspect what's sent: `trellis exec <file> --env=dev --dry-run`
+4. Execute: `trellis exec <file> --env=dev --var key=value`
+5. On mismatch: compare expected vs actual status/body. Check if spec is outdated.
+
+Exit codes: 2=invalid spec, 3=engine error, 4=network/DNS, 5=secret detected.
+
+Pipeline:
+1. Locate: `rg --files api-docs/flows/`
+2. Execute: `trellis flow <file> --env=dev`
+3. On failure: identify first failing step, debug it as a single endpoint with its captured inputs.
+4. Check capture expressions match actual response shape (`response.body.id` vs `response.body.userId`).
+
+Never print raw auth tokens. Confirm before running against prod."#,
+    },
     CommandDef {
         slug: "trellis-exec",
         description: "Execute a Trellis endpoint spec and report the result",
@@ -48,31 +90,7 @@ trellis flow $ARGUMENTS --env=dev
 
 Report: pipeline name, environment, each step's endpoint + status + diff outcome, and overall pass/fail.
 If no file is specified, search `api-docs/flows/**/*.md` for a pipeline matching the user's description.
-On failure include which step failed and the suggested fix."#,
-    },
-    CommandDef {
-        slug: "trellis-workflow",
-        description: "Create or edit a Trellis workflow pipeline from existing endpoint specs",
-        prompt: r#"Create or edit a Trellis workflow in `api-docs/flows/` from the scenario in $ARGUMENTS.
-
-First inspect existing endpoint specs:
-
-```bash
-rg --files api-docs | rg '\.md$'
-rg -n '^method:|^path:|^# ' api-docs
-```
-
-Then write a markdown pipeline with frontmatter `type: pipeline`, ordered `## Steps`, `Capture`, `Inject`, and `Assert` directives.
-
-After writing:
-
-```bash
-trellis validate api-docs/flows/<workflow>.md
-trellis index
-```
-
-Report the workflow path, each endpoint step, captured values, injected values, and any endpoint specs that were missing.
-Do not run the workflow unless the user explicitly asks to execute it."#,
+On failure include which step failed, what was captured from previous steps, and the suggested fix."#,
     },
     CommandDef {
         slug: "trellis-validate",
@@ -87,9 +105,21 @@ Report: number of files checked, any validation errors with file paths and line 
 Exit 2 = invalid spec. Exit 5 = secret detected in a versioned file."#,
     },
     CommandDef {
+        slug: "trellis-import",
+        description: "Scan the current project for API routes and import them as Trellis specs",
+        prompt: r#"Run the Trellis project importer on the path in $ARGUMENTS (defaults to current directory).
+
+```bash
+trellis import project ${ARGUMENTS:-.}
+```
+
+Report the strategy used (OpenAPI file / live server / static scan), how many routes were found,
+and how many spec files were created. Run `trellis index` after a successful import.
+If the output includes a Tip with a framework export command, offer to run it."#,
+    },
+    CommandDef {
         slug: "trellis-import-curl",
-        description:
-            "Import a curl command from the clipboard or user input as a Trellis endpoint spec",
+        description: "Import a curl command from the clipboard or user input as a Trellis endpoint spec",
         prompt: r#"Ask the user to paste a `curl` command (e.g. copied from browser DevTools → Copy as cURL).
 
 Once you have the curl text, run:
@@ -116,37 +146,6 @@ trellis serve
 
 Report the URL printed by trellis (e.g. `http://127.0.0.1:8080`).
 Tell the user they can open it in a browser to browse endpoints, click Run on any spec, and paste curl commands to import new endpoints."#,
-    },
-    CommandDef {
-        slug: "trellis-init",
-        description: "Initialise a new Trellis api-docs/ project in the current directory",
-        prompt: r#"Initialise a new Trellis project in the current directory.
-
-```bash
-trellis init
-```
-
-Trellis will auto-detect the project name from `package.json`, `Cargo.toml`, `pyproject.toml`, or `go.mod` if present.
-After init:
-- Show the files created.
-- Suggest running `trellis serve` to open the web preview.
-- Suggest running `trellis import project .` to scan for existing API routes."#,
-    },
-    CommandDef {
-        slug: "trellis-import",
-        description:
-            "Scan the current project source code for API routes and import them as Trellis specs",
-        prompt: r#"Scan the project source code for API route definitions and generate Trellis endpoint specs.
-
-```bash
-trellis import project ${ARGUMENTS:-.}
-```
-
-Trellis detects routes from Express, FastAPI, Flask, Axum, Actix, Gin, Spring Boot, Laravel, Rails, and more.
-After import:
-- Show the list of created spec files.
-- Remind the user to set `baseUrl` in `api-docs/_shared/env.md`.
-- Offer to run `trellis validate api-docs/` to confirm all generated specs are valid."#,
     },
     CommandDef {
         slug: "trellis-mock",
@@ -300,6 +299,12 @@ pub enum InstallError {
         #[source]
         source: serde_yaml::Error,
     },
+    /// Unknown skill name.
+    #[error("unknown skill \"{name}\". Available skills: trellis-sync, trellis-debug")]
+    UnknownSkill {
+        /// Name provided by the user.
+        name: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -373,6 +378,25 @@ pub fn install(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, I
     Ok(installed)
 }
 
+/// Install one specific skill by name for one explicit agent or all detected agents.
+/// Returns `InstallError::UnknownSkill` if the name doesn't match any canonical skill.
+pub fn install_skill(root: &Path, agent: Option<&str>, skill_name: &str) -> Result<Vec<InstalledFile>, InstallError> {
+    let agents = resolve_agents(root, agent)?;
+    let all_skills = canonical_skills()?;
+    let skill = all_skills
+        .into_iter()
+        .find(|s| s.meta.name == skill_name)
+        .ok_or_else(|| InstallError::UnknownSkill { name: skill_name.to_string() })?;
+    let mut installed = Vec::new();
+    for agent in agents {
+        let path = skill_target_path(root, agent, &skill.meta.name);
+        let contents = render_skill(agent, &skill);
+        write_file(&path, &contents)?;
+        installed.push(InstalledFile { agent, path });
+    }
+    Ok(installed)
+}
+
 /// Remove installed Trellis skills and slash commands.
 pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, InstallError> {
     let agents = if let Some(agent) = agent {
@@ -423,6 +447,29 @@ pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, Insta
     Ok(removed)
 }
 
+/// Remove one specific skill by name.
+pub fn uninstall_skill(root: &Path, agent: Option<&str>, skill_name: &str) -> Result<Vec<PathBuf>, InstallError> {
+    let agents = if let Some(agent) = agent {
+        vec![Agent::parse(agent).ok_or_else(|| InstallError::UnknownAgent { name: agent.to_string() })?]
+    } else {
+        vec![Agent::ClaudeCode, Agent::CodexCli, Agent::Antigravity, Agent::OpenCode, Agent::Cursor, Agent::Copilot]
+    };
+    let all_skills = canonical_skills()?;
+    let skill = all_skills
+        .into_iter()
+        .find(|s| s.meta.name == skill_name)
+        .ok_or_else(|| InstallError::UnknownSkill { name: skill_name.to_string() })?;
+    let mut removed = Vec::new();
+    for agent in agents {
+        let path = skill_target_path(root, agent, &skill.meta.name);
+        if path.exists() {
+            fs::remove_file(&path).map_err(|source| InstallError::Io { path: path.clone(), source })?;
+            removed.push(path);
+        }
+    }
+    Ok(removed)
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, InstallError> {
@@ -445,7 +492,7 @@ fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, Instal
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
-    [AUTHOR, EXEC, FLOW, WORKFLOW]
+    [SYNC, DEBUG]
         .into_iter()
         .map(parse_skill)
         .collect()
@@ -556,23 +603,23 @@ mod tests {
         fs::create_dir(dir.path().join(".github")).unwrap();
         let mut installed = install(dir.path(), Some("cursor")).unwrap();
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
-        assert_eq!(installed.len(), 8); // 4 skills each
+        assert_eq!(installed.len(), 4); // 2 skills each
         let cursor =
-            fs::read_to_string(dir.path().join(".cursor/rules/trellis-author.mdc")).unwrap();
+            fs::read_to_string(dir.path().join(".cursor/rules/trellis-sync.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
         assert!(dir
             .path()
-            .join(".cursor/rules/trellis-workflow.mdc")
+            .join(".cursor/rules/trellis-debug.mdc")
             .exists());
         let copilot = fs::read_to_string(
             dir.path()
-                .join(".github/instructions/trellis-author.instructions.md"),
+                .join(".github/instructions/trellis-sync.instructions.md"),
         )
         .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
         assert!(dir
             .path()
-            .join(".github/instructions/trellis-workflow.instructions.md")
+            .join(".github/instructions/trellis-debug.instructions.md")
             .exists());
     }
 
@@ -582,8 +629,8 @@ mod tests {
         fs::create_dir(dir.path().join(".claude")).unwrap();
         let installed = install(dir.path(), Some("claude-code")).unwrap();
 
-        // 4 skills + 10 commands = 14
-        assert_eq!(installed.len(), 14);
+        // 2 skills + 10 commands = 12
+        assert_eq!(installed.len(), 12);
 
         let cmd_path = dir.path().join(".claude/commands/trellis-exec.md");
         assert!(cmd_path.exists(), "trellis-exec command not created");
@@ -593,16 +640,15 @@ mod tests {
 
         let import_cmd = dir.path().join(".claude/commands/trellis-import.md");
         assert!(import_cmd.exists(), "trellis-import command not created");
-        let workflow_skill = dir.path().join(".claude/skills/trellis-workflow/SKILL.md");
+        let sync_skill = dir.path().join(".claude/skills/trellis-sync/SKILL.md");
         assert!(
-            workflow_skill.exists(),
-            "trellis-workflow skill not created"
+            sync_skill.exists(),
+            "trellis-sync skill not created"
         );
-        let workflow_cmd = dir.path().join(".claude/commands/trellis-workflow.md");
-        assert!(
-            workflow_cmd.exists(),
-            "trellis-workflow command not created"
-        );
+        let sync_cmd = dir.path().join(".claude/commands/trellis-sync.md");
+        assert!(sync_cmd.exists(), "trellis-sync command not created");
+        let debug_cmd = dir.path().join(".claude/commands/trellis-debug.md");
+        assert!(debug_cmd.exists(), "trellis-debug command not created");
     }
 
     #[test]
@@ -623,8 +669,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".cursor")).unwrap();
         let installed = install(dir.path(), Some("cursor")).unwrap();
-        // Only 4 skills, no commands
-        assert_eq!(installed.len(), 4);
+        // Only 2 skills, no commands
+        assert_eq!(installed.len(), 2);
         assert!(!dir.path().join(".cursor/commands").exists());
     }
 

@@ -85,6 +85,34 @@ export function uniqueMatches(text: string, pattern: RegExp) {
   return out;
 }
 
+const TVAR_RE = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+
+function jsonValidateWithVars(text: string): boolean {
+  try { JSON.parse(text.replace(TVAR_RE, '0')); return true; } catch { return false; }
+}
+
+function jsonFormatWithVars(text: string): string | null {
+  let qi = 0, bi = 0;
+  const qmap = new Map<string, string>();
+  const bmap = new Map<string, string>();
+  // Pass 1: replace "{{varName}}" (whole quoted string) with a string sentinel
+  let result = text.replace(/"(\{\{[a-zA-Z0-9_]+\}\})"/g, (_, inner) => {
+    const key = `"__TVQ${qi++}__"`;
+    qmap.set(key, inner.slice(2, -2));
+    return key;
+  });
+  // Pass 2: replace remaining bare {{varName}} with a string sentinel
+  result = result.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, name) => {
+    const key = `"__TVB${bi++}__"`;
+    bmap.set(key, name);
+    return key;
+  });
+  try { result = JSON.stringify(JSON.parse(result), null, 2); } catch { return null; }
+  for (const [key, name] of qmap) result = result.replace(key, `"{{${name}}}"`);
+  for (const [key, name] of bmap) result = result.replace(key, `{{${name}}}`);
+  return result;
+}
+
 export function JsonEditor({ value, onChange, placeholder, minHeight = 120, language = 'json' }: {
   value: string;
   onChange: (value: string) => void;
@@ -95,17 +123,13 @@ export function JsonEditor({ value, onChange, placeholder, minHeight = 120, lang
   const [copied, setCopied] = useState(false);
   const validation = useMemo(() => {
     if (language !== 'json' || !value.trim()) return null;
-    try {
-      JSON.parse(value);
-      return { ok: true, msg: '' };
-    } catch (e) {
-      return { ok: false, msg: String(e) };
-    }
+    return { ok: jsonValidateWithVars(value) };
   }, [language, value]);
   const lines = (value.match(/\n/g) ?? []).length + 1;
   const gutter = Array.from({ length: lines }, (_, index) => index + 1).join('\n');
   function format() {
-    try { onChange(JSON.stringify(JSON.parse(value), null, 2)); } catch {}
+    const formatted = jsonFormatWithVars(value);
+    if (formatted != null) onChange(formatted);
   }
   function copy() {
     navigator.clipboard?.writeText(value).then(() => {

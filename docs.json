@@ -6,11 +6,11 @@
     "dark": "/assets/brand/trellis-wordmark-dark.svg",
     "light": "/assets/brand/trellis-wordmark.svg"
   },
-  "favicon": "/assets/brand/trellis-mark.svg",
+  "favicon": "/assets/brand/trellis-app-icon.svg",
   "colors": {
-    "primary": "#059669",
-    "light": "#10b981",
-    "dark": "#047857"
+    "primary": "#5b6cff",
+    "light": "#7c8cff",
+    "dark": "#4754d9"
   },
   "navbar": {
     "links": [
@@ -28,11 +28,18 @@
         "tab": "Documentation",
         "groups": [
           {
-            "group": "Get started",
-            "pages": ["docs/introduction", "docs/quickstart", "docs/installation"]
+            "group": "Start here",
+            "pages": [
+              "docs/introduction",
+              "docs/quickstart",
+              "docs/guides/vibe-coding",
+              "docs/guides/web-preview",
+              "docs/guides/ai-agents",
+              "docs/installation"
+            ]
           },
           {
-            "group": "Essentials",
+            "group": "Build specs",
             "pages": [
               "docs/essentials/endpoint-files",
               "docs/essentials/pipelines",
@@ -41,10 +48,8 @@
             ]
           },
           {
-            "group": "Guides",
+            "group": "Adopt Trellis",
             "pages": [
-              "docs/guides/ai-agents",
-              "docs/guides/web-preview",
               "docs/guides/ci-cd",
               "docs/guides/migration"
             ]

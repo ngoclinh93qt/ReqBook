@@ -1,139 +1,171 @@
 ---
 title: "Quickstart"
-description: "Install Trellis and execute your first API endpoint in under 5 minutes."
+description: "Install Trellis, open the web UI, and run your first agent-friendly API spec."
 icon: "rocket"
 ---
 
-## Prerequisites
+# Quickstart
 
-Trellis requires **Rust 1.75+** if you install via Cargo, or **macOS / Linux with `curl` and `sh`** if you use the shell installer.
+This path is for a developer who wants Trellis working with a coding agent and a browser UI in a few minutes. The terminal is still there for automation, but it is not the only interface.
+
+---
+
+## 1. Install Trellis
+
+<Tabs>
+  <Tab title="Shell installer">
+    ```bash
+    curl -fsSL https://trellis.dev/install.sh | sh
+    ```
+  </Tab>
+  <Tab title="Cargo">
+    ```bash
+    cargo install trellis
+    ```
+  </Tab>
+  <Tab title="npm wrapper">
+    ```bash
+    npm install -g trellis-md
+    ```
+  </Tab>
+</Tabs>
+
+Verify the install:
+
+```bash
+trellis version
+```
+
+---
+
+## 2. Create a project
+
+```bash
+mkdir my-api && cd my-api
+trellis init --name=my-api --dev-url=https://jsonplaceholder.typicode.com --yes
+```
+
+Trellis creates:
+
+```text
+api-docs/
+├── README.md
+├── trellis.md
+├── _shared/
+│   └── env.md
+├── apis/
+│   └── posts/
+│       └── get-posts.md
+└── flows/
+.gitignore
+```
+
+The generated endpoint uses JSONPlaceholder, so it can run immediately.
+
+---
+
+## 3. Open the web UI
+
+```bash
+trellis serve
+```
+
+Open `http://127.0.0.1:8080`.
+
+Use the browser UI to:
+
+- browse endpoint files,
+- switch environments,
+- fill path params such as `postId`,
+- add runtime-only headers or body overrides,
+- run requests and inspect formatted responses,
+- import an endpoint from cURL,
+- open the flow canvas.
 
 <Note>
-  Additional install methods — Homebrew, npm, Docker, and Windows MSI — are covered in the [Installation](/docs/installation) page.
+  Runtime fields in the request builder are temporary. They do not change markdown files unless you switch to edit mode and save.
 </Note>
 
 ---
 
-## Get up and running
+## 4. Run the same spec from the terminal
 
-<Steps>
-  <Step title="Install Trellis">
-    Choose your preferred install method:
+```bash
+trellis exec api-docs/apis/posts/get-posts.md --env=dev
+```
 
-    <Tabs>
-      <Tab title="Shell installer">
-        ```bash
-        curl -fsSL https://trellis.dev/install.sh | sh
-        ```
+Expected output:
 
-        The installer places `trellis` in `~/.local/bin` and prints instructions to add it to your PATH if needed.
-      </Tab>
-      <Tab title="Cargo">
-        ```bash
-        cargo install trellis
-        ```
+```text
+GET https://jsonplaceholder.typicode.com/posts/1
+status: 200
+duration: 180ms
+```
 
-        Requires Rust 1.75 or later. Run `rustup update` if you need to upgrade.
-      </Tab>
-    </Tabs>
+Dry-run shows the resolved request without sending it:
 
-    Verify the install:
+```bash
+trellis exec api-docs/apis/posts/get-posts.md --env=dev --dry-run
+```
 
-    ```bash
-    trellis version
-    # 1.0.0
-    ```
-  </Step>
+```text
+GET https://jsonplaceholder.typicode.com/posts/1
+status: DRY RUN
+duration: 0ms
+headers:
+  accept: application/json
+```
 
-  <Step title="Create a project">
-    Scaffold a new Trellis project in any directory:
+---
 
-    ```bash
-    mkdir my-api && cd my-api
-    trellis init --name=my-api --dev-url=http://localhost:8080
-    ```
+## 5. Install agent skills
 
-    This creates the following structure:
+```bash
+trellis skills install
+```
 
-    ```
-    api-docs/
-    ├── README.md
-    ├── trellis.md
-    ├── _shared/env.md
-    ├── apis/posts/get-posts.md
-    └── flows/
-    .gitignore
-    ```
+Or choose one agent:
 
-    The `trellis.md` file is your project configuration. The `_shared/env.md` file holds non-secret environment variables. The generated `get-posts.md` example targets [JSONPlaceholder](https://jsonplaceholder.typicode.com) so you can run it immediately without a local server.
+```bash
+trellis skills install --agent=claude-code
+trellis skills install --agent=cursor
+trellis skills install --agent=copilot
+```
 
-    {/* TODO: screenshot of terminal after trellis init showing created files */}
-  </Step>
+Now you can ask your coding agent:
 
-  <Step title="Validate your specs">
-    Check that all endpoint files are well-formed before executing anything:
+```text
+Add a Trellis spec for GET /users/:userId and validate it.
+```
 
-    ```bash
-    trellis validate api-docs/
-    ```
+Or:
 
-    Expected output:
+```text
+Create a flow that gets a post, captures userId, then gets that user.
+```
 
-    ```
-    valid: api-docs/ (2 markdown files, 8ms)
-    ```
+---
 
-    <Tip>
-      Run `trellis validate` in CI as a fast pre-flight check — it parses every spec and catches malformed frontmatter or missing required sections without sending any HTTP requests.
-    </Tip>
-  </Step>
+## 6. Validate before commit
 
-  <Step title="Execute an endpoint">
-    The scaffolded example uses JSONPlaceholder, so it works immediately without running a local server:
+```bash
+trellis validate api-docs/
+```
 
-    ```bash
-    trellis exec api-docs/apis/posts/get-posts.md --env=dev
-    ```
-
-    Expected output:
-
-    ```
-    GET https://jsonplaceholder.typicode.com/posts
-    status: 200
-    duration: 180ms
-    diff: passed
-    ```
-
-    Trellis resolves the `base_url` variable from `_shared/env.md`, sends the request, and diffs the response against the `## Expected response` section in the file.
-
-    {/* TODO: screenshot of colored terminal output from trellis exec */}
-  </Step>
-
-  <Step title="Open the web preview">
-    Start the local web UI to browse, run, and import specs interactively:
-
-    ```bash
-    trellis serve
-    ```
-
-    Opens [`http://127.0.0.1:8080`](http://127.0.0.1:8080) in your browser. From there you can browse all endpoint files, execute individual requests with the Run button, and import new specs from a curl command.
-
-    {/* TODO: screenshot of trellis serve UI showing the endpoint list and run button */}
-  </Step>
-</Steps>
+Commit the markdown files, not hidden app state.
 
 ---
 
 ## Next steps
 
 <CardGroup cols={3}>
-  <Card title="Write your first endpoint" icon="file-pen" href="/docs/essentials/endpoint-files">
-    Learn the full structure of a Trellis endpoint spec — headers, body, path variables, and assertions.
+  <Card title="Vibe coding workflow" icon="bot" href="/docs/guides/vibe-coding">
+    Use Trellis as the API execution layer for coding agents.
   </Card>
-  <Card title="Chain endpoints into a pipeline" icon="workflow" href="/docs/essentials/pipelines">
-    Capture values from one response and inject them into the next request to model real user flows.
+  <Card title="Web preview" icon="monitor" href="/docs/guides/web-preview">
+    Learn the UI for request tweaks, response inspection, cURL import, and flow editing.
   </Card>
-  <Card title="Set up AI agent skills" icon="bot" href="/docs/guides/ai-agents">
-    Install Trellis skills for Claude Code, Cursor, or GitHub Copilot so agents can author and run specs.
+  <Card title="AI agent integration" icon="cpu" href="/docs/guides/ai-agents">
+    Install skills, slash commands, and MCP tools for supported agents.
   </Card>
 </CardGroup>

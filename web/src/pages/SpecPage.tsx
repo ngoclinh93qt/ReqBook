@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { saveRun } from '../hooks/useRunResults';
 import type { ExecResult, RuntimeExecOptions, SpecData, VarsData } from '../types';
 import { Icon, JsonEditor, MethodBadge, parseRequest, PathStr, highlight, uniqueMatches } from '../ui';
 
@@ -69,6 +70,7 @@ export function SpecPage({ env, varsData, browserVars }: {
     <div className="spec-wrap">
       <header className="spec-head">
         <div className="top-row">
+          <button className="btn ghost sm back-btn" onClick={() => navigate('/')}>← Back</button>
           <MethodBadge method={spec.method} />
           <span className="file-chip">{spec.rel_path}</span>
           <div className="top-actions">
@@ -160,6 +162,23 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     setResult(null);
   }, [detectedParams, detectedVars, parsed.body, parsed.headers, setResult, spec.rel_path]);
 
+  // Auto-detect vars typed into body / headers / params and add them to varRows
+  useEffect(() => {
+    const allText = [
+      bodyDirty ? bodyText : '',
+      ...headerRows.map(row => row.value),
+      ...paramRows.map(row => row.value),
+    ].join('\n');
+    const found = uniqueMatches(allText, /\{\{([a-zA-Z0-9_]+)\}\}/g);
+    if (found.length === 0) return;
+    setVarRows(rows => {
+      const existing = new Set(rows.map(r => r.name));
+      const missing = found.filter(name => !existing.has(name));
+      if (missing.length === 0) return rows;
+      return [...rows, ...missing.map(name => ({ id: rid(), name, override: '', locked: false }))];
+    });
+  }, [bodyDirty, bodyText, headerRows, paramRows]);
+
   function valueOf(row: VarRow) {
     if (row.override) return { value: row.override, src: 'runtime' };
     if (browserVars[row.name] != null) return { value: browserVars[row.name], src: 'browser' };
@@ -169,7 +188,7 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
 
   function buildOptions(): RuntimeExecOptions {
     const vars = Object.fromEntries(varRows.filter(row => row.name).map(row => [row.name, valueOf(row).value]));
-    const path_params = Object.fromEntries(paramRows.filter(row => row.name && row.value).map(row => [row.name, row.value]));
+    const path_params = Object.fromEntries(paramRows.filter(row => row.name && row.value).map(row => [row.name, resolve(row.value)]));
     const headers = Object.fromEntries(headerRows.filter(row => row.enabled && row.name).map(row => [row.name, resolve(row.value)]));
     return { vars, path_params, headers, body: bodyDirty ? bodyText : undefined };
   }
@@ -187,9 +206,15 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     setResult(null);
     try {
       const execution = await api.execSpec(relPath, buildOptions());
+      saveRun(relPath, {
+        status: execution.response?.status ?? null,
+        passed: execution.diff.passed,
+        duration_ms: execution.duration_ms,
+      });
       setResult(execution);
       setResultTab('diff');
     } catch (e) {
+      saveRun(relPath, { status: null, passed: false, duration_ms: 0 });
       setResult({ duration_ms: 0, diff: { passed: false }, error: String(e) });
       setResultTab('diff');
     } finally {

@@ -1,105 +1,136 @@
 ---
 title: "Introduction"
-description: "Trellis is a markdown-native API spec system — write endpoint specs as markdown files, execute them with the Rust CLI, test in CI, and let AI agents author and run them."
+description: "Trellis is a local-first, markdown-native API workspace for vibe coding: agents can author and run specs, developers can use the browser UI, and CI can validate the same files."
 ---
 
-# Markdown-native API specs that execute, validate, and teach AI agents.
+<img src="/assets/brand/trellis-wordmark.svg" alt="Trellis" width="260" />
+
+# API specs for vibe coding agents and the developers who review them.
+
+Trellis turns API work into plain markdown files that your coding agent can understand, your browser can preview, and your CI can validate. The goal is simple: describe an API once, then let humans, agents, the web UI, and terminal commands all work from the same source.
 
 <CardGroup cols={2}>
+  <Card title="Start with vibe coding" icon="bot" href="/docs/guides/vibe-coding">
+    Ask an agent to document a route, run it, fix missing variables, or chain endpoints into a flow.
+  </Card>
+  <Card title="Open the web UI" icon="monitor" href="/docs/guides/web-preview">
+    Browse specs, tune params and headers, execute requests, inspect responses, and edit markdown when you want to persist changes.
+  </Card>
   <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
-    Install Trellis and run your first endpoint in under 5 minutes.
+    Install Trellis, create a project, run a request, and open the local preview.
   </Card>
-  <Card title="Endpoint files" icon="file-code" href="/docs/essentials/endpoint-files">
-    Learn the structure of a Trellis endpoint spec file.
-  </Card>
-  <Card title="Pipelines" icon="workflow" href="/docs/essentials/pipelines">
-    Chain endpoints together, capture values, and inject them between steps.
-  </Card>
-  <Card title="AI agent skills" icon="bot" href="/docs/guides/ai-agents">
-    Install Trellis skills for Claude Code, Cursor, and GitHub Copilot.
+  <Card title="AI agent integration" icon="cpu" href="/docs/guides/ai-agents">
+    Install skills and MCP tools for Claude Code, Codex CLI, Cursor, Copilot, Antigravity, and OpenCode.
   </Card>
 </CardGroup>
 
 ---
 
-## What is Trellis?
+## Why Trellis exists
 
-Trellis stores API specs as plain markdown files — the same files that developers read are the files the CLI executes. There is no separate schema format, no generated client, and no proprietary runtime. If you can open a text editor, you can write a Trellis spec.
+Modern API work is no longer only a person clicking a request builder. A coding agent may discover a route, create the spec, run the endpoint, capture an ID, connect it into a workflow, and explain the failure. That workflow breaks down when the API tool stores state in a private app database or a format agents cannot reason about.
 
-The same markdown file is read by four consumers at once: the Rust CLI runs it as an HTTP request, the browser UI renders and executes it interactively, AI agents author and invoke it via installed skills, and CI validates it against your live API on every push. All four share a single source of truth.
+Trellis keeps the source of truth in markdown:
 
-Trellis is designed to stay out of your way. It is a single static binary with no cloud dependency, no signup, and no lock-in. Your specs are markdown — they will be readable long after any tool is gone.
+- Endpoint specs live in `api-docs/apis/<resource>/<method>-<slug>.md`.
+- Workflows live in `api-docs/flows/<flow>.md`.
+- Environment values live in `api-docs/_shared/env.md`.
+- Project settings live in `api-docs/trellis.md`.
 
-{/* TODO: screenshot of trellis serve web preview showing endpoint list */}
+The same files are read by:
+
+- the browser UI for interactive execution and editing,
+- the Rust CLI for automation and CI,
+- AI agent skills and MCP tools for vibe coding,
+- humans in pull requests.
 
 ---
 
-## Key features
+## What you can do
 
 <CardGroup cols={3}>
-  <Card title="Executable markdown" icon="play">
-    Endpoint files are documentation AND runnable HTTP requests. The `## Request` section defines the call; `## Expected response` defines the assertion. No duplication.
+  <Card title="Use the browser UI" icon="monitor">
+    Browse endpoint files, edit markdown, override runtime params and headers, format responses, import cURL, and design flows visually.
   </Card>
-  <Card title="Pipeline flows" icon="git-merge">
-    Chain endpoints into multi-step flows. Capture values from one response and inject them as variables into the next request — auth tokens, resource IDs, pagination cursors.
+  <Card title="Let agents do API work" icon="bot">
+    Installed skills teach agents where specs live, how to validate them, when to run endpoints, and how to create workflows safely.
   </Card>
-  <Card title="Variable system" icon="variable">
-    Six-level priority resolution: pipeline overrides CLI overrides frontmatter overrides `env.md` overrides `.env.local` overrides `TRELLIS_*` environment variables. Predictable, explicit, no surprises.
+  <Card title="Keep specs reviewable" icon="git-pull-request">
+    Specs are markdown files in your repo. Every API change can be reviewed, diffed, reverted, and tested like code.
   </Card>
-  <Card title="Secret detection" icon="shield-alert">
-    The parser detects API keys, tokens, and credentials before any request is made. If a secret is found in a versioned file, Trellis exits with code 5 — nothing is sent to the network.
+  <Card title="Run real requests" icon="play">
+    Trellis resolves variables, path params, headers, and request bodies, sends the HTTP request, and diffs the result against the expected response.
   </Card>
-  <Card title="AI-native skills" icon="cpu">
-    One command installs Trellis skills for Claude Code, Cursor, or GitHub Copilot. Agents can author specs, execute endpoints, and run pipelines without leaving their context.
+  <Card title="Build flows" icon="workflow">
+    Capture values such as IDs or tokens from one response and inject them into later endpoint steps.
   </Card>
-  <Card title="Local-first" icon="hard-drive">
-    A single Rust binary. No cloud, no signup, no proprietary format. Your specs are markdown files in your repo — version them, diff them, review them like any other code.
+  <Card title="Stay local-first" icon="hard-drive">
+    A single Rust binary. No hosted workspace, no signup, no cloud dependency, and no proprietary project format.
   </Card>
 </CardGroup>
 
 ---
 
-## How it works
+## Typical vibe coding loop
 
 <Steps>
-  <Step title="Write a markdown spec">
-    Create an endpoint file with a `## Request` section describing the HTTP call and an `## Expected response` section defining what a successful response looks like.
+  <Step title="Ask your agent to add or scan API specs">
+    Use a prompt such as:
 
-    ````markdown filename="api-docs/apis/posts/get-posts.md"
-    ---
-    title: Get posts
-    method: GET
-    url: "{{base_url}}/posts"
-    ---
-
-    ## Request
-
-    No request body.
-
-    ## Expected response
-
-    ```json
-    [{ "id": 1, "title": "..." }]
+    ```text
+    Scan this project for API routes and add missing Trellis specs.
     ```
-    ````
+
+    Or:
+
+    ```text
+    Document POST /orders and make it runnable in Trellis.
+    ```
   </Step>
-  <Step title="Execute with the CLI">
-    Pass the file to `trellis exec` with the target environment. Trellis resolves all variables, sends the request, and diffs the response against your expected shape.
+
+  <Step title="Review in the web UI">
+    Start the local preview:
 
     ```bash
-    trellis exec api-docs/apis/posts/get-posts.md --env=dev
+    trellis serve
     ```
-  </Step>
-  <Step title="Get a pass/fail diff">
-    The CLI prints a structured result: HTTP status, response time, and a field-level diff showing exactly which parts of the response matched or diverged from your spec.
 
+    Use the UI to inspect the generated markdown, try runtime-only params or headers, run the request, and compare the response.
+  </Step>
+
+  <Step title="Turn endpoints into a workflow">
+    Ask the agent to connect specs:
+
+    ```text
+    Create a checkout flow: create customer, create order, capture orderId, then fetch the order.
     ```
-    GET https://jsonplaceholder.typicode.com/posts
-    status: 200
-    duration: 180ms
-    diff: passed
+
+    Trellis stores the workflow as markdown under `api-docs/flows/`, and the web canvas can edit the same file.
+  </Step>
+
+  <Step title="Commit markdown, not hidden state">
+    Run validation before commit:
+
+    ```bash
+    trellis validate api-docs/
     ```
+
+    Review the changed markdown files in your PR.
   </Step>
 </Steps>
 
-{/* TODO: GIF of terminal showing trellis exec running and returning 200 */}
+---
+
+## Where to go next
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
+    Build the first project and run a public API request.
+  </Card>
+  <Card title="Vibe coding workflow" icon="bot" href="/docs/guides/vibe-coding">
+    Learn how to use Trellis with coding agents as the primary interface.
+  </Card>
+  <Card title="Web preview" icon="monitor" href="/docs/guides/web-preview">
+    Learn the browser UI: runtime params, response panel, flow canvas, and cURL import.
+  </Card>
+</CardGroup>

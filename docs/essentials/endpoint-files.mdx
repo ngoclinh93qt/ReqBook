@@ -8,7 +8,17 @@ icon: "file-text"
 
 An endpoint file is a `.md` file that serves as both documentation and an executable HTTP request. The CLI, web preview, CI, and AI agents all read the same file — there is no separate schema, generated client, or runtime artifact.
 
-{/* TODO: annotated diagram of an endpoint file anatomy showing frontmatter, Request, Expected response sections */}
+<CardGroup cols={3}>
+  <Card title="Browser UI" icon="monitor">
+    The web preview renders the file, lets you run it, and provides runtime-only params, headers, and body overrides.
+  </Card>
+  <Card title="Coding agents" icon="bot">
+    Agent skills use this structure to create specs safely and validate them before reporting back.
+  </Card>
+  <Card title="Terminal and CI" icon="terminal">
+    `trellis exec` and `trellis validate` read the same markdown file for automation.
+  </Card>
+</CardGroup>
 
 ---
 
@@ -211,15 +221,26 @@ Use this endpoint after login to fetch the current user's profile.
 
 ## Running an endpoint
 
-```bash
-# Basic execution
-trellis exec api-docs/apis/users/get-user-by-id.md
+Use the UI while developing and the CLI when you need automation.
 
-# With environment and variable override
-trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
+<Tabs>
+  <Tab title="Web UI">
+    ```bash
+    trellis serve
+    ```
 
-# Dry run — print the resolved request without sending
-trellis exec api-docs/apis/users/get-user-by-id.md --dry-run
-```
+    Open the endpoint, fill runtime-only params or headers, click Run, and inspect the response panel. The markdown file changes only when you enter edit mode and save.
+  </Tab>
+  <Tab title="CLI">
+    ```bash
+    # Basic execution
+    trellis exec api-docs/apis/users/get-user-by-id.md
 
-{/* TODO: screenshot of trellis exec output showing green 200 status and diff:passed */}
+    # With environment and variable override
+    trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
+
+    # Dry run — print the resolved request without sending
+    trellis exec api-docs/apis/users/get-user-by-id.md --dry-run
+    ```
+  </Tab>
+</Tabs>

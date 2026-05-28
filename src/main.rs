@@ -181,14 +181,25 @@ enum ImportCommand {
     },
     /// Scan project source code for route definitions and import them.
     ///
-    /// Detects routes from Express, FastAPI, Flask, Axum, Actix, Gin, Spring
-    /// Boot, Laravel, Rails, ASP.NET Core, NestJS, Hono, and more.
+    /// Import priority:
+    ///   1. --url  Fetch spec from an explicit URL.
+    ///   2. Static OpenAPI/Swagger file found in the project (openapi.yaml, etc.)
+    ///   3. Running dev server probed on localhost (--port or framework default)
+    ///   4. Regex-based source-code scan (fallback, method+path only)
     ///
     /// Example: trellis import project
-    /// Example: trellis import project ./src
+    /// Example: trellis import project ./src --port 8000
+    /// Example: trellis import project --url http://localhost:8000/openapi.json
     Project {
         /// Root directory to scan (default: current directory).
         path: Option<PathBuf>,
+        /// Port of a running development server to probe for an OpenAPI spec.
+        /// If omitted, common framework defaults (8000, 8080, 3000 …) are tried.
+        #[arg(long)]
+        port: Option<u16>,
+        /// Explicit OpenAPI/Swagger spec URL.  Skips all other strategies when set.
+        #[arg(long)]
+        url: Option<String>,
     },
 }
 
@@ -199,6 +210,9 @@ enum SkillsCommand {
         /// Agent name.
         #[arg(long)]
         agent: Option<String>,
+        /// Install only one specific skill by name (e.g. trellis-sync, trellis-debug).
+        #[arg(long)]
+        skill: Option<String>,
     },
     /// List detected agents and skill status.
     List,
@@ -207,6 +221,9 @@ enum SkillsCommand {
         /// Agent name.
         #[arg(long)]
         agent: Option<String>,
+        /// Uninstall only one specific skill by name.
+        #[arg(long)]
+        skill: Option<String>,
     },
 }
 
@@ -230,7 +247,7 @@ async fn main() -> Result<()> {
         Command::Exec(args) => exec(args).await?,
         Command::Flow(args) => flow(args).await?,
         Command::Index => regenerate_index(Path::new("api-docs"))?,
-        Command::Import { command } => import(command)?,
+        Command::Import { command } => import(command).await?,
         Command::Skills { command } => skills(command)?,
         Command::Serve(args) => serve(args).await?,
         Command::Mock(args) => mock(args).await?,
@@ -857,10 +874,8 @@ fn check_skills_freshness(fix: bool) {
 
     // Skill slugs embedded in this binary (must stay in sync with installer).
     let embedded: &[(&str, &str)] = &[
-        ("trellis-author", include_str!("../skills/trellis-author/SKILL.md")),
-        ("trellis-exec",   include_str!("../skills/trellis-exec/SKILL.md")),
-        ("trellis-flow",   include_str!("../skills/trellis-flow/SKILL.md")),
-        ("trellis-workflow", include_str!("../skills/trellis-workflow/SKILL.md")),
+        ("trellis-sync",  include_str!("../skills/trellis-sync/SKILL.md")),
+        ("trellis-debug", include_str!("../skills/trellis-debug/SKILL.md")),
     ];
 
     let mut stale: Vec<&str> = Vec::new();
@@ -912,7 +927,7 @@ fn check(label: &str, ok: bool) {
     }
 }
 
-fn import(command: ImportCommand) -> Result<()> {
+async fn import(command: ImportCommand) -> Result<()> {
     match command {
         ImportCommand::Postman { file } => run_import(
             &file,
@@ -955,30 +970,84 @@ fn import(command: ImportCommand) -> Result<()> {
             }
             Ok(())
         }
-        ImportCommand::Project { path } => {
+        ImportCommand::Project { path, port, url } => {
+            use trellis::importer::project::{ImportSource, smart_import};
+
             let root = path.unwrap_or_else(|| Path::new(".").to_path_buf());
             let started = std::time::Instant::now();
-            println!("Scanning {} for route definitions…", root.display());
-            let (name, endpoints) = trellis::importer::project::import(&root)
-                .with_context(|| format!("scanning {}", root.display()))?;
+
+            println!("Importing from {} …", root.display());
+
+            let (name, endpoints, source) =
+                smart_import(&root, port, url.as_deref())
+                    .await
+                    .with_context(|| format!("importing from {}", root.display()))?;
+
+            // ── Source banner ──────────────────────────────────────────────
+            match &source {
+                ImportSource::StaticFile(p) => {
+                    println!(
+                        "{} Found OpenAPI spec: {} (full params/body/responses)",
+                        "✓".green(),
+                        p.display()
+                    );
+                }
+                ImportSource::RunningServer(u) => {
+                    println!(
+                        "{} Fetched live spec from {} (full params/body/responses)",
+                        "✓".green(),
+                        u
+                    );
+                }
+                ImportSource::StaticScan(fw) => {
+                    println!(
+                        "{} No OpenAPI spec found — used static code scan (method + path only)",
+                        "⚠".yellow()
+                    );
+                    if let Some(fw) = fw {
+                        println!("  Detected framework: {}", fw.name);
+                        if !fw.export_cmd.is_empty() {
+                            println!();
+                            println!(
+                                "  Tip: export a full spec without starting a server:"
+                            );
+                            println!("    {}", fw.export_cmd);
+                            println!(
+                                "  Then: trellis import openapi openapi.json"
+                            );
+                            println!();
+                        } else {
+                            println!();
+                            println!(
+                                "  Tip: start your dev server and re-run:"
+                            );
+                            println!(
+                                "    trellis import project --port <PORT>"
+                            );
+                            println!();
+                        }
+                    }
+                }
+            }
+
             if endpoints.is_empty() {
                 println!(
-                    "no routes found in {} ({}ms)",
-                    root.display(),
+                    "no routes found ({}ms)",
                     started.elapsed().as_millis()
                 );
-                println!("Tip: run from a directory that contains source code, or specify a path.");
+                println!("Tip: run from a directory containing source code, or use --url.");
                 return Ok(());
             }
+
             let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
             println!(
-                "scanned {} ({}ms) — {} route(s) found",
+                "imported {} — {} route(s) found ({}ms)",
                 name,
-                started.elapsed().as_millis(),
-                endpoints.len()
+                endpoints.len(),
+                started.elapsed().as_millis()
             );
-            for path in &written {
-                println!("  created {}", path.display());
+            for p in &written {
+                println!("  created {}", p.display());
             }
             let skipped = endpoints.len() - written.len();
             if skipped > 0 {
@@ -988,7 +1057,8 @@ fn import(command: ImportCommand) -> Result<()> {
             if !written.is_empty() {
                 regenerate_index(Path::new("api-docs"))?;
                 println!(
-                    "Next: set baseUrl in api-docs/_shared/env.md, then run `trellis validate api-docs/`"
+                    "Next: set baseUrl in api-docs/_shared/env.md, \
+                     then run `trellis validate api-docs/`"
                 );
             }
             Ok(())
@@ -1031,8 +1101,12 @@ fn skills(command: SkillsCommand) -> Result<()> {
 
     #[cfg(feature = "install")]
     match command {
-        SkillsCommand::Install { agent } => {
-            let installed = trellis::installer::install(Path::new("."), agent.as_deref())?;
+        SkillsCommand::Install { agent, skill } => {
+            let installed = if let Some(skill_name) = skill {
+                trellis::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
+            } else {
+                trellis::installer::install(Path::new("."), agent.as_deref())?
+            };
             for file in installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
             }
@@ -1052,10 +1126,14 @@ fn skills(command: SkillsCommand) -> Result<()> {
             }
             Ok(())
         }
-        SkillsCommand::Uninstall { agent } => {
-            let removed = trellis::installer::uninstall(Path::new("."), agent.as_deref())?;
+        SkillsCommand::Uninstall { agent, skill } => {
+            let removed = if let Some(skill_name) = skill {
+                trellis::installer::uninstall_skill(Path::new("."), agent.as_deref(), &skill_name)?
+            } else {
+                trellis::installer::uninstall(Path::new("."), agent.as_deref())?
+            };
             for path in removed {
-                println!("removed {}", path.display());
+                println!("removed: {}", path.display());
             }
             Ok(())
         }
