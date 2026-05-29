@@ -10,7 +10,7 @@ use thiserror::Error;
 use tokio::time::{sleep, Duration};
 
 use crate::{
-    parser::{Endpoint, HttpMethod, Protocol},
+    parser::{Assertion, AssertionOp, Endpoint, HttpMethod, Protocol},
     resolver::{mask, resolve, Context, ResolveError},
 };
 
@@ -28,6 +28,17 @@ pub struct ExecOpts {
     pub dry_run: bool,
 }
 
+/// Result of evaluating a single assertion rule.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AssertionResult {
+    /// Human-readable rule description.
+    pub rule: String,
+    /// Whether the assertion passed.
+    pub passed: bool,
+    /// Details about the result.
+    pub message: String,
+}
+
 /// Captured execution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Execution {
@@ -39,6 +50,9 @@ pub struct Execution {
     pub duration_ms: u128,
     /// Comparison result against expected response.
     pub diff: ResponseDiff,
+    /// Results of structured assertions.
+    #[serde(default)]
+    pub assertion_results: Vec<AssertionResult>,
 }
 
 /// Captured HTTP request.
@@ -196,6 +210,7 @@ pub async fn execute_with_client(
             response: None,
             duration_ms: 0,
             diff: ResponseDiff::default(),
+            assertion_results: Vec::new(),
         });
     }
 
@@ -244,11 +259,14 @@ pub async fn execute_with_client(
                     size: bytes.len(),
                 };
                 let diff = diff_response(&expected, status, &headers, &body);
+                let assertion_results =
+                    evaluate_assertions(&endpoint.assertions, status, &headers, &body);
                 return Ok(Execution {
                     request: captured_request,
                     response: Some(captured_response),
                     duration_ms: started.elapsed().as_millis(),
                     diff,
+                    assertion_results,
                 });
             }
             Err(source) => {
@@ -489,6 +507,129 @@ fn source_path(endpoint: &Endpoint) -> String {
         .source
         .clone()
         .unwrap_or_else(|| "<memory>".to_string())
+}
+
+/// Evaluate structured assertion rules against an actual HTTP response.
+fn evaluate_assertions(
+    assertions: &[Assertion],
+    status: http::StatusCode,
+    headers: &HeaderMap,
+    body: &str,
+) -> Vec<AssertionResult> {
+    if assertions.is_empty() {
+        return Vec::new();
+    }
+    let body_json: Value = serde_json::from_str(body).unwrap_or(Value::Null);
+    let header_map = headers_to_map(headers);
+
+    assertions
+        .iter()
+        .map(|a| evaluate_one(a, status, &header_map, body, &body_json))
+        .collect()
+}
+
+fn evaluate_one(
+    assertion: &Assertion,
+    status: http::StatusCode,
+    headers: &std::collections::BTreeMap<String, String>,
+    body: &str,
+    body_json: &Value,
+) -> AssertionResult {
+    let rule = format!(
+        "{}: {} {}",
+        assertion.path,
+        serde_json::to_string(&assertion.op).unwrap_or_default().trim_matches('"'),
+        assertion.value.as_deref().unwrap_or(""),
+    )
+    .trim()
+    .to_string();
+
+    // Resolve the actual value for the path.
+    let actual: Option<String> = resolve_assertion_path(&assertion.path, status, headers, body, body_json);
+
+    let (passed, message) = match &assertion.op {
+        AssertionOp::Exists => {
+            let ok = actual.as_deref().map(|v| v != "null").unwrap_or(false);
+            (ok, if ok { "exists".to_string() } else { "expected to exist but was absent or null".to_string() })
+        }
+        AssertionOp::Equals => {
+            let expected = assertion.value.as_deref().unwrap_or("");
+            match &actual {
+                Some(v) if v == expected => (true, format!("= {expected}")),
+                Some(v) => (false, format!("expected `{expected}`, got `{v}`")),
+                None => (false, format!("expected `{expected}`, but path was absent")),
+            }
+        }
+        AssertionOp::Contains => {
+            let expected = assertion.value.as_deref().unwrap_or("");
+            match &actual {
+                Some(v) if v.contains(expected) => (true, format!("contains `{expected}`")),
+                Some(v) => (false, format!("expected to contain `{expected}`, got `{v}`")),
+                None => (false, format!("expected to contain `{expected}`, but path was absent")),
+            }
+        }
+        AssertionOp::Matches => {
+            let pattern = assertion.value.as_deref().unwrap_or("");
+            match regex::Regex::new(pattern) {
+                Ok(re) => match &actual {
+                    Some(v) if re.is_match(v) => (true, format!("matches `{pattern}`")),
+                    Some(v) => (false, format!("expected to match `{pattern}`, got `{v}`")),
+                    None => (false, format!("expected to match `{pattern}`, but path was absent")),
+                },
+                Err(e) => (false, format!("invalid regex `{pattern}`: {e}")),
+            }
+        }
+        AssertionOp::In => {
+            let list: Vec<&str> = assertion
+                .value
+                .as_deref()
+                .unwrap_or("")
+                .split(',')
+                .map(str::trim)
+                .collect();
+            match &actual {
+                Some(v) if list.contains(&v.as_str()) => (true, format!("in [{}]", list.join(", "))),
+                Some(v) => (false, format!("expected one of [{}], got `{v}`", list.join(", "))),
+                None => (false, format!("expected one of [{}], but path was absent", list.join(", "))),
+            }
+        }
+    };
+
+    AssertionResult { rule, passed, message }
+}
+
+fn resolve_assertion_path(
+    path: &str,
+    status: http::StatusCode,
+    headers: &std::collections::BTreeMap<String, String>,
+    body: &str,
+    body_json: &Value,
+) -> Option<String> {
+    if path == "status" {
+        return Some(status.as_u16().to_string());
+    }
+    if let Some(header_name) = path.strip_prefix("headers.") {
+        return headers.get(header_name).cloned();
+    }
+    if path == "body" {
+        return Some(body.to_string());
+    }
+    if let Some(json_path) = path.strip_prefix("body.") {
+        return navigate_json(body_json, json_path);
+    }
+    None
+}
+
+fn navigate_json(value: &Value, path: &str) -> Option<String> {
+    let mut current = value;
+    for segment in path.split('.') {
+        current = current.get(segment)?;
+    }
+    match current {
+        Value::Null => Some("null".to_string()),
+        Value::String(s) => Some(s.clone()),
+        other => Some(other.to_string()),
+    }
 }
 
 impl From<HttpMethod> for Method {

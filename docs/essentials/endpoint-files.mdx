@@ -6,18 +6,18 @@ icon: "file-lines"
 
 ## What is an endpoint file?
 
-An endpoint file is a `.md` file that serves as both documentation and an executable HTTP request. The CLI, web preview, CI, and AI agents all read the same file — there is no separate schema, generated client, or runtime artifact.
+An endpoint file is a `.md` file that serves as both documentation and an executable HTTP request. The CLI, web preview, CI, and AI agents all read the same file there is no separate schema, generated client, or runtime artifact.
 
 <CardGroup cols={3}>
-  <Card title="Browser UI" icon="desktop">
-    The web preview renders the file, lets you run it, and provides runtime-only params, headers, and body overrides.
-  </Card>
-  <Card title="Coding agents" icon="robot">
-    Agent skills use this structure to create specs safely and validate them before reporting back.
-  </Card>
-  <Card title="Terminal and CI" icon="terminal">
-    `trellis exec` and `trellis validate` read the same markdown file for automation.
-  </Card>
+ <Card title="Browser UI" icon="desktop">
+ The web preview renders the file, lets you run it, and provides runtime-only params, headers, and body overrides.
+ </Card>
+ <Card title="Coding agents" icon="robot">
+ Agent skills use this structure to create specs safely and validate them before reporting back.
+ </Card>
+ <Card title="Terminal and CI" icon="terminal">
+ `trellis exec` and `trellis validate` read the same markdown file for automation.
+ </Card>
 </CardGroup>
 
 ---
@@ -51,19 +51,19 @@ env: [dev, staging, prod]
 auth: bearer
 timeout: 5000
 retry:
-  attempts: 0
-  backoff: fixed
+ attempts: 0
+ backoff: fixed
 ---
 ```
 
 | Field | Required | Type | Description | Default |
 |---|---|---|---|---|
-| `resource` | yes | string | Resource group and folder name | — |
-| `protocol` | yes | enum | `http`, `ws`, or `sse`. Only `http` executes in v1.0.0 | — |
-| `method` | yes | enum | `GET` `POST` `PUT` `PATCH` `DELETE` `HEAD` `OPTIONS` | — |
-| `path` | yes | string | Path with `:param` for path params | — |
+| `resource` | yes | string | Resource group and folder name | |
+| `protocol` | yes | enum | `http`, `ws`, or `sse`. Only `http` executes in v1.0.0 | |
+| `method` | yes | enum | `GET` `POST` `PUT` `PATCH` `DELETE` `HEAD` `OPTIONS` | |
+| `path` | yes | string | Path with `:param` for path params | |
 | `tags` | no | string[] | Searchable labels shown in web preview and reports | `[]` |
-| `version` | yes | integer | Spec version (must be `1`) | — |
+| `version` | yes | integer | Spec version (must be `1`) | |
 | `env` | no | string[] | Environments where this endpoint is valid. Empty = all | `[]` |
 | `auth` | no | enum | `none` / `bearer` / `basic` / `custom` | project default |
 | `timeout` | no | integer (ms) | Per-request timeout in milliseconds | `5000` |
@@ -71,7 +71,7 @@ retry:
 | `retry.backoff` | no | enum | `fixed` or `exponential` | `fixed` |
 
 <Note>
-  Unknown frontmatter keys produce a warning and are ignored. This forward-compatible behavior means future Trellis versions can introduce new fields without breaking existing spec files.
+ Unknown frontmatter keys produce a warning and are ignored. This forward-compatible behavior means future Trellis versions can introduce new fields without breaking existing spec files.
 </Note>
 
 ---
@@ -89,7 +89,7 @@ POST https://api.example.com/users
 ```
 
 <Note>
-  Relative URLs are resolved against the selected environment's `baseUrl` from `api-docs/_shared/env.md`. Absolute URLs are used as-is.
+ Relative URLs are resolved against the selected environment's `baseUrl` from `api-docs/_shared/env.md`. Absolute URLs are used as-is.
 </Note>
 
 ### Full request with headers and body
@@ -101,8 +101,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "{{email}}",
-  "name": "{{name}}"
+ "email": "{{email}}",
+ "name": "{{name}}"
 }
 ```
 
@@ -117,7 +117,7 @@ Accept: application/json
 | Part | Comparison |
 |---|---|
 | Status | Strict equality |
-| Headers | Subset match — listed headers must be present; extra response headers are allowed |
+| Headers | Subset match listed headers must be present; extra response headers are allowed |
 | Body | JSON shape when both sides are valid JSON; exact string match otherwise |
 
 ### Example
@@ -127,8 +127,8 @@ HTTP/1.1 201 Created
 Content-Type: application/json
 
 {
-  "id": "usr_123",
-  "email": "user@example.com"
+ "id": "usr_123",
+ "email": "user@example.com"
 }
 ```
 
@@ -146,34 +146,61 @@ HTTP/1.1 404 Not Found
 Content-Type: application/json
 
 {
-  "error": "not_found",
-  "message": "User not found"
+ "error": "not_found",
+ "message": "User not found"
 }
 ```
 ````
 
 <Note>
-  Trellis v1.0.0 executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
+ Trellis v1.0.0 executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
 </Note>
+
+---
+
+## The Assertions block (optional)
+
+`## Assertions` contains structured rules that Trellis evaluates after each execution. Results appear in `trellis_exec` output as `assertion_results`.
+
+````markdown
+## Assertions
+- status: 201
+- body.id: exists
+- body.email: equals "ada@example.com"
+- body.role: in [admin, user]
+- headers.content-type: contains application/json
+- body.slug: matches ^[a-z-]+$
+````
+
+Supported operators:
+
+| Operator | Example | Description |
+|---|---|---|
+| `exists` | `body.id: exists` | Field is present and non-null |
+| `equals` | `status: 201` or `body.name: equals "Ada"` | Exact match |
+| `contains` | `headers.content-type: contains json` | Substring match |
+| `in` | `body.role: in [admin, user]` | Value is one of a list |
+| `matches` | `body.slug: matches ^[a-z-]+$` | Regex match |
+
+Paths follow the format `status`, `body.<field>.<nested>`, or `headers.<name>`.
 
 ---
 
 ## The Tests block (optional)
 
-`## Tests` contains an `agent-task` fenced code block with a checklist of validation instructions for humans and AI agents.
+`## Tests` contains an `agent-task` fenced code block with freeform validation instructions for AI agents. Use this for edge cases that can't be expressed as structured assertions.
 
 ````markdown
 ## Tests
 
 ```agent-task
-- Verify the response status is 201.
-- Verify response.body.id is present.
 - Verify duplicate email returns 409.
+- Verify the response time is under 200ms under normal load.
 ```
 ````
 
 <Note>
-  Trellis v1.0.0 does not execute `agent-task` code. The block is read by AI agents as instructions and reviewed by humans during development and code review.
+ Trellis does not execute `agent-task` code. The block is read by AI agents as instructions.
 </Note>
 
 ---
@@ -198,8 +225,8 @@ env: [dev, staging]
 auth: bearer
 timeout: 5000
 retry:
-  attempts: 0
-  backoff: fixed
+ attempts: 0
+ backoff: fixed
 ---
 
 # Get user by id
@@ -221,9 +248,9 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "id": "usr_123",
-  "name": "Ada Lovelace",
-  "email": "ada@example.com"
+ "id": "usr_123",
+ "name": "Ada Lovelace",
+ "email": "ada@example.com"
 }
 ```
 
@@ -248,23 +275,23 @@ Use this endpoint after login to fetch the current user's profile.
 Use the UI while developing and the CLI when you need automation.
 
 <Tabs>
-  <Tab title="Web UI">
-    ```bash
-    trellis serve
-    ```
+ <Tab title="Web UI">
+ ```bash
+ trellis serve
+ ```
 
-    Open the endpoint, fill runtime-only params or headers, click Run, and inspect the response panel. The markdown file changes only when you enter edit mode and save.
-  </Tab>
-  <Tab title="CLI">
-    ```bash
-    # Basic execution
-    trellis exec api-docs/apis/users/get-user-by-id.md
+ Open the endpoint, fill runtime-only params or headers, click Run, and inspect the response panel. The markdown file changes only when you enter edit mode and save.
+ </Tab>
+ <Tab title="CLI">
+ ```bash
+ # Basic execution
+ trellis exec api-docs/apis/users/get-user-by-id.md
 
-    # With environment and variable override
-    trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
+ # With environment and variable override
+ trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
 
-    # Dry run — print the resolved request without sending
-    trellis exec api-docs/apis/users/get-user-by-id.md --dry-run
-    ```
-  </Tab>
+ # Dry run print the resolved request without sending
+ trellis exec api-docs/apis/users/get-user-by-id.md --dry-run
+ ```
+ </Tab>
 </Tabs>

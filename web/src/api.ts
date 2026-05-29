@@ -1,4 +1,4 @@
-import type { ExecResult, FlowData, FlowEntry, FlowRunResult, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData } from './types';
+import type { AdHocRequest, AdHocResponse, ExecResult, FlowData, FlowEntry, FlowRunResult, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData } from './types';
 
 const BASE = '/api';
 
@@ -57,6 +57,13 @@ export const api = {
       body: content,
     }).then(r => json<{ status: string }>(r)),
 
+  parseCurl: (curlText: string) =>
+    fetch(`${BASE}/parse-curl`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: curlText,
+    }).then(r => json<{ method: string; url: string; headers: Record<string, string>; body?: string }>(r)),
+
   importCurl: (curlText: string) =>
     fetch(`${BASE}/import/curl`, {
       method: 'POST',
@@ -68,4 +75,11 @@ export const api = {
 
   importProjectRoutes: () =>
     fetch(`${BASE}/scan/project`, { method: 'POST' }).then(r => json<ScanProjectResult>(r)),
+
+  sendRequest: (req: AdHocRequest) =>
+    fetch(`${BASE}/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    }).then(r => json<AdHocResponse>(r)),
 };

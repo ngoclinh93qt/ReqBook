@@ -13,21 +13,21 @@ This path is for a developer who wants Trellis working with a coding agent and a
 ## 1. Install Trellis
 
 <Tabs>
-  <Tab title="Shell installer">
-    ```bash
-    curl -fsSL https://trellis.dev/install.sh | sh
-    ```
-  </Tab>
-  <Tab title="Cargo">
-    ```bash
-    cargo install trellis
-    ```
-  </Tab>
-  <Tab title="npm wrapper">
-    ```bash
-    npm install -g trellis-md
-    ```
-  </Tab>
+ <Tab title="Shell installer">
+ ```bash
+ curl -fsSL https://trellis.dev/install.sh | sh
+ ```
+ </Tab>
+ <Tab title="Cargo">
+ ```bash
+ cargo install trellis
+ ```
+ </Tab>
+ <Tab title="npm wrapper">
+ ```bash
+ npm install -g trellis-md
+ ```
+ </Tab>
 </Tabs>
 
 Verify the install:
@@ -52,10 +52,10 @@ api-docs/
 ├── README.md
 ├── trellis.md
 ├── _shared/
-│   └── env.md
+│ └── env.md
 ├── apis/
-│   └── posts/
-│       └── get-posts.md
+│ └── posts/
+│ └── get-posts.md
 └── flows/
 .gitignore
 ```
@@ -83,7 +83,7 @@ Use the browser UI to:
 - open the flow canvas.
 
 <Note>
-  Runtime fields in the request builder are temporary. They do not change markdown files unless you switch to edit mode and save.
+ Runtime fields in the request builder are temporary. They do not change markdown files unless you switch to edit mode and save.
 </Note>
 
 ---
@@ -113,7 +113,7 @@ GET https://jsonplaceholder.typicode.com/posts/1
 status: DRY RUN
 duration: 0ms
 headers:
-  accept: application/json
+ accept: application/json
 ```
 
 ---
@@ -159,13 +159,13 @@ Commit the markdown files, not hidden app state.
 ## Next steps
 
 <CardGroup cols={3}>
-  <Card title="Set up agent support" icon="robot" href="/docs/agents/setup">
-    Install skills, slash commands, and MCP for Claude Code — the full integration.
-  </Card>
-  <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
-    Learn the browser UI: request tweaks, mock mode, cURL import, flow canvas.
-  </Card>
-  <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
-    Patterns for using Trellis as the API layer in your agent loop.
-  </Card>
+ <Card title="Set up agent support" icon="robot" href="/docs/agents/setup">
+ Install skills, slash commands, and MCP for Claude Code the full integration.
+ </Card>
+ <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
+ Learn the browser UI: request tweaks, mock mode, cURL import, flow canvas.
+ </Card>
+ <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
+ Patterns for using Trellis as the API layer in your agent loop.
+ </Card>
 </CardGroup>

@@ -15,45 +15,45 @@ See the [Exit codes reference](/docs/reference/exit-codes) for a full list of co
 ## GitHub Actions
 
 <Steps>
-  <Step title="Install Trellis">
-    Add a step to download the binary. The install script detects the platform automatically.
+ <Step title="Install Trellis">
+ Add a step to download the binary. The install script detects the platform automatically.
 
-    ```yaml
-    - name: Install Trellis
-      run: curl -fsSL https://trellis.dev/install.sh | sh
-    ```
-  </Step>
-  <Step title="Validate specs">
-    Run `trellis validate` against the entire `api-docs/` directory. Exit code `2` means a spec has a structural error; exit code `5` means a secret was committed.
+ ```yaml
+ - name: Install Trellis
+ run: curl -fsSL https://trellis.dev/install.sh | sh
+ ```
+ </Step>
+ <Step title="Validate specs">
+ Run `trellis validate` against the entire `api-docs/` directory. Exit code `2` means a spec has a structural error; exit code `5` means a secret was committed.
 
-    ```yaml
-    - name: Validate specs
-      run: trellis validate api-docs/
-    ```
-  </Step>
-  <Step title="Run endpoint tests">
-    Pass secrets via `TRELLIS_*` environment variables. They map automatically to camel-case variable names in your specs.
+ ```yaml
+ - name: Validate specs
+ run: trellis validate api-docs/
+ ```
+ </Step>
+ <Step title="Run endpoint tests">
+ Pass secrets via `TRELLIS_*` environment variables. They map automatically to camel-case variable names in your specs.
 
-    ```yaml
-    - name: Run endpoint tests
-      env:
-        TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
-        TRELLIS_BASE_URL: https://staging.example.com
-      run: |
-        trellis exec api-docs/apis/health/get-health.md --env=staging
-        trellis exec api-docs/apis/users/get-users.md --env=staging
-    ```
-  </Step>
-  <Step title="Run pipelines">
-    Use `trellis flow` for multi-step scenarios that chain request captures across endpoints.
+ ```yaml
+ - name: Run endpoint tests
+ env:
+ TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
+ TRELLIS_BASE_URL: https://staging.example.com
+ run: |
+ trellis exec api-docs/apis/health/get-health.md --env=staging
+ trellis exec api-docs/apis/users/get-users.md --env=staging
+ ```
+ </Step>
+ <Step title="Run pipelines">
+ Use `trellis flow` for multi-step scenarios that chain request captures across endpoints.
 
-    ```yaml
-    - name: Run onboarding pipeline
-      env:
-        TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
-      run: trellis flow api-docs/flows/user-onboarding.md --env=staging
-    ```
-  </Step>
+ ```yaml
+ - name: Run onboarding pipeline
+ env:
+ TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
+ run: trellis flow api-docs/flows/user-onboarding.md --env=staging
+ ```
+ </Step>
 </Steps>
 
 ### Full workflow example
@@ -62,36 +62,36 @@ See the [Exit codes reference](/docs/reference/exit-codes) for a full list of co
 name: API spec tests
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - 'api-docs/**'
+ push:
+ branches: [main]
+ pull_request:
+ paths:
+ - 'api-docs/**'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+ test:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v4
 
-      - name: Install Trellis
-        run: curl -fsSL https://trellis.dev/install.sh | sh
+ - name: Install Trellis
+ run: curl -fsSL https://trellis.dev/install.sh | sh
 
-      - name: Validate specs
-        run: trellis validate api-docs/
+ - name: Validate specs
+ run: trellis validate api-docs/
 
-      - name: Run endpoint tests
-        env:
-          TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
-          TRELLIS_BASE_URL: https://staging.example.com
-        run: |
-          trellis exec api-docs/apis/health/get-health.md --env=staging
-          trellis exec api-docs/apis/users/get-users.md --env=staging
+ - name: Run endpoint tests
+ env:
+ TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
+ TRELLIS_BASE_URL: https://staging.example.com
+ run: |
+ trellis exec api-docs/apis/health/get-health.md --env=staging
+ trellis exec api-docs/apis/users/get-users.md --env=staging
 
-      - name: Run onboarding pipeline
-        env:
-          TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
-        run: trellis flow api-docs/flows/user-onboarding.md --env=staging
+ - name: Run onboarding pipeline
+ env:
+ TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
+ run: trellis flow api-docs/flows/user-onboarding.md --env=staging
 ```
 
 ---
@@ -102,32 +102,32 @@ Generate JUnit XML output for CI test reporters. Most CI systems can parse JUnit
 
 ```bash
 trellis exec api-docs/apis/users/get-user-by-id.md \
-  --env=staging \
-  --output=junit > results.xml
+ --env=staging \
+ --output=junit > results.xml
 ```
 
 Upload and publish in GitHub Actions:
 
 ```yaml
 - name: Run tests and capture output
-  env:
-    TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
-  run: |
-    trellis exec api-docs/apis/users/get-user-by-id.md \
-      --env=staging --output=junit > results.xml
+ env:
+ TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_AUTH_TOKEN }}
+ run: |
+ trellis exec api-docs/apis/users/get-user-by-id.md \
+ --env=staging --output=junit > results.xml
 
 - name: Upload test results
-  uses: actions/upload-artifact@v4
-  with:
-    name: trellis-results
-    path: results.xml
+ uses: actions/upload-artifact@v4
+ with:
+ name: trellis-results
+ path: results.xml
 
 - name: Publish test report
-  uses: dorny/test-reporter@v1
-  with:
-    name: Trellis API tests
-    path: results.xml
-    reporter: java-junit
+ uses: dorny/test-reporter@v1
+ with:
+ name: Trellis API tests
+ path: results.xml
+ reporter: java-junit
 ```
 
 ---
@@ -138,8 +138,8 @@ Use `TRELLIS_*` environment variables to inject secrets. The `TRELLIS_` prefix i
 
 ```yaml
 env:
-  TRELLIS_AUTH_TOKEN: ${{ secrets.API_TOKEN }}    # becomes {{authToken}}
-  TRELLIS_STRIPE_KEY: ${{ secrets.STRIPE_KEY }}  # becomes {{stripeKey}}
+ TRELLIS_AUTH_TOKEN: ${{ secrets.API_TOKEN }} # becomes {{authToken}}
+ TRELLIS_STRIPE_KEY: ${{ secrets.STRIPE_KEY }} # becomes {{stripeKey}}
 ```
 
 <Warning>
@@ -154,16 +154,16 @@ Do NOT use `--var authToken=$SECRET` in CI. Shell argument lists may appear in C
 trellis exec api-docs/apis/users/get-user.md --env=staging
 CODE=$?
 case $CODE in
-  0) echo "Passed" ;;
-  1) echo "Response mismatch — check the spec or API behavior" ; exit 1 ;;
-  4) echo "Network error — check VPN, service health, or BASE_URL" ; exit 1 ;;
-  5) echo "Secret committed to spec file — fix before merging" ; exit 1 ;;
-  *) echo "Unexpected error (code $CODE)" ; exit 1 ;;
+ 0) echo "Passed" ;;
+ 1) echo "Response mismatch check the spec or API behavior" ; exit 1 ;;
+ 4) echo "Network error check VPN, service health, or BASE_URL" ; exit 1 ;;
+ 5) echo "Secret committed to spec file fix before merging" ; exit 1 ;;
+ *) echo "Unexpected error (code $CODE)" ; exit 1 ;;
 esac
 ```
 
 <Tip>
-Treat exit code `4` (network error) differently from exit code `1` (response mismatch) in your CI pipeline. A network error means the staging environment may be down — it does not necessarily mean your spec is wrong.
+Treat exit code `4` (network error) differently from exit code `1` (response mismatch) in your CI pipeline. A network error means the staging environment may be down it does not necessarily mean your spec is wrong.
 </Tip>
 
 ---
@@ -172,26 +172,26 @@ Treat exit code `4` (network error) differently from exit code `1` (response mis
 
 ```yaml filename=".gitlab-ci.yml"
 stages:
-  - validate
-  - test
+ - validate
+ - test
 
 validate-specs:
-  stage: validate
-  script:
-    - curl -fsSL https://trellis.dev/install.sh | sh
-    - trellis validate api-docs/
+ stage: validate
+ script:
+ - curl -fsSL https://trellis.dev/install.sh | sh
+ - trellis validate api-docs/
 
 api-tests:
-  stage: test
-  variables:
-    TRELLIS_AUTH_TOKEN: $STAGING_AUTH_TOKEN
-    TRELLIS_BASE_URL: https://staging.example.com
-  script:
-    - trellis exec api-docs/apis/health/get-health.md --env=staging
-    - trellis flow api-docs/flows/user-onboarding.md --env=staging
-  only:
-    - main
-    - merge_requests
+ stage: test
+ variables:
+ TRELLIS_AUTH_TOKEN: $STAGING_AUTH_TOKEN
+ TRELLIS_BASE_URL: https://staging.example.com
+ script:
+ - trellis exec api-docs/apis/health/get-health.md --env=staging
+ - trellis flow api-docs/flows/user-onboarding.md --env=staging
+ only:
+ - main
+ - merge_requests
 ```
 
 ---

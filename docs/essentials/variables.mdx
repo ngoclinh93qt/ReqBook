@@ -8,14 +8,14 @@ icon: "sliders"
 
 Trellis supports two placeholder forms that can appear anywhere in request blocks, response blocks, and pipeline definitions.
 
-**Inline variable** — resolved from any variable source:
+**Inline variable** resolved from any variable source:
 
 ```http
 GET {{baseUrl}}/users/{{userId}}
 Authorization: Bearer {{authToken}}
 ```
 
-**Path parameter** — shorthand for URL path segments, resolved from the same sources:
+**Path parameter** shorthand for URL path segments, resolved from the same sources:
 
 ```http
 GET {{baseUrl}}/users/:id
@@ -39,19 +39,19 @@ When the same variable name appears in more than one source, the highest-priorit
 | 6 (lowest) | `TRELLIS_*` OS environment variables | `TRELLIS_AUTH_TOKEN=...` |
 
 <Note>
-  The web UI, CLI, flows, and agent tools use the same priority order. A request that runs in the browser should resolve the same variables when an agent or CI runs it.
+ The web UI, CLI, flows, and agent tools use the same priority order. A request that runs in the browser should resolve the same variables when an agent or CI runs it.
 </Note>
 
 ### Priority in practice
 
 ```bash
 TRELLIS_USER_ID=from-os trellis exec api-docs/apis/users/get-user.md --var userId=from-cli
-# {{userId}} resolves to "from-cli" — CLI outranks OS env
+# {{userId}} resolves to "from-cli" CLI outranks OS env
 ```
 
 ---
 
-## env.md — non-secret per-environment values
+## env.md non-secret per-environment values
 
 `api-docs/_shared/env.md` stores base URLs and non-secret configuration per environment. Select an environment at runtime with `--env=<name>`.
 
@@ -81,12 +81,12 @@ pageSize: 50
 ````
 
 <Warning>
-  Do not put tokens, passwords, or API keys in `env.md`. The Trellis parser detects common secret patterns and exits with code 5 before any network request is made.
+ Do not put tokens, passwords, or API keys in `env.md`. The Trellis parser detects common secret patterns and exits with code 5 before any network request is made.
 </Warning>
 
 ---
 
-## .env.local — local secrets
+## .env.local local secrets
 
 `.env.local` uses standard dotenv syntax. It is gitignored by default and is never committed to version control.
 
@@ -97,7 +97,7 @@ stripeKey=sk_test_...
 ```
 
 <Tip>
-  `trellis init` adds `.env.local` to `.gitignore` automatically. Run `trellis doctor` to confirm it is listed — the command reports an error with a suggested fix if it's missing.
+ `trellis init` adds `.env.local` to `.gitignore` automatically. Run `trellis doctor` to confirm it is listed the command reports an error with a suggested fix if it's missing.
 </Tip>
 
 ---
@@ -118,8 +118,8 @@ Set secrets as masked CI environment variables and map them with the `TRELLIS_` 
 
 ```yaml filename=".github/workflows/api-tests.yml"
 env:
-  TRELLIS_AUTH_TOKEN: ${{ secrets.API_TOKEN }}
-  TRELLIS_BASE_URL: https://staging.example.com
+ TRELLIS_AUTH_TOKEN: ${{ secrets.API_TOKEN }}
+ TRELLIS_BASE_URL: https://staging.example.com
 ```
 
 This keeps secrets out of spec files entirely and works with any CI provider that supports environment variable injection.
@@ -136,7 +136,7 @@ Fix: define authToken in .env.local, pass --var authToken=..., or set TRELLIS_AU
 ```
 
 <Tip>
-  Use `--dry-run` to check which variables are resolved and see the fully-rendered request without sending anything to the network. This is the fastest way to catch missing variables before running in CI.
+ Use `--dry-run` to check which variables are resolved and see the fully-rendered request without sending anything to the network. This is the fastest way to catch missing variables before running in CI.
 </Tip>
 
 ---
@@ -146,7 +146,7 @@ Fix: define authToken in .env.local, pass --var authToken=..., or set TRELLIS_AU
 Trellis v1.0.0 does not resolve variables recursively. If resolving `{{baseUrl}}` produces a string that contains another `{{variable}}`, Trellis returns an error rather than performing a second resolution pass.
 
 ```yaml
-# Invalid — nested variable reference
+# Invalid nested variable reference
 apiHost: "{{host}}"
 baseUrl: "https://{{apiHost}}"
 ```

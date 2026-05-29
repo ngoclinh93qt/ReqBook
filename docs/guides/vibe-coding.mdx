@@ -9,7 +9,7 @@ icon: "robot"
 Trellis is strongest when a coding agent is part of your API workflow. The agent can read source routes, create markdown specs, validate them, run requests, and build flows. You still keep control because every result is saved as reviewable markdown in the repo.
 
 <Note>
-  If you only want terminal commands, use the [CLI reference](/docs/reference/cli). If you want to inspect and run specs visually, use the [Web preview](/docs/guides/web-preview). This guide focuses on agent-first development.
+ If you only want terminal commands, use the [CLI reference](/docs/reference/cli). If you want to inspect and run specs visually, use the [Web preview](/docs/guides/web-preview). This guide focuses on agent-first development.
 </Note>
 
 ---
@@ -17,43 +17,43 @@ Trellis is strongest when a coding agent is part of your API workflow. The agent
 ## Set up the project
 
 <Steps>
-  <Step title="Initialise Trellis">
-    ```bash
-    trellis init --name=my-api --dev-url=http://localhost:8080 --yes
-    ```
+ <Step title="Initialise Trellis">
+ ```bash
+ trellis init --name=my-api --dev-url=http://localhost:8080 --yes
+ ```
 
-    This creates `api-docs/`, an example endpoint, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
-  </Step>
+ This creates `api-docs/`, an example endpoint, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
+ </Step>
 
-  <Step title="Install agent skills">
-    ```bash
-    trellis skills install
-    ```
+ <Step title="Install agent skills">
+ ```bash
+ trellis skills install
+ ```
 
-    Or target one agent:
+ Or target one agent:
 
-    ```bash
-    trellis skills install --agent=claude-code
-    trellis skills install --agent=cursor
-    trellis skills install --agent=copilot
-    ```
-  </Step>
+ ```bash
+ trellis skills install --agent=claude-code
+ trellis skills install --agent=cursor
+ trellis skills install --agent=copilot
+ ```
+ </Step>
 
-  <Step title="Register MCP for Claude Code">
-    MCP mode gives the agent structured Trellis tools instead of asking it to parse terminal output.
+ <Step title="Register MCP for Claude Code">
+ MCP mode gives the agent structured Trellis tools instead of asking it to parse terminal output.
 
-    ```bash
-    claude mcp add trellis -- trellis mcp
-    ```
-  </Step>
+ ```bash
+ claude mcp add trellis -- trellis mcp
+ ```
+ </Step>
 
-  <Step title="Open the UI beside your agent">
-    ```bash
-    trellis serve
-    ```
+ <Step title="Open the UI beside your agent">
+ ```bash
+ trellis serve
+ ```
 
-    Keep the browser preview open while your agent edits files. The UI reads the same markdown files and updates as they change.
-  </Step>
+ Keep the browser preview open while your agent edits files. The UI reads the same markdown files and updates as they change.
+ </Step>
 </Steps>
 
 ---
@@ -63,26 +63,26 @@ Trellis is strongest when a coding agent is part of your API workflow. The agent
 Use prompts that describe the API intent and let the Trellis skill choose the correct operation.
 
 <CardGroup cols={2}>
-  <Card title="Create one endpoint" icon="file-pen">
-    ```text
-    Add a Trellis spec for GET /users/:userId. Use bearer auth and make userId a path param.
-    ```
-  </Card>
-  <Card title="Scan existing routes" icon="magnifying-glass">
-    ```text
-    Scan this project for API routes and add missing Trellis specs. Do not overwrite existing specs.
-    ```
-  </Card>
-  <Card title="Run and debug" icon="play">
-    ```text
-    Test the get user endpoint in dev. If variables are missing, tell me exactly where to define them.
-    ```
-  </Card>
-  <Card title="Create a workflow" icon="diagram-project">
-    ```text
-    Build a signup flow: create user, login, capture token, then fetch profile with the captured token.
-    ```
-  </Card>
+ <Card title="Create one endpoint" icon="file-pen">
+ ```text
+ Add a Trellis spec for GET /users/:userId. Use bearer auth and make userId a path param.
+ ```
+ </Card>
+ <Card title="Scan existing routes" icon="magnifying-glass">
+ ```text
+ Scan this project for API routes and add missing Trellis specs. Do not overwrite existing specs.
+ ```
+ </Card>
+ <Card title="Run and debug" icon="play">
+ ```text
+ Test the get user endpoint in dev. If variables are missing, tell me exactly where to define them.
+ ```
+ </Card>
+ <Card title="Create a workflow" icon="diagram-project">
+ ```text
+ Build a signup flow: create user, login, capture token, then fetch profile with the captured token.
+ ```
+ </Card>
 </CardGroup>
 
 ---
@@ -135,5 +135,5 @@ Agent: Reports each step, captured values, and the first mismatch.
 ```
 
 <Tip>
-  Keep `trellis serve` open during this loop. It gives you a visual review layer while the agent edits markdown behind the scenes.
+ Keep `trellis serve` open during this loop. It gives you a visual review layer while the agent edits markdown behind the scenes.
 </Tip>

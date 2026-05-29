@@ -1,6 +1,8 @@
 //! Public API for embedding Trellis.
 
+pub mod adhoc;
 pub mod engine;
+pub mod history;
 pub mod importer;
 #[cfg(feature = "install")]
 pub mod installer;
@@ -13,6 +15,7 @@ pub mod pipeline;
 pub mod preview;
 pub mod report;
 pub mod resolver;
+pub mod workspace;
 
 pub use engine::{Client, ExecOpts, Execution};
 pub use parser::{Endpoint, EnvConfig, Pipeline};

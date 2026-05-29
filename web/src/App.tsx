@@ -5,6 +5,7 @@ import { IndexPage } from './pages/IndexPage';
 import { SpecPage } from './pages/SpecPage';
 import { FlowsPage } from './pages/FlowsPage';
 import { FlowCanvasPage } from './pages/FlowCanvasPage';
+import { RequestPage } from './pages/RequestPage';
 import { Icon } from './ui';
 import type { IndexData, VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
@@ -27,7 +28,6 @@ function TrellisShell() {
   const [theme, setTheme] = useState(() => localStorage.getItem('trellis-theme') ?? 'light');
   const [mockMode, setMockMode] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
-  const [curlOpen, setCurlOpen] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
   const [refreshIndexKey, setRefreshIndexKey] = useState(0);
   const [scanning, setScanning] = useState(false);
@@ -90,13 +90,13 @@ function TrellisShell() {
         relPath={relPath}
         onHome={() => navigate('/')}
         onFlows={() => navigate('/flows')}
+        onNewRequest={() => navigate('/request')}
         theme={theme}
         setTheme={setTheme}
         env={env}
         setEnv={setEnv}
         envs={varsData?.envs.length ? varsData.envs : [env]}
         onOpenVars={() => setVarsOpen(true)}
-        onOpenCurl={() => setCurlOpen(true)}
         onAddEnvironment={() => setEnvModalOpen(true)}
         onScanProject={scanProject}
         scanning={scanning}
@@ -109,6 +109,7 @@ function TrellisShell() {
           <Route path="/flows" element={<FlowsPage />} />
           <Route path="/flows/*" element={<FlowCanvasPage />} />
           <Route path="/spec/*" element={<SpecPage env={env} varsData={varsData} browserVars={browserVars} mockMode={mockMode} />} />
+          <Route path="/request" element={<RequestPage env={env} varsData={varsData} />} />
         </Routes>
       </main>
       <VariablesDrawer
@@ -121,16 +122,6 @@ function TrellisShell() {
         browserVars={browserVars}
         saveBrowserVars={saveBrowserVars}
       />
-      {curlOpen && (
-        <CurlImportModal
-          onClose={() => setCurlOpen(false)}
-          onImported={rel => {
-            setCurlOpen(false);
-            setRefreshIndexKey(k => k + 1);
-            if (rel) navigate(`/spec/${rel}`);
-          }}
-        />
-      )}
       {envModalOpen && (
         <AddEnvironmentModal
           existing={varsData?.envs ?? []}
@@ -146,18 +137,18 @@ function TrellisShell() {
   );
 }
 
-function TopBar({ projectName, relPath, onHome, onFlows, theme, setTheme, env, setEnv, envs, onOpenVars, onOpenCurl, onAddEnvironment, onScanProject, scanning, scanMsg, mockMode }: {
+function TopBar({ projectName, relPath, onHome, onFlows, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, onScanProject, scanning, scanMsg, mockMode }: {
   projectName: string;
   relPath: string;
   onHome: () => void;
   onFlows: () => void;
+  onNewRequest: () => void;
   theme: string;
   setTheme: (theme: string) => void;
   env: string;
   setEnv: (env: string) => void;
   envs: string[];
   onOpenVars: () => void;
-  onOpenCurl: () => void;
   onAddEnvironment: () => void;
   onScanProject: () => void;
   scanning: boolean;
@@ -177,8 +168,8 @@ function TopBar({ projectName, relPath, onHome, onFlows, theme, setTheme, env, s
       </div>
       <div className="tnav-r">
         <button className="tnav-item" onClick={onFlows}><span className="ic"><Icon.arr /></span>Flows</button>
+        <button className="tnav-item" onClick={onNewRequest}><span className="ic"><Icon.play /></span>New Request</button>
         <button className="tnav-item" onClick={onOpenVars}><span className="ic"><Icon.vars /></span>Variables</button>
-        <button className="tnav-item" onClick={onOpenCurl}><span className="ic"><Icon.plus /></span>Import curl</button>
         <button className="tnav-item" onClick={onScanProject} disabled={scanning}>
           <span className="ic">{scanning ? <span className="pulse-dot tiny" /> : <Icon.search />}</span>
           {scanning ? 'Scanning' : 'Scan'}
@@ -304,45 +295,6 @@ function Rows({ rows, setRows, secret = false }: { rows: [string, string][]; set
           <button className="row-del always" onClick={() => setRows(rows => rows.filter((_, i) => i !== index))}><Icon.x /></button>
         </div>
       ))}
-    </div>
-  );
-}
-
-function CurlImportModal({ onClose, onImported }: { onClose: () => void; onImported: (relPath?: string) => void }) {
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
-  async function submit() {
-    setLoading(true);
-    setMsg('');
-    try {
-      const result = await api.importCurl(text);
-      if (result.error) setMsg(result.error);
-      else onImported(result.rel_path);
-    } catch (e) {
-      setMsg(String(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-h">
-          <span className="modal-icon"><Icon.plus /></span>
-          <div><h2>Import from curl</h2><div className="sub">Paste a curl command. Trellis creates a markdown spec.</div></div>
-          <button className="btn icon" onClick={onClose}><Icon.x /></button>
-        </div>
-        <div className="modal-b modal-pad">
-          <textarea className="input mono curl-textarea" value={text} onChange={e => setText(e.target.value)} spellCheck={false} placeholder={'curl https://api.example.com/users -H "Accept: application/json"'} />
-          {msg && <p className="fail-text">{msg}</p>}
-        </div>
-        <div className="modal-f">
-          <div className="note">Existing specs are not overwritten.</div>
-          <button className="btn sm" onClick={onClose}>Cancel</button>
-          <button className="btn-primary btn-sm-primary" onClick={submit} disabled={loading || !text.trim()}>{loading ? 'Importing…' : 'Import endpoint'}</button>
-        </div>
-      </div>
     </div>
   );
 }

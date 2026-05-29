@@ -24,10 +24,6 @@ export function FlowsPage() {
             Chain endpoints together, pass tokens and IDs from one response into the next, then run the whole path from a canvas.
           </p>
         </div>
-        <div className="flow-head-actions">
-          <button className="btn">Import</button>
-          <button className="btn-primary" onClick={() => navigate('/flows/new')}><Icon.plus /> New flow</button>
-        </div>
       </header>
 
       {error && <div className="empty fail-text">{error}</div>}

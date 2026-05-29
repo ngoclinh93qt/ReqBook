@@ -1,0 +1,47 @@
+---
+title: "trellis-ui overview"
+description: "The browser interface to Trellis same binary as trellis-cli, different interface."
+---
+
+## What is trellis-ui?
+
+**trellis-ui** is the browser interface to Trellis, accessed via `trellis serve`. It provides a visual environment for:
+
+- Browsing and searching your API spec collection
+- Sending requests with interactive variable overrides
+- Building and running multi-step pipelines on a visual canvas
+- Editing spec files in-browser with live save-back to disk
+- Sending ad-hoc HTTP requests without creating a spec file first
+- Running in mock mode against recorded responses
+
+## Launch
+
+```bash
+trellis serve
+# Opens at http://127.0.0.1:8080
+```
+
+Custom host/port:
+```bash
+trellis serve --host 0.0.0.0 --port 3000
+```
+
+## Features
+
+| Feature | How to access |
+|---------|--------------|
+| Browse collection | Home page index |
+| Run endpoint | Click an endpoint → Send button |
+| New Request | "New Request" button in the top bar |
+| Build a flow | Flows → New Flow |
+| Edit spec source | Endpoint page → Edit source |
+| Import from curl | Import curl button in top bar |
+| Scan project | Scan button in top bar |
+| Mock mode | `trellis serve --mock` |
+
+## Same binary two interfaces
+
+```
+trellis serve → opens trellis-ui (this)
+trellis exec → runs in the terminal (trellis-cli)
+```

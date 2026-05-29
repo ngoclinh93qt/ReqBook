@@ -212,9 +212,9 @@ async fn mock_handler(
 
 /// Start the mock server.
 ///
-/// - `dir`         — project root containing `apis/` sub-directory (default: `api-docs/`).
-/// - `port`        — TCP port to bind (default: `4001`).
-/// - `latency_ms`  — optional artificial response delay in milliseconds.
+/// - `dir`           project root containing `apis/` sub-directory (default: `api-docs/`).
+/// - `port`          TCP port to bind (default: `4001`).
+/// - `latency_ms`    optional artificial response delay in milliseconds.
 pub async fn run_mock_server(dir: PathBuf, port: u16, latency_ms: Option<u64>) -> Result<()> {
     let raw_entries = collect_entries(&dir)?;
 
@@ -225,7 +225,7 @@ pub async fn run_mock_server(dir: PathBuf, port: u16, latency_ms: Option<u64>) -
         let key = (entry.method.clone(), entry.pattern.clone());
         if seen.contains_key(&key) {
             eprintln!(
-                "  {} duplicate mock {} {} — skipping",
+                "  {} duplicate mock {} {}   skipping",
                 "!".yellow(),
                 entry.method,
                 entry.pattern
@@ -237,7 +237,7 @@ pub async fn run_mock_server(dir: PathBuf, port: u16, latency_ms: Option<u64>) -
     }
 
     println!(
-        "{} Mock server — {} route(s) from {}",
+        "{} Mock server   {} route(s) from {}",
         "→".cyan(),
         entries.len(),
         dir.display()

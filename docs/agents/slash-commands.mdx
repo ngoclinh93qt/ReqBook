@@ -1,32 +1,32 @@
 ---
 title: "Slash commands"
-description: "Four /trellis-* commands for Claude Code and Codex CLI — each one handles a complex, multi-step task that benefits from LLM reasoning rather than a fixed script."
+description: "Four /trellis-* commands for Claude Code and Codex CLI each one handles a complex, multi-step task that benefits from LLM reasoning rather than a fixed script."
 icon: "terminal"
 ---
 
 ## Design philosophy
 
-Simple terminal operations — `trellis init`, `trellis serve`, `trellis validate`, `trellis exec` — work best when run directly. They are fast, composable, and don't need an agent in the loop.
+Simple terminal operations `trellis init`, `trellis serve`, `trellis validate`, `trellis exec` work best when run directly. They are fast, composable, and don't need an agent in the loop.
 
-Slash commands exist for tasks that are **genuinely complex**: where the right answer depends on understanding your codebase, your domain model, or the relationships between data — not just executing a formula.
+Slash commands exist for tasks that are **genuinely complex**: where the right answer depends on understanding your codebase, your domain model, or the relationships between data not just executing a formula.
 
 ---
 
 ## Available commands
 
 <CardGroup cols={2}>
-  <Card title="/trellis-scan" icon="magnifying-glass">
-    Discover API routes and create complete specs with real field names, types, and examples.
-  </Card>
-  <Card title="/trellis-enrich" icon="star">
-    Enrich expected contracts or targeted API test instructions in separate modes.
-  </Card>
-  <Card title="/trellis-flow" icon="diagram-project">
-    Build or run a workflow pipeline with data-dependency-aware capture and inject.
-  </Card>
-  <Card title="/trellis-debug" icon="bug">
-    Diagnose a failing endpoint or pipeline across validation, execution, and diff.
-  </Card>
+ <Card title="/trellis-scan" icon="magnifying-glass">
+ Discover API routes and create complete specs with real field names, types, and examples.
+ </Card>
+ <Card title="/trellis-enrich" icon="star">
+ Enrich expected contracts or targeted API test instructions in separate modes.
+ </Card>
+ <Card title="/trellis-flow" icon="diagram-project">
+ Build or run a workflow pipeline with data-dependency-aware capture and inject.
+ </Card>
+ <Card title="/trellis-debug" icon="bug">
+ Diagnose a failing endpoint or pipeline across validation, execution, and diff.
+ </Card>
 </CardGroup>
 
 ---
@@ -35,7 +35,7 @@ Slash commands exist for tasks that are **genuinely complex**: where the right a
 
 **When to use:** You have API routes that don't have Trellis specs yet, or auto-detection failed for your framework.
 
-**What makes it intelligent:** The agent doesn't just run `trellis import project` and stop. When automatic discovery falls back to a static scan, the agent reads your source code — handler functions, request/response types, DTOs, model classes — and uses that understanding to produce specs with real field names and semantically accurate example values. A `user.email` field becomes `"user@example.com"`, not `"string"`.
+**What makes it intelligent:** The agent doesn't just run `trellis import project` and stop. When automatic discovery falls back to a static scan, the agent reads your source code handler functions, request/response types, DTOs, model classes and uses that understanding to produce specs with real field names and semantically accurate example values. A `user.email` field becomes `"user@example.com"`, not `"string"`.
 
 ```
 /trellis-scan
@@ -75,7 +75,7 @@ For tests, the agent writes a short `agent-task` block based on your requested b
 5. Validates each changed file and reports any skipped cases
 
 <Note>
-  `## Tests` is still an agent-readable checklist, not executable code. A natural next feature is a `## Cases` YAML block plus `trellis test <file> --case <name>`, a web Cases tab, and an MCP `trellis_test` tool for LLM agents.
+ `## Tests` is still an agent-readable checklist, not executable code. A natural next feature is a `## Cases` YAML block plus `trellis test <file> --case <name>`, a web Cases tab, and an MCP `trellis_test` tool for LLM agents.
 </Note>
 
 ---
@@ -123,9 +123,9 @@ For tests, the agent writes a short `agent-task` block based on your requested b
 
 ---
 
-## Terminal commands — use these directly
+## Terminal commands use these directly
 
-These operations don't benefit from agent involvement — run them directly in your terminal:
+These operations don't benefit from agent involvement run them directly in your terminal:
 
 | What you want to do | Command |
 |---|---|
@@ -145,7 +145,7 @@ These operations don't benefit from agent involvement — run them directly in y
 |---|---|
 | Claude Code | ✓ (4 commands) |
 | Codex CLI | ✓ (4 commands) |
-| Cursor | — (use skills) |
-| GitHub Copilot | — (use skills) |
-| Antigravity | — (use skills) |
-| OpenCode | — (use skills) |
+| Cursor | (use skills) |
+| GitHub Copilot | (use skills) |
+| Antigravity | (use skills) |
+| OpenCode | (use skills) |

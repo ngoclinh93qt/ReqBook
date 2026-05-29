@@ -1,0 +1,38 @@
+---
+title: "New Request"
+description: "Send any HTTP request from the browser without creating a spec file first."
+---
+
+## Overview
+
+The **New Request** panel in trellis-ui lets you build and send any HTTP request interactively no spec file required. It's the browser equivalent of `trellis request`.
+
+## Open it
+
+Click **New Request** in the top navigation bar, or navigate to `http://localhost:8080/request`.
+
+## Layout
+
+The panel has two columns:
+
+- **Left Request builder**: method selector, URL, headers, body, variable overrides, save-as path
+- **Right Response viewer**: status, body, headers, raw request
+
+## Features
+
+| Feature | Details |
+|---------|---------|
+| Method selector | GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS |
+| Variable resolution | `{{variable}}` references are resolved from the active environment |
+| Variable overrides | Add per-request overrides without editing env files |
+| Body editor | Raw text editor; auto-shown for POST/PUT/PATCH |
+| Save as spec | Enter a relative path to save the result as a markdown spec |
+| Auto-scratch | Without a save path, responses are saved to the scratch workspace |
+
+## Save to collection
+
+Enter a relative path in the **Save as spec** field, e.g. `apis/users/get-users.md`. After sending, the request and response become a spec in your collection ready to run with `trellis exec` or from the endpoint browser.
+
+## Compare with trellis-cli
+
+The browser New Request panel and `trellis request` use the same backend. Both save to the same workspace locations.

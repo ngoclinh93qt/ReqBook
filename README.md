@@ -6,26 +6,36 @@
 
 # Trellis
 
-Trellis is a local-first, markdown-native API spec and workflow tool built for AI coding agents.
+**API workspace** — design specs, send requests, validate contracts, from CLI and browser.
 
-Endpoint specs, environments, and flows are ordinary markdown files. The Rust engine validates and executes them, the browser preview lets you edit and run them, and agent skills make the same files usable from Claude Code, Codex CLI, Cursor, GitHub Copilot, Antigravity, and OpenCode.
+Trellis is a local-first, markdown-native API workspace. Endpoint specs, environments, and flows are ordinary markdown files. The Rust engine validates and executes them. The browser lets you edit, run, and design APIs visually. Agent skills make the same files usable from Claude Code, Cursor, GitHub Copilot, and others.
 
 ```bash
 cargo install trellis
 trellis init --name=my-api --dev-url=http://localhost:8080 --yes
-trellis serve
+trellis serve                          # opens trellis-ui
+trellis request GET https://httpbin.org/get  # ad-hoc request (trellis-cli)
 ```
+
+## Two interfaces, one binary
+
+| Interface | Launch | Use for |
+| --- | --- | --- |
+| **trellis-cli** | `trellis <command>` | Scripts, CI, agents, ad-hoc requests |
+| **trellis-ui** | `trellis serve` | Interactive design, debugging, review |
 
 ## Why Trellis
 
 | Capability | What it means |
 | --- | --- |
-| Markdown-native | API specs, config, env values, and flows live in reviewable `.md` files. |
+| Collections | `api-docs/` is a collection — auto-located from your git repo root. |
+| Ad-hoc requests | `trellis request GET <url>` or "New Request" in the browser — no spec file needed. |
+| API design | Write specs in markdown, validate contracts, iterate on design. |
+| Markdown-native | Specs live in reviewable `.md` files alongside your code. |
 | Local Rust binary | Fast CLI and browser preview without a hosted workspace. |
-| Browser execute + edit | Run endpoints, tweak variables, edit markdown, and save back to disk. |
-| Flow canvas | Connect endpoint blocks, capture response values, inject them downstream, and save as markdown. |
-| Agent-native | Install one canonical skill set across major AI coding agents. |
-| Import and scan | Import cURL/Postman/OpenAPI or scan a project for missing API specs. |
+| Flow canvas | Connect endpoints, capture values, inject downstream — save as markdown. |
+| Agent-native | Install skills and MCP tools for Claude Code, Cursor, Copilot, and others. |
+| Import and scan | Import cURL/Postman/OpenAPI or scan a project for missing specs. |
 
 ## Project layout
 

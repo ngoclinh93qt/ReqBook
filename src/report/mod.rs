@@ -145,6 +145,7 @@ mod tests {
                 passed: true,
                 ..ResponseDiff::default()
             },
+            assertion_results: Vec::new(),
         }
     }
 

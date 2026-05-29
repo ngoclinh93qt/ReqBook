@@ -835,15 +835,15 @@ pub async fn try_running_server(
     None
 }
 
-/// Smart project import — runs the following priority chain and returns the
+/// Smart project import   runs the following priority chain and returns the
 /// first strategy that yields results:
 ///
-/// 1. **Explicit URL** (`url_hint`) — fetch spec directly, no scan needed.
-/// 2. **Static spec file** — look for a committed `openapi.yaml` / `swagger.json`
+/// 1. **Explicit URL** (`url_hint`)   fetch spec directly, no scan needed.
+/// 2. **Static spec file**   look for a committed `openapi.yaml` / `swagger.json`
 ///    in common project locations.
-/// 3. **Running dev server** — probe localhost on framework-specific and common
+/// 3. **Running dev server**   probe localhost on framework-specific and common
 ///    ports for a live OpenAPI endpoint.
-/// 4. **Static code scan** — regex-based route detection (existing behaviour),
+/// 4. **Static code scan**   regex-based route detection (existing behaviour),
 ///    with a framework hint printed to guide the user towards a better import.
 pub async fn smart_import(
     root: &Path,

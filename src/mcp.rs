@@ -1,19 +1,20 @@
 //! MCP (Model Context Protocol) server over stdio.
 //!
-//! Exposes three tools to any MCP-compatible AI agent:
-//! - `trellis_exec`    — execute one endpoint spec
-//! - `trellis_flow`    — execute a pipeline
-//! - `trellis_author`  — create or update a spec file
+//! Exposes tools to any MCP-compatible AI agent:
+//! - `trellis_exec`          execute one endpoint spec
+//! - `trellis_flow`          execute a pipeline
+//! - `trellis_author`        create or update a spec file
+//! - `trellis_vars`          show variable resolution for a spec
+//! - `trellis_search`        search specs by method/path/tag/text
+//! - `trellis_history`       execution history for a spec
+//! - `trellis_session`       get/set session context (env + vars)
+//! - `trellis_exec_batch`    execute multiple specs in one call
 //!
 //! Transport: JSON-RPC 2.0 over stdio (NDJSON, one message per line).
 //! Protocol version: 2024-11-05.
-//!
-//! To use, add to `~/.claude.json` or equivalent MCP config:
-//! ```json
-//! { "command": "trellis", "args": ["mcp"] }
-//! ```
 
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -21,10 +22,11 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::{
-    engine::{self, ExecOpts},
-    parser::{parse_endpoint, parse_pipeline},
+    engine::{self, ExecOpts, EngineError},
+    history::{self, HistoryEntry},
+    parser::{parse_endpoint, parse_env_config, parse_pipeline},
     pipeline::{self, PipelineOpts},
-    resolver::{Context, SourceKind},
+    resolver::{Context, ResolveError, SourceKind},
 };
 
 // ─── JSON-RPC 2.0 message types ──────────────────────────────────────────────
@@ -79,6 +81,192 @@ impl McpResponse {
     }
 }
 
+// ─── Error taxonomy ───────────────────────────────────────────────────────────
+
+fn classify_engine_error(err: &EngineError) -> (&'static str, Option<&'static str>) {
+    match err {
+        EngineError::UnsupportedProtocol { .. } => ("UNSUPPORTED_PROTOCOL", None),
+        EngineError::Resolve { source, .. } => match source {
+            ResolveError::MissingVariable { .. } => (
+                "VAR_MISSING",
+                Some("Define missing variables in _shared/env.md [<env>] or pass via vars: {...}"),
+            ),
+            _ => ("VALIDATION_ERROR", None),
+        },
+        EngineError::Network { .. } => (
+            "NETWORK_ERROR",
+            Some("Check baseUrl in env.md and ensure the server is running"),
+        ),
+        EngineError::InvalidRequest { .. } => ("VALIDATION_ERROR", None),
+        EngineError::InvalidExpected { .. } => ("VALIDATION_ERROR", None),
+        EngineError::Http { .. } => ("VALIDATION_ERROR", None),
+    }
+}
+
+fn hint_for_error_type(error_type: &str) -> Option<&'static str> {
+    match error_type {
+        "VAR_MISSING" => Some(
+            "Define missing variables in _shared/env.md [<env>] or pass via vars: {...}",
+        ),
+        "AUTH_FAILED" => Some("Check bearer token or credentials in _shared/env.md"),
+        "NETWORK_ERROR" => Some("Check baseUrl in env.md and ensure the server is running"),
+        "CONTRACT_MISMATCH" => Some(
+            "Update ## Expected response in the spec to match actual, or fix the API",
+        ),
+        "SPEC_PARSE_ERROR" => Some(
+            "Fix YAML frontmatter or markdown section structure in the spec file",
+        ),
+        _ => None,
+    }
+}
+
+/// Return an ISO-8601 UTC timestamp string for the current moment.
+fn now_iso8601() -> String {
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // Minimal ISO-8601 UTC   good enough for history logs.
+    let (y, mo, d, h, mi, s) = epoch_to_ymd_hms(secs);
+    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{mi:02}:{s:02}Z")
+}
+
+fn epoch_to_ymd_hms(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
+    let s = secs % 60;
+    let total_min = secs / 60;
+    let mi = total_min % 60;
+    let total_h = total_min / 60;
+    let h = total_h % 24;
+    let total_days = total_h / 24;
+    // Gregorian calendar approximation.
+    let (y, mo, d) = days_to_ymd(total_days);
+    (y, mo, d, h, mi, s)
+}
+
+fn days_to_ymd(days: u64) -> (u64, u64, u64) {
+    let mut y = 1970u64;
+    let mut rem = days;
+    loop {
+        let days_in_year = if is_leap(y) { 366 } else { 365 };
+        if rem < days_in_year {
+            break;
+        }
+        rem -= days_in_year;
+        y += 1;
+    }
+    let leap = is_leap(y);
+    let months = [
+        31u64, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+    ];
+    let mut mo = 1u64;
+    for days_in_month in months {
+        if rem < days_in_month {
+            break;
+        }
+        rem -= days_in_month;
+        mo += 1;
+    }
+    (y, mo, rem + 1)
+}
+
+fn is_leap(y: u64) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
+}
+
+// ─── Session helpers ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct Session {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    env: Option<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    vars: std::collections::BTreeMap<String, String>,
+}
+
+fn session_path() -> std::path::PathBuf {
+    std::env::temp_dir().join("trellis-session.json")
+}
+
+fn read_session() -> Session {
+    std::fs::read_to_string(session_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn write_session(session: &Session) {
+    let _ = serde_json::to_string_pretty(session)
+        .ok()
+        .and_then(|s| std::fs::write(session_path(), s).ok());
+}
+
+/// Resolve the effective env, preferring explicit arg → session → default "dev".
+fn resolve_env<'a>(args: &'a Value, session: &'a Session) -> &'a str {
+    args.get("env")
+        .and_then(|v| v.as_str())
+        .or(session.env.as_deref())
+        .unwrap_or("dev")
+}
+
+/// Build a context, merging session vars (lower priority) then explicit vars.
+fn build_context(args: &Value, session: &Session) -> Context {
+    let mut context = Context::default();
+    // Session vars are low-priority.
+    for (k, v) in &session.vars {
+        context.insert(SourceKind::Env, k, v);
+    }
+    // Explicit vars override session vars.
+    if let Some(vars) = args.get("vars").and_then(|v| v.as_object()) {
+        for (k, v) in vars {
+            if let Some(val) = v.as_str() {
+                context.insert(SourceKind::Cli, k, val);
+            }
+        }
+    }
+    context
+}
+
+// ─── Collection root detection ────────────────────────────────────────────────
+
+/// Find the collection root by walking up from a spec path looking for `api-docs` or `apis` dir.
+fn collection_root_for(spec_path: &str) -> std::path::PathBuf {
+    let p = Path::new(spec_path);
+    // Walk up until we find a directory containing `_shared/` or until we run out of ancestors.
+    if let Some(parent) = p.parent() {
+        let mut candidate = parent.to_path_buf();
+        loop {
+            if candidate.join("_shared").exists() {
+                return candidate;
+            }
+            // Also accept if the dir is named `api-docs` or `apis`.
+            if let Some(name) = candidate.file_name() {
+                let n = name.to_string_lossy();
+                if n == "api-docs" || n == "apis" {
+                    return candidate;
+                }
+            }
+            match candidate.parent() {
+                Some(p) => candidate = p.to_path_buf(),
+                None => break,
+            }
+        }
+        // Fallback: two levels up from spec file.
+        if let Some(ancestor) = Path::new(spec_path).ancestors().nth(2) {
+            return ancestor.to_path_buf();
+        }
+    }
+    Path::new(".").to_path_buf()
+}
+
+/// Compute a path relative to a root for use in history.
+fn spec_rel(spec_path: &str, root: &Path) -> String {
+    Path::new(spec_path)
+        .strip_prefix(root)
+        .unwrap_or_else(|_| Path::new(spec_path))
+        .to_string_lossy()
+        .to_string()
+}
+
 // ─── Tool schemas ─────────────────────────────────────────────────────────────
 
 fn tools_list_result() -> Value {
@@ -102,6 +290,18 @@ fn tools_list_result() -> Value {
                             "type": "object",
                             "description": "Variable overrides as key/value pairs.",
                             "additionalProperties": { "type": "string" }
+                        },
+                        "verbose": {
+                            "type": "boolean",
+                            "description": "When true, include full request and response objects (default: false)."
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "When true, resolve variables and return request without sending (default: false)."
+                        },
+                        "infer_expected": {
+                            "type": "boolean",
+                            "description": "When true, include inferred_expected block formatted for pasting into the spec (default: false)."
                         }
                     },
                     "required": ["spec_path"]
@@ -120,6 +320,10 @@ fn tools_list_result() -> Value {
                         "env": {
                             "type": "string",
                             "description": "Environment name (default: \"dev\")."
+                        },
+                        "verbose": {
+                            "type": "boolean",
+                            "description": "When true, include full execution objects per step (default: false)."
                         }
                     },
                     "required": ["pipeline_path"]
@@ -146,6 +350,116 @@ fn tools_list_result() -> Value {
                     },
                     "required": ["spec_path", "content"]
                 }
+            },
+            {
+                "name": "trellis_vars",
+                "description": "Show which variables a spec requires and which are resolved in the current env.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "spec_path": {
+                            "type": "string",
+                            "description": "Path to the endpoint .md spec file."
+                        },
+                        "env": {
+                            "type": "string",
+                            "description": "Environment name (default: \"dev\")."
+                        }
+                    },
+                    "required": ["spec_path"]
+                }
+            },
+            {
+                "name": "trellis_search",
+                "description": "Search endpoint specs by method, path, tag, or text.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "q": {
+                            "type": "string",
+                            "description": "Text to search in title or description."
+                        },
+                        "method": {
+                            "type": "string",
+                            "description": "HTTP method filter, e.g. \"GET\"."
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "URL path substring to filter on."
+                        },
+                        "tag": {
+                            "type": "string",
+                            "description": "Tag to filter on."
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "trellis_history",
+                "description": "Return recent execution history for a spec.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "spec_path": {
+                            "type": "string",
+                            "description": "Path to the endpoint .md spec file."
+                        },
+                        "last": {
+                            "type": "integer",
+                            "description": "Number of recent entries to return (default: 10)."
+                        }
+                    },
+                    "required": ["spec_path"]
+                }
+            },
+            {
+                "name": "trellis_session",
+                "description": "Get or set the session context (env + vars) used as defaults by exec/flow.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": ["get", "set"],
+                            "description": "\"get\" returns the current session; \"set\" writes env and/or vars."
+                        },
+                        "env": {
+                            "type": "string",
+                            "description": "Environment name to store in session."
+                        },
+                        "vars": {
+                            "type": "object",
+                            "description": "Variables to store in session.",
+                            "additionalProperties": { "type": "string" }
+                        }
+                    },
+                    "required": ["action"]
+                }
+            },
+            {
+                "name": "trellis_exec_batch",
+                "description": "Execute multiple endpoint specs sequentially and return a summary.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "specs": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "description": "List of spec file paths to execute."
+                        },
+                        "env": {
+                            "type": "string",
+                            "description": "Environment name (default: \"dev\")."
+                        },
+                        "vars": {
+                            "type": "object",
+                            "description": "Variable overrides.",
+                            "additionalProperties": { "type": "string" }
+                        }
+                    },
+                    "required": ["specs"]
+                }
             }
         ]
     })
@@ -160,34 +474,169 @@ async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| (-32602, "Invalid params: spec_path is required".to_string()))?;
 
-    let env = args.get("env").and_then(|v| v.as_str()).unwrap_or("dev");
+    let session = read_session();
+    let env = resolve_env(args, &session);
+    let verbose = args.get("verbose").and_then(|v| v.as_bool()).unwrap_or(false);
+    let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
+    let infer_expected = args
+        .get("infer_expected")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
-    let mut context = Context::default();
-    if let Some(vars) = args.get("vars").and_then(|v| v.as_object()) {
-        for (k, v) in vars {
-            if let Some(val) = v.as_str() {
-                context.insert(SourceKind::Cli, k, val);
-            }
+    let context = build_context(args, &session);
+
+    // Parse spec   return structured error on failure, not RPC error.
+    let source = match std::fs::read_to_string(spec_path) {
+        Ok(s) => s,
+        Err(e) => {
+            return Err((-32000, format!("{spec_path}: {e}")));
         }
-    }
+    };
 
-    let source =
-        std::fs::read_to_string(spec_path).map_err(|e| (-32000, format!("{spec_path}: {e}")))?;
-    let endpoint =
-        parse_endpoint(&source, Path::new(spec_path)).map_err(|e| (-32000, e.to_string()))?;
-    let execution = engine::execute(
+    let endpoint = match parse_endpoint(&source, Path::new(spec_path)) {
+        Ok(ep) => ep,
+        Err(e) => {
+            let text = serde_json::to_string_pretty(&json!({
+                "passed": false,
+                "error_type": "SPEC_PARSE_ERROR",
+                "hint": hint_for_error_type("SPEC_PARSE_ERROR"),
+                "message": e.to_string(),
+            }))
+            .unwrap_or_default();
+            return Ok(json!({ "content": [{ "type": "text", "text": text }] }));
+        }
+    };
+
+    let execution_result = engine::execute(
         &endpoint,
         env,
         ExecOpts {
             context,
             timeout_ms: None,
-            dry_run: false,
+            dry_run,
         },
     )
-    .await
-    .map_err(|e| (-32000, e.to_string()))?;
+    .await;
 
-    let text = serde_json::to_string_pretty(&execution).map_err(|e| (-32000, e.to_string()))?;
+    // Determine collection root for history.
+    let root = collection_root_for(spec_path);
+    let rel = spec_rel(spec_path, &root);
+
+    let output = match execution_result {
+        Ok(execution) => {
+            // Check for auth failure.
+            let status = execution.response.as_ref().map(|r| r.status);
+            let error_type: Option<&str> = if matches!(status, Some(401) | Some(403)) {
+                Some("AUTH_FAILED")
+            } else if !execution.diff.passed {
+                Some("CONTRACT_MISMATCH")
+            } else {
+                None
+            };
+
+            let passed = error_type.is_none();
+            let duration_ms = execution.duration_ms;
+
+            // Write history.
+            let hist_entry = HistoryEntry {
+                timestamp: now_iso8601(),
+                passed,
+                status,
+                duration_ms,
+                error_type: error_type.map(str::to_string),
+            };
+            history::write_entry(&root, &rel, hist_entry);
+
+            // Build compact or verbose output.
+            let mut result = if verbose {
+                json!({
+                    "passed": passed,
+                    "status": status,
+                    "duration_ms": duration_ms,
+                    "error_type": error_type,
+                    "diff": execution.diff,
+                    "request": execution.request,
+                    "response": execution.response,
+                    "assertion_results": execution.assertion_results,
+                })
+            } else {
+                json!({
+                    "passed": passed,
+                    "status": status,
+                    "duration_ms": duration_ms,
+                    "error_type": error_type,
+                    "diff": execution.diff,
+                    "assertion_results": execution.assertion_results,
+                })
+            };
+
+            // Add hint when there's an error.
+            if let Some(et) = error_type {
+                result["hint"] = json!(hint_for_error_type(et));
+                // Tier 3: fix hints for CONTRACT_MISMATCH.
+                if et == "CONTRACT_MISMATCH" {
+                    let mut hints: Vec<String> = Vec::new();
+                    if execution.diff.status.is_some() {
+                        if let Some(s) = status {
+                            hints.push(format!(
+                                "Update ## Expected response: change status line to HTTP/1.1 {s} <reason>"
+                            ));
+                        }
+                    }
+                    if !execution.diff.headers.is_empty() {
+                        hints.push("Add missing header to ## Expected response or remove it from the assertion".to_string());
+                    }
+                    if execution.diff.body.is_some() {
+                        hints.push("Run with infer_expected: true to get the actual response as an Expected Response block".to_string());
+                    }
+                    if !hints.is_empty() {
+                        result["hints"] = json!(hints);
+                    }
+                }
+            }
+
+            // Tier 3: infer_expected.
+            if infer_expected {
+                if let Some(resp) = &execution.response {
+                    let mut inferred = format!(
+                        "HTTP/1.1 {} {}\n",
+                        resp.status,
+                        http_reason(resp.status)
+                    );
+                    if let Some(ct) = resp.headers.get("content-type") {
+                        inferred.push_str(&format!("Content-Type: {ct}\n"));
+                    }
+                    inferred.push('\n');
+                    inferred.push_str(&resp.body);
+                    result["inferred_expected"] = json!(inferred);
+                }
+            }
+
+            result
+        }
+        Err(engine_error) => {
+            let (error_type, hint) = classify_engine_error(&engine_error);
+            let hist_entry = HistoryEntry {
+                timestamp: now_iso8601(),
+                passed: false,
+                status: None,
+                duration_ms: 0,
+                error_type: Some(error_type.to_string()),
+            };
+            history::write_entry(&root, &rel, hist_entry);
+            json!({
+                "passed": false,
+                "status": null,
+                "duration_ms": 0,
+                "error_type": error_type,
+                "hint": hint,
+                "message": engine_error.to_string(),
+                "diff": { "passed": false, "status": null, "headers": [], "body": null },
+            })
+        }
+    };
+
+    let text = serde_json::to_string_pretty(&output).map_err(|e| (-32000, e.to_string()))?;
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
@@ -202,12 +651,37 @@ async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
             )
         })?;
 
-    let env = args.get("env").and_then(|v| v.as_str()).unwrap_or("dev");
+    let session = read_session();
+    let env = resolve_env(args, &session);
+    let verbose = args.get("verbose").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    let source = std::fs::read_to_string(pipeline_path)
-        .map_err(|e| (-32000, format!("{pipeline_path}: {e}")))?;
-    let pipeline =
-        parse_pipeline(&source, Path::new(pipeline_path)).map_err(|e| (-32000, e.to_string()))?;
+    let source = match std::fs::read_to_string(pipeline_path) {
+        Ok(s) => s,
+        Err(e) => {
+            let text = serde_json::to_string_pretty(&json!({
+                "passed": false,
+                "error_type": "SPEC_PARSE_ERROR",
+                "hint": hint_for_error_type("SPEC_PARSE_ERROR"),
+                "message": format!("{pipeline_path}: {e}"),
+            }))
+            .unwrap_or_default();
+            return Ok(json!({ "content": [{ "type": "text", "text": text }] }));
+        }
+    };
+
+    let pipeline = match parse_pipeline(&source, Path::new(pipeline_path)) {
+        Ok(p) => p,
+        Err(e) => {
+            let text = serde_json::to_string_pretty(&json!({
+                "passed": false,
+                "error_type": "SPEC_PARSE_ERROR",
+                "hint": hint_for_error_type("SPEC_PARSE_ERROR"),
+                "message": e.to_string(),
+            }))
+            .unwrap_or_default();
+            return Ok(json!({ "content": [{ "type": "text", "text": text }] }));
+        }
+    };
 
     let root = Path::new(pipeline_path)
         .ancestors()
@@ -215,18 +689,70 @@ async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
         .unwrap_or_else(|| Path::new("api-docs"))
         .to_path_buf();
 
-    let result = pipeline::run(
+    let exec_opts = build_context(args, &session);
+
+    let result = match pipeline::run(
         &pipeline,
         env,
         PipelineOpts {
-            root,
-            exec: ExecOpts::default(),
+            root: root.clone(),
+            exec: ExecOpts {
+                context: exec_opts,
+                timeout_ms: None,
+                dry_run: false,
+            },
         },
     )
     .await
-    .map_err(|e| (-32000, e.to_string()))?;
+    {
+        Ok(r) => r,
+        Err(e) => {
+            let text = serde_json::to_string_pretty(&json!({
+                "passed": false,
+                "error_type": "NETWORK_ERROR",
+                "message": e.to_string(),
+            }))
+            .unwrap_or_default();
+            return Ok(json!({ "content": [{ "type": "text", "text": text }] }));
+        }
+    };
 
-    let text = serde_json::to_string_pretty(&result).map_err(|e| (-32000, e.to_string()))?;
+    let output = if verbose {
+        serde_json::to_value(&result).unwrap_or(Value::Null)
+    } else {
+        // Compact: per-step summary + captures + passed.
+        let steps: Vec<Value> = result
+            .steps
+            .iter()
+            .map(|step| {
+                let status = step.execution.as_ref().and_then(|e| e.response.as_ref()).map(|r| r.status);
+                let passed = step.execution.as_ref().map(|e| e.diff.passed).unwrap_or(false) && step.error.is_none();
+                let error_type: Option<&str> = if step.error.is_some() {
+                    Some("NETWORK_ERROR")
+                } else if matches!(status, Some(401) | Some(403)) {
+                    Some("AUTH_FAILED")
+                } else if !passed {
+                    Some("CONTRACT_MISMATCH")
+                } else {
+                    None
+                };
+                json!({
+                    "name": step.name,
+                    "endpoint": step.endpoint,
+                    "passed": passed,
+                    "status": status,
+                    "error_type": error_type,
+                })
+            })
+            .collect();
+        json!({
+            "passed": result.passed,
+            "captures": result.captures,
+            "steps": steps,
+        })
+    };
+
+    let text = serde_json::to_string_pretty(&output).map_err(|e| (-32000, e.to_string()))?;
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
@@ -283,9 +809,488 @@ fn handle_author(args: &Value) -> Result<Value, (i32, String)> {
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
+/// Show which variables a spec requires and which are resolved.
+async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
+    let spec_path = args
+        .get("spec_path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| (-32602, "Invalid params: spec_path is required".to_string()))?;
+
+    let session = read_session();
+    let env = resolve_env(args, &session);
+
+    let source =
+        std::fs::read_to_string(spec_path).map_err(|e| (-32000, format!("{spec_path}: {e}")))?;
+    let endpoint = parse_endpoint(&source, Path::new(spec_path))
+        .map_err(|e| (-32000, e.to_string()))?;
+
+    // Extract template vars {{varName}} from request block.
+    let template_re =
+        regex::Regex::new(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}").expect("valid var regex");
+    // Extract path params :paramName from first line of request block.
+    let path_re =
+        regex::Regex::new(r":([A-Za-z_][A-Za-z0-9_]*)").expect("valid path param regex");
+
+    let mut vars: std::collections::BTreeMap<String, &'static str> = std::collections::BTreeMap::new();
+
+    for caps in template_re.captures_iter(&endpoint.request) {
+        vars.insert(caps[1].to_string(), "template");
+    }
+    // Path params from first line only.
+    if let Some(first_line) = endpoint.request.lines().next() {
+        for caps in path_re.captures_iter(first_line) {
+            vars.entry(caps[1].to_string()).or_insert("path_param");
+        }
+    }
+
+    // Build a context from env.md + .env.local + OS env vars.
+    let mut context = Context::default();
+
+    // Load env.md if present.
+    let root = collection_root_for(spec_path);
+    let env_md = root.join("_shared").join("env.md");
+    if let Ok(env_source) = std::fs::read_to_string(&env_md) {
+        if let Ok(env_config) = parse_env_config(&env_source, &env_md) {
+            if let Some(values) = env_config.envs.get(env) {
+                for (k, v) in values {
+                    context.insert(SourceKind::Env, k, v);
+                }
+            }
+        }
+    }
+
+    // Load .env.local (best-effort).
+    let dot_env = root.join(".env.local");
+    if let Ok(dot_source) = std::fs::read_to_string(&dot_env) {
+        for line in dot_source.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((k, v)) = line.split_once('=') {
+                context.insert(SourceKind::DotEnvLocal, k.trim(), v.trim());
+            }
+        }
+    }
+
+    // Load TRELLIS_* OS env vars (best-effort).
+    for (k, v) in std::env::vars() {
+        if let Some(stripped) = k.strip_prefix("TRELLIS_") {
+            context.insert(SourceKind::OsEnv, stripped, v);
+        }
+    }
+
+    // Build variable list.
+    let mut all_resolved = true;
+    let variables: Vec<Value> = vars
+        .iter()
+        .map(|(name, kind)| {
+            let resolved = context.get(name).is_some();
+            if !resolved {
+                all_resolved = false;
+            }
+            let source_label = if resolved {
+                Some(if context.get(name).is_some() { "env.md" } else { "vars" })
+            } else {
+                None
+            };
+            let hint = if !resolved {
+                Some(if *kind == "path_param" {
+                    format!("Pass as vars: {{\"{name}\": \"...\"}}")
+                } else {
+                    format!(
+                        "Set in _shared/env.md [{env}] or pass as vars: {{\"{name}\": \"...\"}}"
+                    )
+                })
+            } else {
+                None
+            };
+            json!({
+                "name": name,
+                "kind": kind,
+                "resolved": resolved,
+                "source": source_label,
+                "hint": hint,
+            })
+        })
+        .collect();
+
+    let result = json!({
+        "spec": spec_path,
+        "env": env,
+        "ready": all_resolved,
+        "variables": variables,
+    });
+
+    let text = serde_json::to_string_pretty(&result).map_err(|e| (-32000, e.to_string()))?;
+    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+}
+
+/// Search specs in the collection.
+async fn handle_search(args: &Value) -> Result<Value, (i32, String)> {
+    let q = args.get("q").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+    let method_filter = args
+        .get("method")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_uppercase());
+    let path_filter = args.get("path").and_then(|v| v.as_str());
+    let tag_filter = args.get("tag").and_then(|v| v.as_str());
+
+    // Find the collection root by looking for `api-docs` or `apis` in cwd.
+    let search_root = {
+        let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let candidates = ["api-docs", "apis"];
+        candidates
+            .iter()
+            .map(|c| cwd.join(c))
+            .find(|p| p.exists())
+            .unwrap_or(cwd)
+    };
+
+    let mut results: Vec<Value> = Vec::new();
+
+    if search_root.exists() {
+        walk_specs(&search_root, &search_root, |file_path, rel_path| {
+            let Ok(source) = std::fs::read_to_string(file_path) else {
+                return;
+            };
+            let Ok(ep) = parse_endpoint(&source, file_path) else {
+                return;
+            };
+
+            // Apply filters.
+            if let Some(ref m) = method_filter {
+                if ep.schema.method.as_str() != m {
+                    return;
+                }
+            }
+            if let Some(pf) = path_filter {
+                if !ep.schema.path.contains(pf) {
+                    return;
+                }
+            }
+            if let Some(tf) = tag_filter {
+                if !ep.schema.tags.iter().any(|t| t == tf) {
+                    return;
+                }
+            }
+            if !q.is_empty() {
+                let haystack = format!(
+                    "{} {}",
+                    ep.title.to_lowercase(),
+                    ep.description.to_lowercase()
+                );
+                if !haystack.contains(&q) {
+                    return;
+                }
+            }
+
+            results.push(json!({
+                "file": rel_path,
+                "method": ep.schema.method.as_str(),
+                "path": ep.schema.path,
+                "title": ep.title,
+                "tags": ep.schema.tags,
+            }));
+        });
+    }
+
+    let output = json!({
+        "count": results.len(),
+        "results": results,
+    });
+
+    let text = serde_json::to_string_pretty(&output).map_err(|e| (-32000, e.to_string()))?;
+    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+}
+
+fn walk_specs(
+    root: &Path,
+    dir: &Path,
+    mut cb: impl FnMut(&Path, String),
+) {
+    walk_specs_inner(root, dir, &mut cb);
+}
+
+fn walk_specs_inner(root: &Path, dir: &Path, cb: &mut impl FnMut(&Path, String)) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut paths: Vec<_> = rd.filter_map(|e| e.ok().map(|e| e.path())).collect();
+    paths.sort();
+    for p in paths {
+        if p.is_dir() {
+            let name = p.file_name().unwrap_or_default().to_string_lossy();
+            if !matches!(name.as_ref(), "_shared" | "flows" | "pipelines") {
+                walk_specs_inner(root, &p, cb);
+            }
+        } else if p.extension().is_some_and(|e| e == "md") {
+            let name = p.file_name().unwrap_or_default().to_string_lossy();
+            if matches!(name.as_ref(), "README.md" | "trellis.md" | "env.md") {
+                continue;
+            }
+            let rel = p
+                .strip_prefix(root)
+                .unwrap_or(&p)
+                .to_string_lossy()
+                .to_string();
+            cb(&p, rel);
+        }
+    }
+}
+
+/// Return recent execution history for a spec.
+async fn handle_history(args: &Value) -> Result<Value, (i32, String)> {
+    let spec_path = args
+        .get("spec_path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| (-32602, "Invalid params: spec_path is required".to_string()))?;
+
+    let last = args
+        .get("last")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(10) as usize;
+
+    let root = collection_root_for(spec_path);
+    let rel = spec_rel(spec_path, &root);
+    let mut entries = history::read_history(&root, &rel);
+    // Return the most recent `last` entries.
+    if entries.len() > last {
+        let drop = entries.len() - last;
+        entries.drain(..drop);
+    }
+
+    let trend = history::compute_trend(&entries);
+
+    let output = json!({
+        "spec": spec_path,
+        "entries": entries,
+        "trend": trend,
+    });
+
+    let text = serde_json::to_string_pretty(&output).map_err(|e| (-32000, e.to_string()))?;
+    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+}
+
+/// Get or set the session context.
+fn handle_session(args: &Value) -> Result<Value, (i32, String)> {
+    let action = args
+        .get("action")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| (-32602, "Invalid params: action is required".to_string()))?;
+
+    match action {
+        "get" => {
+            let session = read_session();
+            let text = serde_json::to_string_pretty(&json!({
+                "env": session.env,
+                "vars": session.vars,
+            }))
+            .map_err(|e| (-32000, e.to_string()))?;
+            Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+        }
+        "set" => {
+            let mut session = read_session();
+            if let Some(env) = args.get("env").and_then(|v| v.as_str()) {
+                session.env = Some(env.to_string());
+            }
+            if let Some(vars) = args.get("vars").and_then(|v| v.as_object()) {
+                for (k, v) in vars {
+                    if let Some(val) = v.as_str() {
+                        session.vars.insert(k.clone(), val.to_string());
+                    }
+                }
+            }
+            write_session(&session);
+            let text = serde_json::to_string_pretty(&json!({
+                "saved": true,
+                "env": session.env,
+                "vars": session.vars,
+            }))
+            .map_err(|e| (-32000, e.to_string()))?;
+            Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+        }
+        other => Err((-32602, format!("Invalid params: unknown action \"{other}\""))),
+    }
+}
+
+/// Execute multiple specs sequentially.
+async fn handle_exec_batch(args: &Value) -> Result<Value, (i32, String)> {
+    let specs = args
+        .get("specs")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| (-32602, "Invalid params: specs array is required".to_string()))?
+        .iter()
+        .filter_map(|v| v.as_str().map(str::to_string))
+        .collect::<Vec<_>>();
+
+    let session = read_session();
+    let env = resolve_env(args, &session);
+    let context = build_context(args, &session);
+
+    let started = std::time::Instant::now();
+    let mut results: Vec<Value> = Vec::new();
+    let mut total_passed = 0usize;
+    let mut total_failed = 0usize;
+
+    for spec_path in &specs {
+        let source = match std::fs::read_to_string(spec_path) {
+            Ok(s) => s,
+            Err(e) => {
+                total_failed += 1;
+                results.push(json!({
+                    "spec": spec_path,
+                    "passed": false,
+                    "status": null,
+                    "duration_ms": 0,
+                    "error_type": "SPEC_PARSE_ERROR",
+                    "hint": hint_for_error_type("SPEC_PARSE_ERROR"),
+                    "message": e.to_string(),
+                }));
+                continue;
+            }
+        };
+
+        let endpoint = match parse_endpoint(&source, Path::new(spec_path.as_str())) {
+            Ok(ep) => ep,
+            Err(e) => {
+                total_failed += 1;
+                results.push(json!({
+                    "spec": spec_path,
+                    "passed": false,
+                    "status": null,
+                    "duration_ms": 0,
+                    "error_type": "SPEC_PARSE_ERROR",
+                    "hint": hint_for_error_type("SPEC_PARSE_ERROR"),
+                    "message": e.to_string(),
+                }));
+                continue;
+            }
+        };
+
+        let step_ctx = context.clone();
+        let exec_result = engine::execute(
+            &endpoint,
+            env,
+            ExecOpts {
+                context: step_ctx,
+                timeout_ms: None,
+                dry_run: false,
+            },
+        )
+        .await;
+
+        let root = collection_root_for(spec_path);
+        let rel = spec_rel(spec_path, &root);
+
+        match exec_result {
+            Ok(execution) => {
+                let status = execution.response.as_ref().map(|r| r.status);
+                let error_type: Option<&str> = if matches!(status, Some(401) | Some(403)) {
+                    Some("AUTH_FAILED")
+                } else if !execution.diff.passed {
+                    Some("CONTRACT_MISMATCH")
+                } else {
+                    None
+                };
+                let passed = error_type.is_none();
+                if passed {
+                    total_passed += 1;
+                } else {
+                    total_failed += 1;
+                }
+                history::write_entry(
+                    &root,
+                    &rel,
+                    HistoryEntry {
+                        timestamp: now_iso8601(),
+                        passed,
+                        status,
+                        duration_ms: execution.duration_ms,
+                        error_type: error_type.map(str::to_string),
+                    },
+                );
+                let mut entry = json!({
+                    "spec": spec_path,
+                    "passed": passed,
+                    "status": status,
+                    "duration_ms": execution.duration_ms,
+                    "error_type": error_type,
+                });
+                if let Some(et) = error_type {
+                    entry["hint"] = json!(hint_for_error_type(et));
+                }
+                results.push(entry);
+            }
+            Err(e) => {
+                let (error_type, hint) = classify_engine_error(&e);
+                total_failed += 1;
+                history::write_entry(
+                    &root,
+                    &rel,
+                    HistoryEntry {
+                        timestamp: now_iso8601(),
+                        passed: false,
+                        status: None,
+                        duration_ms: 0,
+                        error_type: Some(error_type.to_string()),
+                    },
+                );
+                results.push(json!({
+                    "spec": spec_path,
+                    "passed": false,
+                    "status": null,
+                    "duration_ms": 0,
+                    "error_type": error_type,
+                    "hint": hint,
+                    "message": e.to_string(),
+                }));
+            }
+        }
+    }
+
+    let total_duration_ms = started.elapsed().as_millis();
+    let output = json!({
+        "summary": {
+            "total": specs.len(),
+            "passed": total_passed,
+            "failed": total_failed,
+            "duration_ms": total_duration_ms,
+        },
+        "results": results,
+    });
+
+    let text = serde_json::to_string_pretty(&output).map_err(|e| (-32000, e.to_string()))?;
+    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+}
+
+/// Common HTTP reason phrases.
+fn http_reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        201 => "Created",
+        204 => "No Content",
+        301 => "Moved Permanently",
+        302 => "Found",
+        304 => "Not Modified",
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        409 => "Conflict",
+        422 => "Unprocessable Entity",
+        429 => "Too Many Requests",
+        500 => "Internal Server Error",
+        502 => "Bad Gateway",
+        503 => "Service Unavailable",
+        _ => "",
+    }
+}
+
 // ─── MCP Resources protocol ───────────────────────────────────────────────────
 
-/// `resources/list` — enumerate all endpoint spec files as MCP resources.
+/// `resources/list`   enumerate all endpoint spec files as MCP resources.
 /// URIs use the scheme `trellis://spec/<path-relative-to-api-docs>`.
 fn handle_resources_list() -> Value {
     let root = Path::new("api-docs");
@@ -332,7 +1337,7 @@ fn collect_resource_uris(root: &Path, dir: &Path, out: &mut Vec<Value>) {
     }
 }
 
-/// `resources/read` — return the markdown content of one spec by URI.
+/// `resources/read`   return the markdown content of one spec by URI.
 fn handle_resources_read(params: &Value) -> Result<Value, (i32, String)> {
     let uri = params
         .get("uri")
@@ -416,6 +1421,26 @@ async fn dispatch(req: McpRequest) -> String {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
+                "trellis_vars" => match handle_vars(&args).await {
+                    Ok(r) => McpResponse::ok(id, r),
+                    Err((code, msg)) => McpResponse::err(id, code, msg),
+                },
+                "trellis_search" => match handle_search(&args).await {
+                    Ok(r) => McpResponse::ok(id, r),
+                    Err((code, msg)) => McpResponse::err(id, code, msg),
+                },
+                "trellis_history" => match handle_history(&args).await {
+                    Ok(r) => McpResponse::ok(id, r),
+                    Err((code, msg)) => McpResponse::err(id, code, msg),
+                },
+                "trellis_session" => match handle_session(&args) {
+                    Ok(r) => McpResponse::ok(id, r),
+                    Err((code, msg)) => McpResponse::err(id, code, msg),
+                },
+                "trellis_exec_batch" => match handle_exec_batch(&args).await {
+                    Ok(r) => McpResponse::ok(id, r),
+                    Err((code, msg)) => McpResponse::err(id, code, msg),
+                },
                 other => McpResponse::err(
                     id,
                     -32601,
@@ -461,7 +1486,7 @@ pub async fn run_mcp_server() -> Result<()> {
             Ok(req) => dispatch(req).await,
         };
 
-        // Notifications return empty string — do not write anything back.
+        // Notifications return empty string   do not write anything back.
         if response.is_empty() {
             continue;
         }
@@ -522,10 +1547,10 @@ mod tests {
     // ── tools/list ──
 
     #[test]
-    fn tools_list_has_exactly_three_tools() {
+    fn tools_list_has_at_least_eight_tools() {
         let list = tools_list_result();
         let tools = list["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 3);
+        assert!(tools.len() >= 8, "expected at least 8 tools, got {}", tools.len());
     }
 
     #[test]
@@ -540,6 +1565,11 @@ mod tests {
         assert!(names.contains(&"trellis_exec"));
         assert!(names.contains(&"trellis_flow"));
         assert!(names.contains(&"trellis_author"));
+        assert!(names.contains(&"trellis_vars"));
+        assert!(names.contains(&"trellis_search"));
+        assert!(names.contains(&"trellis_history"));
+        assert!(names.contains(&"trellis_session"));
+        assert!(names.contains(&"trellis_exec_batch"));
     }
 
     #[test]
@@ -577,7 +1607,7 @@ mod tests {
         let req = make_req(2, "tools/list", json!({}));
         let s = dispatch(req).await;
         let v: Value = serde_json::from_str(&s).unwrap();
-        assert_eq!(v["result"]["tools"].as_array().unwrap().len(), 3);
+        assert!(v["result"]["tools"].as_array().unwrap().len() >= 8);
     }
 
     // ── dispatch: notifications ──
@@ -603,7 +1633,7 @@ mod tests {
         assert_eq!(v["error"]["code"], -32601);
     }
 
-    // ── dispatch: tools/call — missing params ──
+    // ── dispatch: tools/call   missing params ──
 
     #[tokio::test]
     async fn exec_missing_spec_path_returns_32602() {
@@ -627,7 +1657,7 @@ mod tests {
         assert_eq!(v["error"]["code"], -32602);
     }
 
-    // ── dispatch: tools/call — path errors ──
+    // ── dispatch: tools/call   path errors ──
 
     #[tokio::test]
     async fn exec_nonexistent_file_returns_32000() {
@@ -640,7 +1670,7 @@ mod tests {
         assert_eq!(v["error"]["code"], -32000);
     }
 
-    // ── dispatch: tools/call — unknown tool ──
+    // ── dispatch: tools/call   unknown tool ──
 
     #[tokio::test]
     async fn unknown_tool_returns_32601() {
@@ -769,5 +1799,147 @@ mod tests {
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32000);
+    }
+
+    // ── trellis_vars ──
+
+    #[tokio::test]
+    async fn vars_missing_spec_path_returns_32602() {
+        let req = make_req(
+            70,
+            "tools/call",
+            json!({"name": "trellis_vars", "arguments": {}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert_eq!(v["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn vars_returns_variable_list() {
+        let tmp = tempfile::tempdir().unwrap();
+        let spec_path = tmp.path().join("test.md");
+        let content = "---\nresource: users\nprotocol: http\nmethod: GET\npath: /users/:id\nversion: 1\n---\n# Get user\n\nFetches a user.\n\n## Request\n\n```http\nGET {{baseUrl}}/users/:userId\nAuthorization: Bearer {{authToken}}\n```\n\n## Expected response\n\n```http\nHTTP/1.1 200 OK\n\n{\"id\":\"1\"}\n```\n";
+        std::fs::write(&spec_path, content).unwrap();
+        let req = make_req(
+            71,
+            "tools/call",
+            json!({"name": "trellis_vars", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert!(v["result"].is_object(), "expected result, got: {v}");
+        let text = v["result"]["content"][0]["text"].as_str().unwrap();
+        let data: Value = serde_json::from_str(text).unwrap();
+        assert!(data["variables"].is_array());
+        let names: Vec<&str> = data["variables"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["name"].as_str().unwrap())
+            .collect();
+        assert!(names.contains(&"baseUrl"));
+        assert!(names.contains(&"authToken"));
+    }
+
+    // ── trellis_search ──
+
+    #[tokio::test]
+    async fn search_returns_results_structure() {
+        let req = make_req(
+            80,
+            "tools/call",
+            json!({"name": "trellis_search", "arguments": {"method": "GET"}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert!(v["result"].is_object(), "expected result, got: {v}");
+        let text = v["result"]["content"][0]["text"].as_str().unwrap();
+        let data: Value = serde_json::from_str(text).unwrap();
+        assert!(data["count"].is_number());
+        assert!(data["results"].is_array());
+    }
+
+    // ── trellis_history ──
+
+    #[tokio::test]
+    async fn history_missing_spec_path_returns_32602() {
+        let req = make_req(
+            90,
+            "tools/call",
+            json!({"name": "trellis_history", "arguments": {}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert_eq!(v["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn history_returns_entries_and_trend() {
+        let tmp = tempfile::tempdir().unwrap();
+        let spec_path = tmp.path().join("test.md");
+        std::fs::write(&spec_path, "placeholder").unwrap();
+        let req = make_req(
+            91,
+            "tools/call",
+            json!({"name": "trellis_history", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert!(v["result"].is_object(), "expected result, got: {v}");
+        let text = v["result"]["content"][0]["text"].as_str().unwrap();
+        let data: Value = serde_json::from_str(text).unwrap();
+        assert!(data["entries"].is_array());
+        assert!(data["trend"].is_string());
+    }
+
+    // ── trellis_session ──
+
+    #[tokio::test]
+    async fn session_missing_action_returns_32602() {
+        let req = make_req(
+            100,
+            "tools/call",
+            json!({"name": "trellis_session", "arguments": {}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert_eq!(v["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn session_get_returns_current_session() {
+        let req = make_req(
+            101,
+            "tools/call",
+            json!({"name": "trellis_session", "arguments": {"action": "get"}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert!(v["result"].is_object(), "expected result, got: {v}");
+    }
+
+    // ── trellis_exec_batch ──
+
+    #[tokio::test]
+    async fn exec_batch_missing_specs_returns_32602() {
+        let req = make_req(
+            110,
+            "tools/call",
+            json!({"name": "trellis_exec_batch", "arguments": {}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert_eq!(v["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn exec_batch_returns_summary() {
+        // Run with a nonexistent spec to exercise the error path.
+        let req = make_req(
+            111,
+            "tools/call",
+            json!({"name": "trellis_exec_batch", "arguments": {"specs": ["/no/such/file.md"]}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert!(v["result"].is_object(), "expected result, got: {v}");
+        let text = v["result"]["content"][0]["text"].as_str().unwrap();
+        let data: Value = serde_json::from_str(text).unwrap();
+        assert!(data["summary"].is_object());
+        assert_eq!(data["summary"]["total"], 1);
+        assert_eq!(data["summary"]["failed"], 1);
+        assert!(data["results"].is_array());
     }
 }

@@ -6,13 +6,13 @@ icon: "code-branch"
 
 ## What is a pipeline?
 
-A pipeline is a markdown file in `api-docs/flows/` that chains endpoint specs into sequential or parallel steps. Each step can capture values from a response and inject them as variables into later steps — auth tokens, resource IDs, pagination cursors, and anything else extracted from a live response.
+A pipeline is a markdown file in `api-docs/flows/` that chains endpoint specs into sequential or parallel steps. Each step can capture values from a response and inject them as variables into later steps auth tokens, resource IDs, pagination cursors, and anything else extracted from a live response.
 
 ```text
 Create user ── capture response.body.id as userId
-    ↓
+ ↓
 Login ── inject userId, capture response.body.token as authToken
-    ↓
+ ↓
 Get profile ── inject userId and authToken
 ```
 
@@ -36,9 +36,9 @@ parallel: false
 
 | Field | Required | Type | Description | Default |
 |---|---|---|---|---|
-| `type` | yes | string | Must be `pipeline` | — |
-| `name` | yes | string | Stable pipeline name used in CLI output and reports | — |
-| `description` | no | string | Human-readable summary shown in web preview and reports | — |
+| `type` | yes | string | Must be `pipeline` | |
+| `name` | yes | string | Stable pipeline name used in CLI output and reports | |
+| `description` | no | string | Human-readable summary shown in web preview and reports | |
 | `continue-on-error` | no | boolean | Keep running after a failed step | `false` |
 | `parallel` | no | boolean | Run independent steps concurrently | `false` |
 
@@ -52,48 +52,48 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
 ## Steps
 
 1. **Create user** → `apis/users/create-user.md`
-   - Capture: `response.body.id` as `userId`
+ - Capture: `response.body.id` as `userId`
 2. **Login** → `apis/users/post-login.md`
-   - Inject: `userId`
-   - Capture: `response.body.token` as `authToken`
+ - Inject: `userId`
+ - Capture: `response.body.token` as `authToken`
 3. **Pair device** → `apis/devices/post-pair.md`
-   - Inject: `authToken`, `userId`
-   - Assert: `response.status == 201`
+ - Inject: `authToken`, `userId`
+ - Assert: `response.status == 201`
 ```
 
 ### Step directives
 
 <Tabs>
-  <Tab title="Capture">
-    Extract a value from the response and save it as a named variable for use in all subsequent steps.
+ <Tab title="Capture">
+ Extract a value from the response and save it as a named variable for use in all subsequent steps.
 
-    ```markdown
-    - Capture: `response.body.id` as `userId`
-    - Capture: `response.body.token` as `authToken`
-    - Capture: `response.headers.x-request-id` as `requestId`
-    ```
+ ```markdown
+ - Capture: `response.body.id` as `userId`
+ - Capture: `response.body.token` as `authToken`
+ - Capture: `response.headers.x-request-id` as `requestId`
+ ```
 
-    Use JSONPath-style dot notation for JSON responses (`response.body.<field>`). Captured values have the highest variable priority and override all other sources for all later steps in the pipeline.
-  </Tab>
-  <Tab title="Inject">
-    Declare which captured variables from previous steps this step requires.
+ Use JSONPath-style dot notation for JSON responses (`response.body.<field>`). Captured values have the highest variable priority and override all other sources for all later steps in the pipeline.
+ </Tab>
+ <Tab title="Inject">
+ Declare which captured variables from previous steps this step requires.
 
-    ```markdown
-    - Inject: `authToken`, `userId`
-    ```
+ ```markdown
+ - Inject: `authToken`, `userId`
+ ```
 
-    Injected variables are resolved from earlier `Capture` directives. If the named capture has not happened yet — because the producing step hasn't run or failed — Trellis returns an error before sending the request.
-  </Tab>
-  <Tab title="Assert">
-    Add a pass/fail condition evaluated after the step's `## Expected response` comparison.
+ Injected variables are resolved from earlier `Capture` directives. If the named capture has not happened yet because the producing step hasn't run or failed Trellis returns an error before sending the request.
+ </Tab>
+ <Tab title="Assert">
+ Add a pass/fail condition evaluated after the step's `## Expected response` comparison.
 
-    ```markdown
-    - Assert: `response.status == 201`
-    - Assert: `response.body.active == true`
-    ```
+ ```markdown
+ - Assert: `response.status == 201`
+ - Assert: `response.body.active == true`
+ ```
 
-    A failing `Assert` is treated the same as a failed expected response check. If `continue-on-error: false`, the pipeline stops at that step.
-  </Tab>
+ A failing `Assert` is treated the same as a failed expected response check. If `continue-on-error: false`, the pipeline stops at that step.
+ </Tab>
 </Tabs>
 
 ---
@@ -101,22 +101,22 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
 ## Sequential vs parallel execution
 
 <Tabs>
-  <Tab title="Sequential (default)">
-    Steps run in the order they appear in the `## Steps` list.
+ <Tab title="Sequential (default)">
+ Steps run in the order they appear in the `## Steps` list.
 
-    - If `continue-on-error: false` (the default), the pipeline stops at the first failing step and reports which step failed.
-    - Captured values are available to all steps that appear after the capturing step.
-    - Use sequential pipelines whenever later steps depend on the results of earlier ones — which is true for most real-world flows.
-  </Tab>
-  <Tab title="Parallel">
-    Set `parallel: true` in the frontmatter to allow Trellis to run independent steps concurrently.
+ - If `continue-on-error: false` (the default), the pipeline stops at the first failing step and reports which step failed.
+ - Captured values are available to all steps that appear after the capturing step.
+ - Use sequential pipelines whenever later steps depend on the results of earlier ones which is true for most real-world flows.
+ </Tab>
+ <Tab title="Parallel">
+ Set `parallel: true` in the frontmatter to allow Trellis to run independent steps concurrently.
 
-    - A step that uses `Inject` always waits for the step that produced the required `Capture` before it starts.
-    - Steps with no `Inject` dependency may run at the same time as other independent steps.
-    - Use parallel pipelines for independent setup steps such as seeding multiple test fixtures before a main flow begins.
+ - A step that uses `Inject` always waits for the step that produced the required `Capture` before it starts.
+ - Steps with no `Inject` dependency may run at the same time as other independent steps.
+ - Use parallel pipelines for independent setup steps such as seeding multiple test fixtures before a main flow begins.
 
-    Prefer a simple rule: if a step injects a captured value, keep it after the step that captures that value. Independent setup steps can run in parallel.
-  </Tab>
+ Prefer a simple rule: if a step injects a captured value, keep it after the step that captures that value. Independent setup steps can run in parallel.
+ </Tab>
 </Tabs>
 
 ---
@@ -124,28 +124,28 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
 ## Running a pipeline
 
 <Tabs>
-  <Tab title="Web UI">
-    ```bash
-    trellis serve
-    ```
+ <Tab title="Web UI">
+ ```bash
+ trellis serve
+ ```
 
-    Open the flow canvas, select a flow, run it, and inspect each step result. Use the canvas when you are designing captures and connections.
-  </Tab>
-  <Tab title="CLI">
-    ```bash
-    # Run a pipeline
-    trellis flow api-docs/flows/user-onboarding.md --env=dev
+ Open the flow canvas, select a flow, run it, and inspect each step result. Use the canvas when you are designing captures and connections.
+ </Tab>
+ <Tab title="CLI">
+ ```bash
+ # Run a pipeline
+ trellis flow api-docs/flows/user-onboarding.md --env=dev
 
-    # Inject additional variables at the CLI level
-    trellis flow api-docs/flows/user-onboarding.md --env=staging --var email=test@example.com
+ # Inject additional variables at the CLI level
+ trellis flow api-docs/flows/user-onboarding.md --env=staging --var email=test@example.com
 
-    # Force sequential execution even if parallel: true is set
-    trellis flow api-docs/flows/user-onboarding.md --no-parallel
+ # Force sequential execution even if parallel: true is set
+ trellis flow api-docs/flows/user-onboarding.md --no-parallel
 
-    # Structured JSON output for CI
-    trellis flow api-docs/flows/user-onboarding.md --output=json
-    ```
-  </Tab>
+ # Structured JSON output for CI
+ trellis flow api-docs/flows/user-onboarding.md --output=json
+ ```
+ </Tab>
 </Tabs>
 
 ---
@@ -168,15 +168,15 @@ End-to-end flow from account creation to profile verification.
 ## Steps
 
 1. **Create user** → `apis/users/post-users.md`
-   - Capture: `response.body.id` as `userId`
+ - Capture: `response.body.id` as `userId`
 2. **Login** → `apis/users/post-login.md`
-   - Inject: `userId`
-   - Capture: `response.body.token` as `authToken`
+ - Inject: `userId`
+ - Capture: `response.body.token` as `authToken`
 3. **Get profile** → `apis/users/get-user-by-id.md`
-   - Inject: `authToken`, `userId`
-   - Assert: `response.status == 200`
+ - Inject: `authToken`, `userId`
+ - Assert: `response.status == 200`
 ```
 
 <Tip>
-  Keep pipeline files short and focused on one user journey. A pipeline that tests ten unrelated things is harder to debug when step 7 fails. Prefer one pipeline per scenario.
+ Keep pipeline files short and focused on one user journey. A pipeline that tests ten unrelated things is harder to debug when step 7 fails. Prefer one pipeline per scenario.
 </Tip>

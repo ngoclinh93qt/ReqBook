@@ -23,6 +23,7 @@ use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    adhoc::{self, AdHocParams},
     engine::{self, ExecOpts},
     importer::{self, curl as curl_importer, project as project_importer},
     mock::{collect_entries, path_matches, MockEntry},
@@ -218,6 +219,33 @@ struct ValidateResponse {
     kind: String,
     path: String,
     error: Option<String>,
+}
+
+/// Body for `POST /api/request`   ad-hoc request without a spec file.
+#[derive(Debug, Deserialize)]
+struct AdHocReqBody {
+    method: String,
+    url: String,
+    #[serde(default)]
+    headers: BTreeMap<String, String>,
+    body: Option<String>,
+    #[serde(default)]
+    vars: BTreeMap<String, String>,
+    #[serde(default = "default_env")]
+    env: String,
+    /// If Some, save as spec at this relative path inside api-docs/.
+    save_as: Option<String>,
+}
+
+fn default_env() -> String {
+    "dev".to_string()
+}
+
+#[derive(Debug, Serialize)]
+struct AdHocReqResponse {
+    #[serde(flatten)]
+    execution: crate::engine::Execution,
+    saved_path: Option<String>,
 }
 
 // ─── API Handlers ─────────────────────────────────────────────────────────────
@@ -692,6 +720,33 @@ async fn import_curl_handler(State(state): State<Arc<AppState>>, body: Bytes) ->
     }
 }
 
+async fn parse_curl_fields_handler(body: Bytes) -> impl IntoResponse {
+    let text = match std::str::from_utf8(&body) {
+        Ok(s) => s,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "request body must be UTF-8"})),
+            )
+                .into_response()
+        }
+    };
+    match curl_importer::parse_to_fields(text) {
+        Ok(parsed) => Json(serde_json::json!({
+            "method": parsed.method,
+            "url": parsed.url,
+            "headers": parsed.headers,
+            "body": parsed.body,
+        }))
+        .into_response(),
+        Err(e) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
+    }
+}
+
 async fn scan_project_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     match scan_project(&state.root, false) {
         Ok(response) => Json(response).into_response(),
@@ -712,6 +767,92 @@ async fn import_project_handler(State(state): State<Arc<AppState>>) -> impl Into
         )
             .into_response(),
     }
+}
+
+async fn adhoc_request_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<AdHocReqBody>,
+) -> impl IntoResponse {
+    let params = AdHocParams {
+        method: body.method.clone(),
+        url: body.url.clone(),
+        headers: body.headers.clone(),
+        body: body.body.clone(),
+        env: body.env.clone(),
+    };
+
+    let endpoint = match adhoc::build_endpoint(&params) {
+        Ok(ep) => ep,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": e.to_string()})),
+            )
+                .into_response()
+        }
+    };
+
+    let mut context = load_env_context(&state.root, &body.env);
+    for (k, v) in &body.vars {
+        context.insert(SourceKind::Cli, k, v);
+    }
+
+    let execution = match engine::execute(
+        &endpoint,
+        &body.env,
+        ExecOpts {
+            context,
+            ..ExecOpts::default()
+        },
+    )
+    .await
+    {
+        Ok(ex) => ex,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": e.to_string()})),
+            )
+                .into_response()
+        }
+    };
+
+    let saved_path = if let Some(rel) = &body.save_as {
+        let dest = state.root.join(API_DOCS_DIR).join(rel);
+        let response_block = execution.response.as_ref().map(|r| {
+            let mut block = format!("HTTP/1.1 {}\n", r.status);
+            for (k, v) in &r.headers {
+                block.push_str(&format!("{k}: {v}\n"));
+            }
+            if !r.body.is_empty() {
+                block.push('\n');
+                block.push_str(&r.body);
+            }
+            block
+        }).unwrap_or_default();
+        match adhoc::save_to_path(&dest, &params, &response_block) {
+            Ok(()) => Some(rel.clone()),
+            Err(_) => None,
+        }
+    } else {
+        // Auto-save to scratch.
+        let response_block = execution.response.as_ref().map(|r| {
+            let mut block = format!("HTTP/1.1 {}\n", r.status);
+            for (k, v) in &r.headers {
+                block.push_str(&format!("{k}: {v}\n"));
+            }
+            if !r.body.is_empty() {
+                block.push('\n');
+                block.push_str(&r.body);
+            }
+            block
+        }).unwrap_or_default();
+        adhoc::save_to_scratch(&params, &response_block)
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned())
+    };
+
+    Json(AdHocReqResponse { execution, saved_path }).into_response()
 }
 
 // ─── Business logic ───────────────────────────────────────────────────────────
@@ -1133,7 +1274,7 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) ->
         let dir = if api_docs.exists() { api_docs } else { root.clone() };
         let entries = collect_entries(&dir)?;
         println!(
-            "{} Mock mode — {} route(s) loaded",
+            "{} Mock mode   {} route(s) loaded",
             "→".cyan(),
             entries.len()
         );
@@ -1166,6 +1307,8 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) ->
             "/api/variables",
             get(get_variables_handler).post(save_variables_handler),
         )
+        .route("/api/request", post(adhoc_request_handler))
+        .route("/api/parse-curl", post(parse_curl_fields_handler))
         .route("/api/import/curl", post(import_curl_handler))
         .route(
             "/api/scan/project",

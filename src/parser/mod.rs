@@ -27,6 +27,36 @@ pub struct Endpoint {
     pub tests: Option<String>,
     /// Optional notes section.
     pub notes: Option<String>,
+    /// Structured assertions from the `## Assertions` section.
+    #[serde(default)]
+    pub assertions: Vec<Assertion>,
+}
+
+/// A structured assertion rule.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Assertion {
+    /// Path to check: `"status"`, `"body.field"`, `"headers.content-type"`, etc.
+    pub path: String,
+    /// Comparison operator.
+    pub op: AssertionOp,
+    /// Value operand (absent for `exists`).
+    pub value: Option<String>,
+}
+
+/// Assertion operator.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AssertionOp {
+    /// Field exists and is non-null.
+    Exists,
+    /// Exact string match.
+    Equals,
+    /// Substring match.
+    Contains,
+    /// Regex match.
+    Matches,
+    /// Value is one of a comma-separated list.
+    In,
 }
 
 /// Endpoint YAML frontmatter.
@@ -285,6 +315,7 @@ pub fn parse_endpoint(source: &str, path: impl AsRef<Path>) -> Result<Endpoint, 
     let expected_response = exactly_one_code(&doc, "Expected response", "http", &path)?;
     let tests = optional_one_code(&doc, "Tests", "agent-task", &path)?;
     let notes = doc.section_text("Notes");
+    let assertions = parse_assertions(doc.section_text("Assertions").as_deref().unwrap_or(""));
 
     Ok(Endpoint {
         source: Some(path),
@@ -295,6 +326,7 @@ pub fn parse_endpoint(source: &str, path: impl AsRef<Path>) -> Result<Endpoint, 
         expected_response,
         tests,
         notes,
+        assertions,
     })
 }
 
@@ -589,6 +621,67 @@ fn optional_one_code(
             message: format!("multiple {lang} blocks in ## {section}"),
             fix: format!("keep one `{lang}` block in ## {section}"),
         }),
+    }
+}
+
+/// Parse `## Assertions` section text into structured `Assertion` values.
+///
+/// Each line starting with `- ` is a rule in one of these forms:
+/// - `- status: 201`                       → Equals
+/// - `- body.id: exists`                   → Exists
+/// - `- body.email: equals "test@x.com"`   → Equals (strips quotes)
+/// - `- body.role: in [admin, user]`        → In
+/// - `- headers.content-type: contains application/json` → Contains
+/// - `- body.slug: matches ^[a-z]+$`        → Matches
+fn parse_assertions(source: &str) -> Vec<Assertion> {
+    let mut assertions = Vec::new();
+    for line in source.lines() {
+        let Some(rule) = line.strip_prefix("- ") else {
+            continue;
+        };
+        let Some((path, rest)) = rule.split_once(':') else {
+            continue;
+        };
+        let path = path.trim().to_string();
+        let rest = rest.trim();
+        if rest.is_empty() {
+            continue;
+        }
+
+        // Determine op and value from the rhs.
+        let (op, value) = if rest.eq_ignore_ascii_case("exists") {
+            (AssertionOp::Exists, None)
+        } else if let Some(v) = rest.strip_prefix("equals ").or(rest.strip_prefix("equals\t")) {
+            let v = strip_surrounding_quotes(v.trim());
+            (AssertionOp::Equals, Some(v.to_string()))
+        } else if let Some(v) = rest.strip_prefix("contains ").or(rest.strip_prefix("contains\t")) {
+            (AssertionOp::Contains, Some(v.trim().to_string()))
+        } else if let Some(v) = rest.strip_prefix("matches ").or(rest.strip_prefix("matches\t")) {
+            (AssertionOp::Matches, Some(v.trim().to_string()))
+        } else if let Some(v) = rest.strip_prefix("in ").or(rest.strip_prefix("in\t")) {
+            // Strip surrounding brackets if present: `[admin, user]` → `admin, user`
+            let v = v.trim();
+            let v = v
+                .strip_prefix('[')
+                .and_then(|s| s.strip_suffix(']'))
+                .unwrap_or(v);
+            (AssertionOp::In, Some(v.trim().to_string()))
+        } else {
+            // Bare value → treat as Equals (e.g. `- status: 201`)
+            let v = strip_surrounding_quotes(rest);
+            (AssertionOp::Equals, Some(v.to_string()))
+        };
+
+        assertions.push(Assertion { path, op, value });
+    }
+    assertions
+}
+
+fn strip_surrounding_quotes(s: &str) -> &str {
+    if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
+        &s[1..s.len() - 1]
+    } else {
+        s
     }
 }
 

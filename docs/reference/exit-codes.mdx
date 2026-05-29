@@ -6,7 +6,7 @@ icon: "hash"
 
 ## Overview
 
-Trellis uses six exit codes. All are stable across versions — you can reliably test for them in CI scripts without worrying about changes between releases.
+Trellis uses six exit codes. All are stable across versions you can reliably test for them in CI scripts without worrying about changes between releases.
 
 | Code | Name | When it occurs | CLI commands that can return it |
 |---|---|---|---|
@@ -21,20 +21,20 @@ Trellis uses six exit codes. All are stable across versions — you can reliably
 
 ## When each code fires
 
-**Exit code 1 — Test failed**
+**Exit code 1 Test failed**
 The request was sent successfully and a response was received, but one or more assertions in `## Expected response` did not match. Check the diff output to see which fields diverged.
 
-**Exit code 2 — Invalid spec**
+**Exit code 2 Invalid spec**
 Trellis could not build a valid request from the spec. This covers malformed frontmatter, missing required sections, unresolved `{{variable}}` references, and `--env` values that have no matching heading in `env.md`. The error message includes the file path, line number when available, and a suggested fix.
 
-**Exit code 3 — Engine error**
+**Exit code 3 Engine error**
 An internal failure prevented Trellis from building the HTTP request. Common causes: unsupported protocol value in frontmatter, filesystem error reading a file, or a corrupted binary. Check the `--verbose` output for details.
 
-**Exit code 4 — Network error**
+**Exit code 4 Network error**
 The request was built and sent but no response was received. Covers DNS resolution failure, connection refused, and timeout expiry across all retry attempts.
 
-**Exit code 5 — Secret detected**
-Trellis found a pattern matching a secret (JWT token, hex API key, `sk_` prefixed key, etc.) in a versioned markdown file. The process exits immediately — no request is sent, no spec is executed. Move the value to `.env.local` or a `TRELLIS_*` environment variable.
+**Exit code 5 Secret detected**
+Trellis found a pattern matching a secret (JWT token, hex API key, `sk_` prefixed key, etc.) in a versioned markdown file. The process exits immediately no request is sent, no spec is executed. Move the value to `.env.local` or a `TRELLIS_*` environment variable.
 
 ---
 
@@ -58,8 +58,8 @@ echo "Exit: $?"
 ```bash
 trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_123
 CODE=$?
-if [ $CODE -eq 1 ]; then echo "Response mismatch — check spec or API behavior"; fi
-if [ $CODE -eq 4 ]; then echo "Network unreachable — check VPN or service health"; fi
+if [ $CODE -eq 1 ]; then echo "Response mismatch check spec or API behavior"; fi
+if [ $CODE -eq 4 ]; then echo "Network unreachable check VPN or service health"; fi
 ```
 
 **Full case statement**
@@ -68,12 +68,12 @@ if [ $CODE -eq 4 ]; then echo "Network unreachable — check VPN or service heal
 trellis exec api-docs/apis/users/get-user.md --env=staging
 CODE=$?
 case $CODE in
-  0) echo "Passed" ;;
-  1) echo "Response mismatch — check the spec or API behavior" ; exit 1 ;;
-  2) echo "Invalid spec — run trellis validate to see errors" ; exit 1 ;;
-  4) echo "Network error — check VPN, service health, or BASE_URL" ; exit 1 ;;
-  5) echo "Secret committed to spec file — fix before merging" ; exit 1 ;;
-  *) echo "Unexpected error (code $CODE)" ; exit 1 ;;
+ 0) echo "Passed" ;;
+ 1) echo "Response mismatch check the spec or API behavior" ; exit 1 ;;
+ 2) echo "Invalid spec run trellis validate to see errors" ; exit 1 ;;
+ 4) echo "Network error check VPN, service health, or BASE_URL" ; exit 1 ;;
+ 5) echo "Secret committed to spec file fix before merging" ; exit 1 ;;
+ *) echo "Unexpected error (code $CODE)" ; exit 1 ;;
 esac
 ```
 
@@ -85,31 +85,31 @@ esac
 name: API spec tests
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    paths:
-      - 'api-docs/**'
+ push:
+ branches: [main]
+ pull_request:
+ paths:
+ - 'api-docs/**'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+ test:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v4
 
-      - name: Install Trellis
-        run: curl -fsSL https://trellis.dev/install.sh | sh
+ - name: Install Trellis
+ run: curl -fsSL https://trellis.dev/install.sh | sh
 
-      - name: Validate specs
-        run: trellis validate api-docs/
+ - name: Validate specs
+ run: trellis validate api-docs/
 
-      - name: Run health check
-        run: trellis exec api-docs/apis/health/get-health.md --env=staging
-        env:
-          TRELLIS_BASE_URL: https://staging.example.com
-          TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_TOKEN }}
+ - name: Run health check
+ run: trellis exec api-docs/apis/health/get-health.md --env=staging
+ env:
+ TRELLIS_BASE_URL: https://staging.example.com
+ TRELLIS_AUTH_TOKEN: ${{ secrets.STAGING_TOKEN }}
 ```
 
 <Tip>
-Use `TRELLIS_*` environment variables to pass secrets into CI. They map automatically to camel-case variable names — `TRELLIS_AUTH_TOKEN` becomes `{{authToken}}` in your specs.
+Use `TRELLIS_*` environment variables to pass secrets into CI. They map automatically to camel-case variable names `TRELLIS_AUTH_TOKEN` becomes `{{authToken}}` in your specs.
 </Tip>

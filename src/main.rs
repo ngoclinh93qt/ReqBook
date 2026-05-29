@@ -10,15 +10,17 @@ use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{generate, Shell};
 use owo_colors::OwoColorize;
 use trellis::{
+    adhoc::{self, AdHocParams},
     engine::{self, ExecOpts},
     parser::{self, parse_endpoint, parse_pipeline},
     pipeline::{self, PipelineOpts},
     report::{ConsoleReporter, JsonReporter, JunitReporter, MarkdownReporter, Reporter},
     resolver::{Context, SourceKind},
+    workspace,
 };
 
 #[derive(Debug, Parser)]
-#[command(name = "trellis", version, about = "Markdown-native API specs")]
+#[command(name = "trellis", version, about = "API workspace   design specs, send requests, validate contracts")]
 struct Cli {
     /// Path to api-docs/trellis.md.
     #[arg(long, global = true)]
@@ -65,8 +67,45 @@ enum Command {
     Doctor(DoctorArgs),
     /// Generate shell completion.
     Completion { shell: Shell },
+    /// Send an ad-hoc HTTP request without a spec file.
+    Request(RequestArgs),
     /// Print version information.
     Version,
+}
+
+#[derive(Debug, Args)]
+struct RequestArgs {
+    /// HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
+    method: String,
+    /// Target URL (may contain {{variable}} references).
+    url: String,
+    /// Add a request header as `Name: Value`. Repeatable.
+    #[arg(short = 'H', long = "header")]
+    headers: Vec<String>,
+    /// Request body string or @file to read from a file.
+    #[arg(short = 'd', long = "data")]
+    data: Option<String>,
+    /// Environment for variable resolution.
+    #[arg(long, default_value = "dev")]
+    env: String,
+    /// Inject a variable as key=value. Repeatable.
+    #[arg(long = "var")]
+    vars: Vec<String>,
+    /// Print resolved request without sending.
+    #[arg(long)]
+    dry_run: bool,
+    /// Timeout override in milliseconds.
+    #[arg(long)]
+    timeout: Option<u64>,
+    /// Save as a spec file. Omit path to auto-save to current collection.
+    #[arg(long)]
+    save: Option<Option<PathBuf>>,
+    /// Full diff output (default: compact status + body).
+    #[arg(long)]
+    verbose: bool,
+    /// Output format (used with --verbose).
+    #[arg(long, default_value = "console")]
+    output: OutputFormat,
 }
 
 #[derive(Debug, Args)]
@@ -256,23 +295,25 @@ async fn main() -> Result<()> {
     if cli.no_color {
         std::env::set_var("NO_COLOR", "1");
     }
+    let collection = workspace::collection_root(cli.config.as_deref());
     match cli.command {
         Command::Init(args) => {
-            init(args)?;
+            init(args, &collection)?;
             println!("\nScanning for existing API routes...");
-            import(ImportCommand::Project { path: None, port: None, url: None }).await?;
+            import(ImportCommand::Project { path: None, port: None, url: None }, &collection).await?;
             println!("\nRun `trellis serve` to open the web preview.");
         }
         Command::Validate { path } => validate_path(path)?,
         Command::Exec(args) => exec(args).await?,
         Command::Flow(args) => flow(args).await?,
-        Command::Index => regenerate_index(Path::new("api-docs"))?,
-        Command::Import { command } => import(command).await?,
+        Command::Index => regenerate_index(&collection)?,
+        Command::Import { command } => import(command, &collection).await?,
         Command::Install { command } => install(command).await?,
-        Command::Serve(args) => serve(args).await?,
+        Command::Serve(args) => serve(args, &collection).await?,
         Command::Mock(args) => mock(args).await?,
+        Command::Request(args) => request(args, &collection).await?,
         Command::Mcp => trellis::mcp::run_mcp_server().await?,
-        Command::Doctor(args) => doctor(args)?,
+        Command::Doctor(args) => doctor(args, &collection)?,
         Command::Completion { shell } => {
             let mut cmd = Cli::command();
             generate(shell, &mut cmd, "trellis", &mut io::stdout());
@@ -306,7 +347,7 @@ fn detect_project_name() -> Option<String> {
         }
     }
 
-    // Cargo.toml — simple line-by-line parse (no new dep)
+    // Cargo.toml   simple line-by-line parse (no new dep)
     if let Ok(raw) = fs::read_to_string("Cargo.toml") {
         let mut in_package = false;
         for line in raw.lines() {
@@ -330,7 +371,7 @@ fn detect_project_name() -> Option<String> {
         }
     }
 
-    // pyproject.toml — look for name = "..." under [project] or [tool.poetry]
+    // pyproject.toml   look for name = "..." under [project] or [tool.poetry]
     if let Ok(raw) = fs::read_to_string("pyproject.toml") {
         let mut in_section = false;
         for line in raw.lines() {
@@ -354,7 +395,7 @@ fn detect_project_name() -> Option<String> {
         }
     }
 
-    // go.mod — `module github.com/owner/repo` → `repo`
+    // go.mod   `module github.com/owner/repo` → `repo`
     if let Ok(raw) = fs::read_to_string("go.mod") {
         if let Some(line) = raw.lines().next() {
             if let Some(path) = line.strip_prefix("module ") {
@@ -372,7 +413,7 @@ fn detect_project_name() -> Option<String> {
         }
     }
 
-    // composer.json — `"name": "vendor/package"` → `package`
+    // composer.json   `"name": "vendor/package"` → `package`
     if let Ok(raw) = fs::read_to_string("composer.json") {
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
             if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
@@ -384,7 +425,7 @@ fn detect_project_name() -> Option<String> {
         }
     }
 
-    // pom.xml — first <artifactId>...</artifactId>
+    // pom.xml   first <artifactId>...</artifactId>
     if let Ok(raw) = fs::read_to_string("pom.xml") {
         let re = regex::Regex::new(r"<artifactId>([^<]+)</artifactId>").expect("valid regex");
         if let Some(cap) = re.captures(&raw) {
@@ -398,7 +439,7 @@ fn detect_project_name() -> Option<String> {
     None
 }
 
-fn init(args: InitArgs) -> Result<()> {
+fn init(args: InitArgs, collection: &Path) -> Result<()> {
     let detected = detect_project_name();
     let default_name = detected.unwrap_or_else(|| "my-api".to_string());
     let name = match args.name {
@@ -418,15 +459,15 @@ fn init(args: InitArgs) -> Result<()> {
             .interact_text()?,
     };
 
-    let root = Path::new("api-docs");
-    fs::create_dir_all(root.join("_shared"))?;
-    fs::create_dir_all(root.join("apis/posts"))?;
-    fs::create_dir_all(root.join("flows"))?;
-    write_new(&root.join("trellis.md"), &project_config(&name))?;
-    write_new(&root.join("_shared/env.md"), &env_config(&dev_url))?;
-    write_new(&root.join("apis/posts/get-posts.md"), example_endpoint())?;
+    println!("Collection: {}", collection.display());
+    fs::create_dir_all(collection.join("_shared"))?;
+    fs::create_dir_all(collection.join("apis/posts"))?;
+    fs::create_dir_all(collection.join("flows"))?;
+    write_new(&collection.join("trellis.md"), &project_config(&name))?;
+    write_new(&collection.join("_shared/env.md"), &env_config(&dev_url))?;
+    write_new(&collection.join("apis/posts/get-posts.md"), example_endpoint())?;
     ensure_gitignore_has_env_local()?;
-    regenerate_index(root)?;
+    regenerate_index(collection)?;
 
     println!("{} Created trellis.md (project config)", "✓".green());
     println!("{} Created api-docs/ with 1 example", "✓".green());
@@ -692,6 +733,111 @@ async fn flow(args: FlowArgs) -> Result<()> {
     Ok(())
 }
 
+async fn request(args: RequestArgs, collection: &Path) -> Result<()> {
+    // Build body: @file or raw string.
+    let body = match &args.data {
+        Some(d) if d.starts_with('@') => {
+            let path = Path::new(&d[1..]);
+            Some(read_text(path, "reading request body file")?)
+        }
+        Some(d) => Some(d.clone()),
+        None => None,
+    };
+
+    // Parse headers from "Name: Value" strings.
+    let mut headers = std::collections::BTreeMap::new();
+    for h in &args.headers {
+        if let Some((name, value)) = h.split_once(':') {
+            headers.insert(name.trim().to_string(), value.trim().to_string());
+        }
+    }
+
+    let params = AdHocParams {
+        method: args.method.clone(),
+        url: args.url.clone(),
+        headers,
+        body,
+        env: args.env.clone(),
+    };
+
+    let endpoint = adhoc::build_endpoint(&params)?;
+    let context = {
+        let dummy = collection.join("trellis.md");
+        execution_context(&dummy, &args.env, &args.vars)?
+    };
+    let execution = engine::execute(
+        &endpoint,
+        &args.env,
+        ExecOpts {
+            context,
+            timeout_ms: args.timeout,
+            dry_run: args.dry_run,
+        },
+    )
+    .await?;
+
+    if args.verbose {
+        print_report(args.output, &execution)?;
+    } else {
+        // Compact output: status + body only.
+        let status = execution
+            .response
+            .as_ref()
+            .map(|r| format!("{}  {}ms", r.status, execution.duration_ms))
+            .unwrap_or_else(|| format!("(no response)  {}ms", execution.duration_ms));
+        println!("{status}");
+        if let Some(r) = &execution.response {
+            if !r.body.is_empty() {
+                println!("{}", r.body);
+            }
+        }
+    }
+
+    // Save spec.
+    if let Some(save_path) = &args.save {
+        let response_block = execution
+            .response
+            .as_ref()
+            .map(|r| {
+                let mut block = format!("HTTP/1.1 {}\n", r.status);
+                for (k, v) in &r.headers {
+                    block.push_str(&format!("{k}: {v}\n"));
+                }
+                if !r.body.is_empty() {
+                    block.push('\n');
+                    block.push_str(&r.body);
+                }
+                block
+            })
+            .unwrap_or_default();
+
+        match save_path {
+            Some(path) => {
+                adhoc::save_to_path(path, &params, &response_block)?;
+                println!("saved: {}", path.display());
+            }
+            None => {
+                // Auto-save into current collection's apis/ dir.
+                let filename = adhoc::scratch_filename(&args.method, &args.url);
+                let dest = collection.join("apis/scratch").join(&filename);
+                if let Some(parent) = dest.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                adhoc::save_to_path(&dest, &params, &response_block)?;
+                println!("saved: {}", dest.display());
+            }
+        }
+    } else if !args.dry_run {
+        // Auto-save to scratch workspace.
+        match adhoc::save_to_scratch(&params, "") {
+            Ok(path) => eprintln!("scratch: {}", path.display()),
+            Err(e) => eprintln!("scratch save skipped: {e}"),
+        }
+    }
+
+    Ok(())
+}
+
 fn context_from_vars(vars: &[String]) -> Result<Context> {
     let mut context = Context::default();
     for var in vars {
@@ -839,7 +985,7 @@ fn regenerate_index(root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn doctor(args: DoctorArgs) -> Result<()> {
+fn doctor(args: DoctorArgs, collection: &Path) -> Result<()> {
     let sha = env!("TRELLIS_BUILD_SHA");
     println!(
         "Trellis {} ({})",
@@ -848,7 +994,8 @@ fn doctor(args: DoctorArgs) -> Result<()> {
     );
     println!();
     println!("Project");
-    check("api-docs/ exists", Path::new("api-docs").exists());
+    println!("  Collection: {}", collection.display());
+    check("collection exists", collection.exists());
     let gitignore = fs::read_to_string(".gitignore").unwrap_or_default();
     let env_ignored = gitignore
         .lines()
@@ -862,8 +1009,8 @@ fn doctor(args: DoctorArgs) -> Result<()> {
         writeln!(file, ".env.local")?;
         println!("  Fix: added .env.local to .gitignore");
     }
-    if Path::new("api-docs").exists() {
-        match validate_project_silent(Path::new("api-docs")) {
+    if collection.exists() {
+        match validate_project_silent(collection) {
             Ok(count) => println!("  {} All specs valid ({count} markdown files)", "✓".green()),
             Err(error) => println!("  {} Specs invalid: {error}", "✗".red()),
         }
@@ -887,7 +1034,7 @@ fn check_skills_freshness(fix: bool) {
 
     let skill_dir = Path::new(".claude/skills");
     if !skill_dir.exists() {
-        // No Claude Code installation — nothing to check.
+        // No Claude Code installation   nothing to check.
         return;
     }
 
@@ -946,21 +1093,26 @@ fn check(label: &str, ok: bool) {
     }
 }
 
-async fn import(command: ImportCommand) -> Result<()> {
+async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
     match command {
         ImportCommand::Postman { file } => run_import(
             &file,
             "Postman collection",
             trellis::importer::postman::import,
+            collection,
         ),
         ImportCommand::Insomnia { file } => run_import(
             &file,
             "Insomnia export",
             trellis::importer::insomnia::import,
+            collection,
         ),
-        ImportCommand::Openapi { file } => {
-            run_import(&file, "OpenAPI spec", trellis::importer::openapi::import)
-        }
+        ImportCommand::Openapi { file } => run_import(
+            &file,
+            "OpenAPI spec",
+            trellis::importer::openapi::import,
+            collection,
+        ),
         ImportCommand::Curl { file } => {
             let source = match file {
                 Some(ref path) => read_text(path, "reading curl command")?,
@@ -978,14 +1130,15 @@ async fn import(command: ImportCommand) -> Result<()> {
                 println!("no endpoints parsed");
                 return Ok(());
             }
-            let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
+            let parent = collection.parent().unwrap_or(Path::new("."));
+            let written = trellis::importer::write_endpoints(parent, &endpoints)?;
             println!("imported from {name}");
             for path in &written {
                 println!("  created {}", path.display());
             }
             println!("{} endpoint(s) written", written.len());
             if !written.is_empty() {
-                regenerate_index(Path::new("api-docs"))?;
+                regenerate_index(collection)?;
             }
             Ok(())
         }
@@ -1020,7 +1173,7 @@ async fn import(command: ImportCommand) -> Result<()> {
                 }
                 ImportSource::StaticScan(fw) => {
                     println!(
-                        "{} No OpenAPI spec found — used static code scan (method + path only)",
+                        "{} No OpenAPI spec found   used static code scan (method + path only)",
                         "⚠".yellow()
                     );
                     if let Some(fw) = fw {
@@ -1058,9 +1211,10 @@ async fn import(command: ImportCommand) -> Result<()> {
                 return Ok(());
             }
 
-            let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
+            let parent = collection.parent().unwrap_or(Path::new("."));
+            let written = trellis::importer::write_endpoints(parent, &endpoints)?;
             println!(
-                "imported {} — {} route(s) found ({}ms)",
+                "imported {}   {} route(s) found ({}ms)",
                 name,
                 endpoints.len(),
                 started.elapsed().as_millis()
@@ -1074,10 +1228,13 @@ async fn import(command: ImportCommand) -> Result<()> {
             }
             println!("{} spec(s) written", written.len());
             if !written.is_empty() {
-                regenerate_index(Path::new("api-docs"))?;
+                regenerate_index(collection)?;
+                let env_path = collection.join("_shared/env.md");
                 println!(
-                    "Next: set baseUrl in api-docs/_shared/env.md, \
-                     then run `trellis validate api-docs/`"
+                    "Next: set baseUrl in {}, \
+                     then run `trellis validate {}`",
+                    env_path.display(),
+                    collection.display()
                 );
             }
             Ok(())
@@ -1089,6 +1246,7 @@ fn run_import(
     file: &Path,
     kind: &str,
     parse: impl Fn(&str) -> anyhow::Result<(String, Vec<trellis::importer::ImportedEndpoint>)>,
+    collection: &Path,
 ) -> Result<()> {
     let source = read_text(file, &format!("reading {kind}"))?;
     let (name, endpoints) =
@@ -1097,14 +1255,15 @@ fn run_import(
         println!("no endpoints found in {}", file.display());
         return Ok(());
     }
-    let written = trellis::importer::write_endpoints(Path::new("."), &endpoints)?;
+    let parent = collection.parent().unwrap_or(Path::new("."));
+    let written = trellis::importer::write_endpoints(parent, &endpoints)?;
     println!("imported from {} ({})", name, file.display());
     for path in &written {
         println!("  created {}", path.display());
     }
     println!("{} endpoint(s) written", written.len());
     if !written.is_empty() {
-        regenerate_index(Path::new("api-docs"))?;
+        regenerate_index(collection)?;
     }
     Ok(())
 }
@@ -1180,13 +1339,16 @@ fn install_mcp() -> Result<()> {
     }
 }
 
-async fn serve(args: ServeArgs) -> Result<()> {
+async fn serve(args: ServeArgs, collection: &Path) -> Result<()> {
     if args.host == "0.0.0.0" {
         eprintln!("Warning: binding to 0.0.0.0 exposes the local preview on your network.");
     }
     #[cfg(feature = "web")]
     {
-        let root = args.path.unwrap_or_else(|| Path::new(".").to_path_buf());
+        // Explicit path arg takes precedence; otherwise use workspace-detected collection parent.
+        let root = args.path.unwrap_or_else(|| {
+            collection.parent().unwrap_or(Path::new(".")).to_path_buf()
+        });
         return trellis::preview::run(root, &args.host, args.port, &args.env, args.mock).await;
     }
     #[cfg(not(feature = "web"))]

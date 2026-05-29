@@ -6,13 +6,13 @@ icon: "shield"
 
 ## Never commit secrets
 
-Trellis treats all markdown spec files as safe-to-commit artifacts. Secrets belong in `.env.local`, CI environment variables, or a secret manager — never in `env.md`, endpoint files, pipeline files, or `trellis.md`. The parser actively enforces this before any request is sent.
+Trellis treats all markdown spec files as safe-to-commit artifacts. Secrets belong in `.env.local`, CI environment variables, or a secret manager never in `env.md`, endpoint files, pipeline files, or `trellis.md`. The parser actively enforces this before any request is sent.
 
 ---
 
 ## Secret detection
 
-Trellis scans `env.md`, endpoint files, pipeline files, and `trellis.md` for common secret patterns during `trellis validate` and before every execution. If a match is found, the command exits with **code 5** — no network request is made.
+Trellis scans `env.md`, endpoint files, pipeline files, and `trellis.md` for common secret patterns during `trellis validate` and before every execution. If a match is found, the command exits with **code 5** no network request is made.
 
 ### Patterns that trigger exit code 5
 
@@ -40,10 +40,10 @@ The error includes the file path and line number so you can find and move the of
 |---|---|
 | `.env.local` | Local development. Must be listed in `.gitignore`. Never committed. |
 | `TRELLIS_*` OS env vars | CI/CD pipelines and shared environments. Set in your CI provider's secret store. |
-| Secret manager + env | `TRELLIS_AUTH_TOKEN=$(vault read secret/api-token)` — inject at runtime from HashiCorp Vault, AWS Secrets Manager, or similar. |
+| Secret manager + env | `TRELLIS_AUTH_TOKEN=$(vault read secret/api-token)` inject at runtime from HashiCorp Vault, AWS Secrets Manager, or similar. |
 
 <Tip>
-  `trellis doctor` checks that `.env.local` is listed in `.gitignore` and reports an error with a fix suggestion if it is not. Run it after `trellis init` and before onboarding new contributors.
+ `trellis doctor` checks that `.env.local` is listed in `.gitignore` and reports an error with a fix suggestion if it is not. Run it after `trellis init` and before onboarding new contributors.
 </Tip>
 
 ---
@@ -78,7 +78,7 @@ trellis exec api-docs/apis/users/get-users.md --env=prod --yes
 ```
 
 <Warning>
-  Never pass `--yes` to destructive endpoints (`DELETE`, or `POST` to production data) in automated pipelines without deliberate human review of the entire workflow. Production confirmation exists to prevent accidental data loss from misconfigured CI jobs.
+ Never pass `--yes` to destructive endpoints (`DELETE`, or `POST` to production data) in automated pipelines without deliberate human review of the entire workflow. Production confirmation exists to prevent accidental data loss from misconfigured CI jobs.
 </Warning>
 
 ---
@@ -90,8 +90,8 @@ Every Trellis command exits with a stable, machine-readable code. CI pipelines c
 | Code | Meaning |
 |---|---|
 | `0` | Passed |
-| `1` | Test failed — response did not match expected |
-| `2` | Invalid spec — missing field, unresolved variable, or malformed file |
-| `3` | Engine error — internal Trellis error |
-| `4` | Network error — connection refused, timeout, or DNS failure |
-| `5` | Secret detected — a versioned file contains a possible credential |
+| `1` | Test failed response did not match expected |
+| `2` | Invalid spec missing field, unresolved variable, or malformed file |
+| `3` | Engine error internal Trellis error |
+| `4` | Network error connection refused, timeout, or DNS failure |
+| `5` | Secret detected a versioned file contains a possible credential |

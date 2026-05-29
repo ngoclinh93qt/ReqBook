@@ -59,7 +59,7 @@ fn convert_request(r: &Value, resource: &str) -> Option<ImportedEndpoint> {
     let raw_url = normalize_variables(raw_url);
     let (trellis_path, request_url) = parse_url(&raw_url);
 
-    // Headers — Insomnia uses `headers` array with `name`/`value` keys
+    // Headers   Insomnia uses `headers` array with `name`/`value` keys
     let headers = r["headers"].as_array().cloned().unwrap_or_default();
     let mut header_lines = String::new();
     for h in &headers {

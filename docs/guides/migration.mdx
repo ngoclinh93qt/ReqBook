@@ -6,44 +6,44 @@ icon: "right-left"
 
 ## General approach
 
-The import commands convert foreign formats into Trellis markdown endpoint files. Structural information — URLs, HTTP methods, headers, request bodies, status codes — maps cleanly and is imported directly. Dynamic behavior — pre-request scripts, JavaScript assertions, OAuth flows — cannot be mechanically converted and is imported as `agent-task` blocks for manual review.
+The import commands convert foreign formats into Trellis markdown endpoint files. Structural information URLs, HTTP methods, headers, request bodies, status codes maps cleanly and is imported directly. Dynamic behavior pre-request scripts, JavaScript assertions, OAuth flows cannot be mechanically converted and is imported as `agent-task` blocks for manual review.
 
 ### Post-import checklist
 
 <Steps>
-  <Step title="Validate the imported specs">
-    Run `trellis validate api-docs/` and fix any exit code `2` errors before doing anything else. Each error includes the file path, line number when known, and a suggested fix.
+ <Step title="Validate the imported specs">
+ Run `trellis validate api-docs/` and fix any exit code `2` errors before doing anything else. Each error includes the file path, line number when known, and a suggested fix.
 
-    ```bash
-    trellis validate api-docs/
-    ```
-  </Step>
-  <Step title="Move secrets out of spec files">
-    If `trellis validate` exits with code `5`, a secret was imported into a versioned spec file. Move the value to `.env.local` or a `TRELLIS_*` environment variable, then re-run validation.
+ ```bash
+ trellis validate api-docs/
+ ```
+ </Step>
+ <Step title="Move secrets out of spec files">
+ If `trellis validate` exits with code `5`, a secret was imported into a versioned spec file. Move the value to `.env.local` or a `TRELLIS_*` environment variable, then re-run validation.
 
-    ```bash
-    # .env.local
-    authToken=your-token-here
-    stripeKey=sk_live_...
-    ```
-  </Step>
-  <Step title="Review agent-task blocks">
-    Each `agent-task` block marks a place where the original spec had JavaScript logic, a dynamic variable, or a pre-request script that needs manual implementation. Open each flagged file and decide whether to implement it as an `## Expected response` assertion or a pipeline capture.
-  </Step>
-  <Step title="Verify round-trip with exec">
-    Run `trellis exec` against your development environment on at least one imported endpoint to confirm the spec resolves and the response matches.
+ ```bash
+ # .env.local
+ authToken=your-token-here
+ stripeKey=sk_live_...
+ ```
+ </Step>
+ <Step title="Review agent-task blocks">
+ Each `agent-task` block marks a place where the original spec had JavaScript logic, a dynamic variable, or a pre-request script that needs manual implementation. Open each flagged file and decide whether to implement it as an `## Expected response` assertion or a pipeline capture.
+ </Step>
+ <Step title="Verify round-trip with exec">
+ Run `trellis exec` against your development environment on at least one imported endpoint to confirm the spec resolves and the response matches.
 
-    ```bash
-    trellis exec api-docs/apis/users/get-users.md --env=dev
-    ```
-  </Step>
-  <Step title="Regenerate the index if needed">
-    If you added or renamed files manually after the import, regenerate `api-docs/README.md`.
+ ```bash
+ trellis exec api-docs/apis/users/get-users.md --env=dev
+ ```
+ </Step>
+ <Step title="Regenerate the index if needed">
+ If you added or renamed files manually after the import, regenerate `api-docs/README.md`.
 
-    ```bash
-    trellis index
-    ```
-  </Step>
+ ```bash
+ trellis index
+ ```
+ </Step>
 </Steps>
 
 ---
@@ -51,69 +51,69 @@ The import commands convert foreign formats into Trellis markdown endpoint files
 ## Importing from Postman
 
 <Tabs>
-  <Tab title="Import steps">
-    **1. Export from Postman**
+ <Tab title="Import steps">
+ **1. Export from Postman**
 
-    In Postman, open the collection and choose **File → Export → Collection v2.1 JSON**. Save the file locally.
+ In Postman, open the collection and choose **File → Export → Collection v2.1 JSON**. Save the file locally.
 
-    **2. Run the import**
+ **2. Run the import**
 
-    ```bash
-    trellis import postman my-collection.json
-    ```
+ ```bash
+ trellis import postman my-collection.json
+ ```
 
-    **3. Validate**
+ **3. Validate**
 
-    ```bash
-    trellis validate api-docs/
-    ```
+ ```bash
+ trellis validate api-docs/
+ ```
 
-    **4. Move secrets**
+ **4. Move secrets**
 
-    Open `.env.local` and add any token values that were flagged by validation:
+ Open `.env.local` and add any token values that were flagged by validation:
 
-    ```bash
-    # .env.local
-    authToken=your-token-here
-    ```
+ ```bash
+ # .env.local
+ authToken=your-token-here
+ ```
 
-    **5. Review generated agent-task blocks**
+ **5. Review generated agent-task blocks**
 
-    Each block marks a place where Postman had JavaScript logic — pre-request scripts, dynamic variable generation, or complex test assertions — that needs manual follow-up.
+ Each block marks a place where Postman had JavaScript logic pre-request scripts, dynamic variable generation, or complex test assertions that needs manual follow-up.
 
-    **6. Re-run validation and exec**
+ **6. Re-run validation and exec**
 
-    ```bash
-    trellis validate api-docs/
-    trellis exec api-docs/apis/users/get-users.md --env=dev
-    ```
-  </Tab>
-  <Tab title="Concept mapping">
-    | Postman | Trellis | Notes |
-    |---|---|---|
-    | Collection | `api-docs/` project | Name and description become project prose in `trellis.md`. |
-    | Folder | Resource directory (e.g. `apis/users/`) | Folder names become resource directory names. |
-    | Request | Endpoint `.md` file | One request becomes one `<method>-<slug>.md` file. |
-    | URL + method | `path` frontmatter + `http` request block | `{{var}}` syntax is preserved. |
-    | Headers | Headers in `http` request block | Auth headers become `{{variable}}` references. |
-    | JSON body | Body in `http` request block | Formatted for readable diffs. |
-    | Test scripts (simple status/body checks) | `## Expected response` block | Simple assertions are converted directly. |
-    | Test scripts (complex JavaScript) | `agent-task` block | JS logic is imported as manual review instructions. |
-    | Pre-request scripts | `agent-task` block | Not executable; imported as review instructions. |
-    | Collection variables | `_shared/env.md` or `.env.local` | Non-secret values only in `env.md`. |
-    | Environments | `_shared/env.md` sections | Each Postman environment becomes a `## <name>` heading. |
-    | Auth helper (bearer/basic) | `auth:` in frontmatter or `trellis.md` | Maps directly for `bearer` and `basic` types. |
+ ```bash
+ trellis validate api-docs/
+ trellis exec api-docs/apis/users/get-users.md --env=dev
+ ```
+ </Tab>
+ <Tab title="Concept mapping">
+ | Postman | Trellis | Notes |
+ |---|---|---|
+ | Collection | `api-docs/` project | Name and description become project prose in `trellis.md`. |
+ | Folder | Resource directory (e.g. `apis/users/`) | Folder names become resource directory names. |
+ | Request | Endpoint `.md` file | One request becomes one `<method>-<slug>.md` file. |
+ | URL + method | `path` frontmatter + `http` request block | `{{var}}` syntax is preserved. |
+ | Headers | Headers in `http` request block | Auth headers become `{{variable}}` references. |
+ | JSON body | Body in `http` request block | Formatted for readable diffs. |
+ | Test scripts (simple status/body checks) | `## Expected response` block | Simple assertions are converted directly. |
+ | Test scripts (complex JavaScript) | `agent-task` block | JS logic is imported as manual review instructions. |
+ | Pre-request scripts | `agent-task` block | Not executable; imported as review instructions. |
+ | Collection variables | `_shared/env.md` or `.env.local` | Non-secret values only in `env.md`. |
+ | Environments | `_shared/env.md` sections | Each Postman environment becomes a `## <name>` heading. |
+ | Auth helper (bearer/basic) | `auth:` in frontmatter or `trellis.md` | Maps directly for `bearer` and `basic` types. |
 
-    **What needs manual review after import**
+ **What needs manual review after import**
 
-    | Item | Reason |
-    |---|---|
-    | Pre-request scripts | JavaScript cannot be converted to markdown. Imported as `agent-task` instructions. |
-    | Dynamic variables (`{{$timestamp}}`, `{{$randomEmail}}`) | No direct Trellis equivalent. Replace with `--var` flags, `env.md` values, or pipeline captures. |
-    | Complex assertions | JavaScript test logic becomes `agent-task` items. Re-implement as `## Expected response` checks where possible. |
-    | Environment secrets | Postman environments containing tokens must move to `.env.local` or `TRELLIS_*` env vars. |
-    | Chained requests | Use a Trellis pipeline to chain requests and capture response values between steps. |
-  </Tab>
+ | Item | Reason |
+ |---|---|
+ | Pre-request scripts | JavaScript cannot be converted to markdown. Imported as `agent-task` instructions. |
+ | Dynamic variables (`{{$timestamp}}`, `{{$randomEmail}}`) | No direct Trellis equivalent. Replace with `--var` flags, `env.md` values, or pipeline captures. |
+ | Complex assertions | JavaScript test logic becomes `agent-task` items. Re-implement as `## Expected response` checks where possible. |
+ | Environment secrets | Postman environments containing tokens must move to `.env.local` or `TRELLIS_*` env vars. |
+ | Chained requests | Use a Trellis pipeline to chain requests and capture response values between steps. |
+ </Tab>
 </Tabs>
 
 ---
@@ -121,51 +121,51 @@ The import commands convert foreign formats into Trellis markdown endpoint files
 ## Importing from Insomnia
 
 <Tabs>
-  <Tab title="Import steps">
-    **1. Export from Insomnia**
+ <Tab title="Import steps">
+ **1. Export from Insomnia**
 
-    In Insomnia, go to **Application → Preferences → Data → Export Data → Current Workspace**. Select **Insomnia v4** format and save the JSON file.
+ In Insomnia, go to **Application → Preferences → Data → Export Data → Current Workspace**. Select **Insomnia v4** format and save the JSON file.
 
-    **2. Run the import**
+ **2. Run the import**
 
-    ```bash
-    trellis import insomnia insomnia_export.json
-    ```
+ ```bash
+ trellis import insomnia insomnia_export.json
+ ```
 
-    **3. Validate**
+ **3. Validate**
 
-    ```bash
-    trellis validate api-docs/
-    ```
+ ```bash
+ trellis validate api-docs/
+ ```
 
-    **4. Move secrets and review agent-task blocks**
+ **4. Move secrets and review agent-task blocks**
 
-    Move any flagged secret values to `.env.local`. Review `agent-task` blocks for plugin logic and template tags that need manual implementation.
-  </Tab>
-  <Tab title="Concept mapping">
-    | Insomnia | Trellis | Notes |
-    |---|---|---|
-    | Workspace | `api-docs/` project | Workspace name becomes the project name. |
-    | Request group (folder) | Resource directory | Group names become resource directory names. |
-    | Request | Endpoint `.md` file | One request becomes one `<method>-<slug>.md` file. |
-    | URL | `path` frontmatter + `http` request block | Template variables (`{{ var }}`) convert to `{{var}}` syntax. |
-    | Method | `method` frontmatter + request line | |
-    | Headers | Headers in `http` request block | |
-    | Body | Body in `http` request block | |
-    | Environment (base + sub) | `_shared/env.md` sections | Each becomes a `## <name>` heading. |
-    | Environment variables | `_shared/env.md` or `.env.local` | Non-secret values go to `env.md`. Secrets go to `.env.local`. |
-    | Test results | `## Expected response` block | Simple status checks are preserved. |
-    | Plugins / pre/post-request scripts | `agent-task` block | Imported as manual review instructions. |
+ Move any flagged secret values to `.env.local`. Review `agent-task` blocks for plugin logic and template tags that need manual implementation.
+ </Tab>
+ <Tab title="Concept mapping">
+ | Insomnia | Trellis | Notes |
+ |---|---|---|
+ | Workspace | `api-docs/` project | Workspace name becomes the project name. |
+ | Request group (folder) | Resource directory | Group names become resource directory names. |
+ | Request | Endpoint `.md` file | One request becomes one `<method>-<slug>.md` file. |
+ | URL | `path` frontmatter + `http` request block | Template variables (`{{ var }}`) convert to `{{var}}` syntax. |
+ | Method | `method` frontmatter + request line | |
+ | Headers | Headers in `http` request block | |
+ | Body | Body in `http` request block | |
+ | Environment (base + sub) | `_shared/env.md` sections | Each becomes a `## <name>` heading. |
+ | Environment variables | `_shared/env.md` or `.env.local` | Non-secret values go to `env.md`. Secrets go to `.env.local`. |
+ | Test results | `## Expected response` block | Simple status checks are preserved. |
+ | Plugins / pre/post-request scripts | `agent-task` block | Imported as manual review instructions. |
 
-    **What needs manual review after import**
+ **What needs manual review after import**
 
-    | Item | Reason |
-    |---|---|
-    | Template tags (`{% now %}`, `{% uuid %}`) | Insomnia-specific tags have no direct Trellis equivalent. Replace with pipeline captures or `--var` flags. |
-    | Plugin-based pre/post-request logic | Imported as `agent-task` instructions. |
-    | Environment secrets | Must move to `.env.local` or `TRELLIS_*` env vars. |
-    | OAuth 2.0 flows | Multi-step auth flows should become a Trellis pipeline that captures the token and injects it into subsequent steps. |
-  </Tab>
+ | Item | Reason |
+ |---|---|
+ | Template tags (`{% now %}`, `{% uuid %}`) | Insomnia-specific tags have no direct Trellis equivalent. Replace with pipeline captures or `--var` flags. |
+ | Plugin-based pre/post-request logic | Imported as `agent-task` instructions. |
+ | Environment secrets | Must move to `.env.local` or `TRELLIS_*` env vars. |
+ | OAuth 2.0 flows | Multi-step auth flows should become a Trellis pipeline that captures the token and injects it into subsequent steps. |
+ </Tab>
 </Tabs>
 
 ---
@@ -179,61 +179,61 @@ trellis import openapi openapi.json
 ```
 
 <Tabs>
-  <Tab title="Import steps">
-    **1. Validate your OpenAPI file**
+ <Tab title="Import steps">
+ **1. Validate your OpenAPI file**
 
-    Ensure the spec is valid OpenAPI 3.x YAML or JSON before importing. Use a linter such as `spectral lint` if needed.
+ Ensure the spec is valid OpenAPI 3.x YAML or JSON before importing. Use a linter such as `spectral lint` if needed.
 
-    **2. Run the import**
+ **2. Run the import**
 
-    ```bash
-    trellis import openapi openapi.yaml
-    ```
+ ```bash
+ trellis import openapi openapi.yaml
+ ```
 
-    **3. Validate the result**
+ **3. Validate the result**
 
-    ```bash
-    trellis validate api-docs/
-    ```
+ ```bash
+ trellis validate api-docs/
+ ```
 
-    **4. Add additional environments**
+ **4. Add additional environments**
 
-    If your OpenAPI spec defines multiple `servers`, only the first is imported as the `dev` environment. Add the others manually to `_shared/env.md`:
+ If your OpenAPI spec defines multiple `servers`, only the first is imported as the `dev` environment. Add the others manually to `_shared/env.md`:
 
-    ```yaml
-    ## staging
-    baseUrl: https://staging.example.com
+ ```yaml
+ ## staging
+ baseUrl: https://staging.example.com
 
-    ## prod
-    baseUrl: https://api.example.com
-    ```
+ ## prod
+ baseUrl: https://api.example.com
+ ```
 
-    **5. Review agent-task blocks**
+ **5. Review agent-task blocks**
 
-    OpenAPI specs often have JSON Schema validation constraints that become `agent-task` review items. Decide whether to implement them as `## Expected response` body assertions or to leave them as documentation.
-  </Tab>
-  <Tab title="Concept mapping">
-    | OpenAPI | Trellis | Notes |
-    |---|---|---|
-    | `info.title` | `name` in `trellis.md` | |
-    | `servers[0].url` | `baseUrl` in `_shared/env.md` dev section | Additional servers need manual env sections. |
-    | `paths.<path>.<method>` | Endpoint `.md` file | One operation becomes one `<method>-<slug>.md` file. |
-    | `operationId` | File slug | Used to generate the filename. Falls back to method + path. |
-    | `tags[0]` | Resource directory | The first tag determines the directory name. |
-    | `parameters` (path/query/header) | Variables in `http` request block | Path params use `:param` syntax. |
-    | `requestBody` | Body in `http` request block | First example or schema stub is used. |
-    | `responses.<code>` | `## Expected response` block | Only the first documented response code is imported. |
-    | `security bearerAuth` | `auth: bearer` in frontmatter | `basicAuth` maps to `auth: basic`. |
-    | `components/schemas` | `## Notes` prose | Schema documentation is preserved as readable notes. |
+ OpenAPI specs often have JSON Schema validation constraints that become `agent-task` review items. Decide whether to implement them as `## Expected response` body assertions or to leave them as documentation.
+ </Tab>
+ <Tab title="Concept mapping">
+ | OpenAPI | Trellis | Notes |
+ |---|---|---|
+ | `info.title` | `name` in `trellis.md` | |
+ | `servers[0].url` | `baseUrl` in `_shared/env.md` dev section | Additional servers need manual env sections. |
+ | `paths.<path>.<method>` | Endpoint `.md` file | One operation becomes one `<method>-<slug>.md` file. |
+ | `operationId` | File slug | Used to generate the filename. Falls back to method + path. |
+ | `tags[0]` | Resource directory | The first tag determines the directory name. |
+ | `parameters` (path/query/header) | Variables in `http` request block | Path params use `:param` syntax. |
+ | `requestBody` | Body in `http` request block | First example or schema stub is used. |
+ | `responses.<code>` | `## Expected response` block | Only the first documented response code is imported. |
+ | `security bearerAuth` | `auth: bearer` in frontmatter | `basicAuth` maps to `auth: basic`. |
+ | `components/schemas` | `## Notes` prose | Schema documentation is preserved as readable notes. |
 
-    **What needs manual review after import**
+ **What needs manual review after import**
 
-    | Item | Reason |
-    |---|---|
-    | Multiple response codes | Only the first documented response is imported. Add others manually in `## Notes`. |
-    | JSON Schema validation | Schema constraints are not executable in Trellis v1.0.0. Added as `agent-task` assertions for manual review. |
-    | OAuth 2.0 / OpenID Connect | Model as a Trellis pipeline that captures the token and injects it into subsequent steps. |
-    | Multiple servers | Only the first server is imported as `dev`. Add remaining servers as additional `env.md` sections. |
-    | Callbacks and webhooks | Must be documented manually. `protocol: ws` and `protocol: sse` are reserved for future use. |
-  </Tab>
+ | Item | Reason |
+ |---|---|
+ | Multiple response codes | Only the first documented response is imported. Add others manually in `## Notes`. |
+ | JSON Schema validation | Schema constraints are not executable in Trellis v1.0.0. Added as `agent-task` assertions for manual review. |
+ | OAuth 2.0 / OpenID Connect | Model as a Trellis pipeline that captures the token and injects it into subsequent steps. |
+ | Multiple servers | Only the first server is imported as `dev`. Add remaining servers as additional `env.md` sections. |
+ | Callbacks and webhooks | Must be documented manually. `protocol: ws` and `protocol: sse` are reserved for future use. |
+ </Tab>
 </Tabs>

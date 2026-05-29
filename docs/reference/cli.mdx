@@ -116,9 +116,9 @@ trellis exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-
 | `<file>` | path | required | Path to an endpoint markdown file. |
 | `--env` | string | `dev` | Environment name. Must match a heading in `_shared/env.md`. |
 | `--output` | enum | `console` | Output format: `console`, `junit`, `json`, or `markdown`. |
-| `--var` | string | — | Inject a variable as `key=value`. Repeatable. CLI variables override all other sources. |
+| `--var` | string | | Inject a variable as `key=value`. Repeatable. CLI variables override all other sources. |
 | `--dry-run` | bool | `false` | Print the resolved request without sending it. Makes no network connection. |
-| `--timeout` | integer | — | Override request timeout in milliseconds. Takes precedence over endpoint and project defaults. |
+| `--timeout` | integer | | Override request timeout in milliseconds. Takes precedence over endpoint and project defaults. |
 
 <Note>
 When `--env=prod` is used in an interactive terminal, Trellis prompts for confirmation before sending the request. Pass `--yes` (global flag) to skip the prompt in CI.
@@ -138,7 +138,7 @@ trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var userId=42
 # JUnit XML output for CI test reporters
 trellis exec api-docs/apis/users/get-user-by-id.md --output=junit > results.xml
 
-# Dry run — inspect the resolved request without sending
+# Dry run inspect the resolved request without sending
 trellis exec api-docs/apis/users/create-user.md --dry-run --var email=test@example.com
 
 # Override the timeout for a slow endpoint
@@ -162,10 +162,10 @@ trellis flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--para
 | `<file>` | path | required | Path to a pipeline markdown file. |
 | `--env` | string | `dev` | Environment name. |
 | `--output` | enum | `console` | Output format: `console`, `junit`, `json`, or `markdown`. |
-| `--var` | string | — | Inject a variable as `key=value`. Repeatable. |
+| `--var` | string | | Inject a variable as `key=value`. Repeatable. |
 | `--parallel` | bool | `false` | Force parallel execution, overriding the pipeline file's `parallel` setting. |
 | `--no-parallel` | bool | `false` | Force sequential execution, overriding the pipeline file's `parallel` setting. |
-| `--timeout` | integer | — | Override timeout in milliseconds for every step in the pipeline. |
+| `--timeout` | integer | | Override timeout in milliseconds for every step in the pipeline. |
 
 <Warning>
 `--parallel` and `--no-parallel` are mutually exclusive. Steps that depend on a captured value from a previous step always wait for that step regardless of parallel mode.
@@ -196,7 +196,7 @@ Regenerate `api-docs/README.md` from the current set of markdown files under `ap
 trellis index
 ```
 
-No flags. The generated file contains a linked list of all markdown files grouped by resource. Do not edit `api-docs/README.md` by hand — it is overwritten on every `trellis index` run.
+No flags. The generated file contains a linked list of all markdown files grouped by resource. Do not edit `api-docs/README.md` by hand it is overwritten on every `trellis index` run.
 
 <Note>
 `trellis index` is run automatically by `trellis init` and by all `trellis import` subcommands. Run it manually only if you added or renamed files after an import.
@@ -293,7 +293,7 @@ trellis import curl --file=request.curl
 
 ## trellis skills
 
-Install, list, or remove Trellis skill files for AI coding agents. Skills are embedded in the binary — no network access required.
+Install, list, or remove Trellis skill files for AI coding agents. Skills are embedded in the binary no network access required.
 
 ### trellis skills install
 

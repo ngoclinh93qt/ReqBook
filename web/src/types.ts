@@ -141,3 +141,17 @@ export interface ValidateResult {
   path: string;
   error?: string | null;
 }
+
+export interface AdHocRequest {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body?: string;
+  vars: Record<string, string>;
+  env: string;
+  save_as?: string;
+}
+
+export interface AdHocResponse extends ExecResult {
+  saved_path?: string | null;
+}

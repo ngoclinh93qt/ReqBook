@@ -1,25 +1,37 @@
 ---
 title: "Introduction"
-description: "Trellis is a local-first API workspace for vibe coding — agents author and run specs, developers review them in the browser, CI validates them."
+description: "Agent-native across 6 coding tools, visual debugger, fast CLI, your entire API lives in plain markdown."
 ---
 
-# The API workspace built for agents and the developers who review them.
+# Agent-native across 6 coding tools, visual debugger, fast CLI, your entire API lives in plain markdown.
 
-Trellis stores API work as plain markdown files. Your coding agent can read, write, and run them. Your browser can preview them. CI can validate them. No hosted workspace, no proprietary format — just files in your repo.
+Trellis stores API work as plain markdown files. Send ad-hoc requests from the terminal or browser. Design API contracts. Validate them in CI. Your coding agent can read, write, and run everything. No hosted workspace, no proprietary format just files in your repo.
+
+<CardGroup cols={3}>
+ <Card title="trellis-cli" icon="terminal" href="/docs/cli/overview">
+ Terminal interface: `trellis request`, `trellis exec`, `trellis flow`, and more.
+ </Card>
+ <Card title="trellis-ui" icon="desktop" href="/docs/ui/overview">
+ Browser interface: New Request panel, endpoint runner, flow canvas.
+ </Card>
+ <Card title="Agent integration" icon="robot" href="/docs/guides/ai-agents">
+ MCP tools and skills for Claude Code, Cursor, Copilot, and others.
+ </Card>
+</CardGroup>
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
-    Install Trellis, create a project, and execute your first request in under five minutes.
-  </Card>
-  <Card title="Agent integration" icon="robot" href="/docs/guides/ai-agents">
-    Install skills and MCP tools so Claude Code, Cursor, Copilot, and others can work with specs directly.
-  </Card>
-  <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
-    Browse specs, tune parameters, send requests, inspect responses, and edit markdown — all in the browser.
-  </Card>
-  <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
-    Use Trellis in your agent loop: document routes, run endpoints, build flows, and review changes.
-  </Card>
+ <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
+ Install Trellis, create a project, and execute your first request in under five minutes.
+ </Card>
+ <Card title="Agent integration" icon="robot" href="/docs/guides/ai-agents">
+ Install skills and MCP tools so Claude Code, Cursor, Copilot, and others can work with specs directly.
+ </Card>
+ <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
+ Browse specs, tune parameters, send requests, inspect responses, and edit markdown all in the browser.
+ </Card>
+ <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
+ Use Trellis in your agent loop: document routes, run endpoints, build flows, and review changes.
+ </Card>
 </CardGroup>
 
 ---
@@ -30,17 +42,17 @@ Every API operation lives in a markdown file:
 
 ```
 api-docs/
-├── trellis.md              # Project config and defaults
+├── trellis.md # Project config and defaults
 ├── _shared/
-│   └── env.md              # Base URLs and environment variables
+│ └── env.md # Base URLs and environment variables
 ├── apis/
-│   ├── users/
-│   │   ├── get-user-by-id.md
-│   │   └── create-user.md
-│   └── orders/
-│       └── post-orders.md
+│ ├── users/
+│ │ ├── get-user-by-id.md
+│ │ └── create-user.md
+│ └── orders/
+│ └── post-orders.md
 └── flows/
-    └── checkout.md         # Multi-step pipeline
+ └── checkout.md # Multi-step pipeline
 ```
 
 The same files are used by:
@@ -60,63 +72,80 @@ The same files are used by:
 ## The vibe coding loop
 
 <Steps>
-  <Step title="Agent creates or updates specs">
-    Ask your agent to document a route, import from curl, or scan the project for missing specs:
+ <Step title="Agent creates or updates specs">
+ Ask your agent to document a route, import from curl, or scan the project for missing specs:
 
-    ```text
-    Scan this project for API routes and add missing Trellis specs.
-    ```
+ ```text
+ Scan this project for API routes and add missing Trellis specs.
+ ```
 
-    ```text
-    Document POST /orders and make it runnable in Trellis.
-    ```
-  </Step>
+ ```text
+ Document POST /orders and make it runnable in Trellis.
+ ```
+ </Step>
 
-  <Step title="Review in the browser UI">
-    ```bash
-    trellis serve
-    # → Preview: http://127.0.0.1:8080
-    ```
+ <Step title="Review in the browser UI">
+ ```bash
+ trellis serve
+ # → Preview: http://127.0.0.1:8080
+ ```
 
-    Inspect the generated markdown, adjust runtime params, run the request, and compare the response against the expected value.
-  </Step>
+ Inspect the generated markdown, adjust runtime params, run the request, and compare the response against the expected value.
+ </Step>
 
-  <Step title="Build flows">
-    Ask the agent to connect specs into a pipeline:
+ <Step title="Build flows">
+ Ask the agent to connect specs into a pipeline:
 
-    ```text
-    Create a checkout flow: create customer → create order, capture orderId → fetch order.
-    ```
+ ```text
+ Create a checkout flow: create customer → create order, capture orderId → fetch order.
+ ```
 
-    The flow is saved as `api-docs/flows/checkout.md` and runnable from both CLI and browser.
-  </Step>
+ The flow is saved as `api-docs/flows/checkout.md` and runnable from both CLI and browser.
+ </Step>
 
-  <Step title="Commit reviewable markdown">
-    ```bash
-    trellis validate api-docs/
-    ```
+ <Step title="Commit reviewable markdown">
+ ```bash
+ trellis validate api-docs/
+ ```
 
-    Specs are ordinary markdown. Every change is reviewable, diffable, and revertable in your PR.
-  </Step>
+ Specs are ordinary markdown. Every change is reviewable, diffable, and revertable in your PR.
+ </Step>
 </Steps>
+
+---
+
+## Without Trellis, agents work blind
+
+When an agent needs to test an API endpoint without Trellis, it reads router files, middleware, env config, constructs a `curl` command, parses raw stdout, and throws everything away. The next session starts from zero.
+
+| Task | Without Trellis | With Trellis |
+|---|---|---|
+| Test one endpoint | Read 3+ source files, construct curl, parse stdout (~500 tokens/call) | `trellis_exec spec.md` structured result (~50 tokens/call) |
+| Debug multi-step flow | Write a temp script, manually chain requests, no trace on failure | `trellis_flow pipeline.md` per-step state, captured values |
+| Detect a regression | Only after a bug report | `trellis validate` in CI fails before merge |
+| Agent discovers APIs | Scan entire codebase (~10,000–50,000 tokens) | `trellis_search --tag auth` compact index instantly |
+| Share tests with team | "Send me the curl" | Commit markdown, review in PR |
+| Mock backend | Run live server or hardcode | `trellis mock` from recorded responses |
+
+The setup cost is five minutes (`trellis init`). After that, every agent call costs ~10× fewer tokens and produces reviewable, reusable artifacts.
 
 ---
 
 ## Why not Postman, Insomnia, or Bruno?
 
 <CardGroup cols={2}>
-  <Card title="Agents need file-based tools" icon="robot">
-    GUI tools store state in app databases or proprietary formats. Agents cannot read or write them reliably. Trellis specs are plain markdown — any agent can read, create, and edit them.
-  </Card>
-  <Card title="Everything stays in the repo" icon="code-branch">
-    Specs live in `api-docs/` alongside your code. Every API change goes through code review. No "export to share" step, no drift between the tool and the repo.
-  </Card>
-  <Card title="One source, every surface" icon="layer-group">
-    The same file runs in the CLI, renders in the browser UI, serves the mock server, and validates in CI. You describe the API once.
-  </Card>
-  <Card title="No account, no cloud" icon="hard-drive">
-    A single Rust binary. No signup, no workspace ID, no internet dependency at runtime. Works offline.
-  </Card>
+ <Card title="Agents need file-based tools" icon="robot">
+ GUI tools store state in app databases or proprietary formats. Agents cannot read or write them reliably. Trellis specs are plain markdown any agent can read, create, and edit them.
+ </Card>
+ <Card title="Everything stays in the repo" icon="code-branch">
+ Specs live in `api-docs/` alongside your code. Every API change goes through code review. No "export to share" step, no drift between the tool and the repo.
+ </Card>
+ <Card title="One source, every surface" icon="layer-group">
+ The same file runs in the CLI, renders in the browser UI, serves the mock server, and validates in CI. You describe the API once.
+ </Card>
+ <Card title="No account, no cloud" icon="hard-drive">
+ A single Rust binary. No signup, no workspace ID, no internet dependency at runtime. Works offline.
+ </Card>
 </CardGroup>
 
 ---
@@ -124,13 +153,13 @@ The same files are used by:
 ## Next steps
 
 <CardGroup cols={3}>
-  <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
-    Run a real API request in five minutes.
-  </Card>
-  <Card title="Set up agents" icon="robot" href="/docs/agents/setup">
-    Install skills, slash commands, and MCP for Claude Code.
-  </Card>
-  <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
-    Start `trellis serve` and explore the browser UI.
-  </Card>
+ <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
+ Run a real API request in five minutes.
+ </Card>
+ <Card title="Set up agents" icon="robot" href="/docs/agents/setup">
+ Install skills, slash commands, and MCP for Claude Code.
+ </Card>
+ <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
+ Start `trellis serve` and explore the browser UI.
+ </Card>
 </CardGroup>

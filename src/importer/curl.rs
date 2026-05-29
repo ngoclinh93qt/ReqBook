@@ -3,9 +3,32 @@
 //! Handles multi-line `curl` commands pasted from browser DevTools →
 //! "Copy as cURL (bash)" and converts them into clean Trellis endpoint files.
 
+use std::collections::BTreeMap;
+
 use anyhow::{bail, Result};
 
 use super::{resource_slug, ImportedEndpoint};
+
+/// Parsed fields from a curl command   used by the UI "Paste cURL" feature.
+pub struct ParsedCurl {
+    pub method: String,
+    pub url: String,
+    pub headers: BTreeMap<String, String>,
+    pub body: Option<String>,
+}
+
+/// Parse a curl command into discrete fields for ad-hoc requests.
+/// Keeps all headers (no filtering) so the user sees exactly what Chrome copied.
+/// Used by the REST `POST /api/parse-curl` endpoint (New Request panel).
+pub fn parse_to_fields(input: &str) -> Result<ParsedCurl> {
+    let req = parse_curl(input.trim())?;
+    Ok(ParsedCurl {
+        method: req.method,
+        url: req.url,
+        headers: req.headers.into_iter().collect(),
+        body: req.body,
+    })
+}
 
 /// Browser-specific headers that add noise to API specs.
 const BROWSER_HEADERS: &[&str] = &[
@@ -170,7 +193,7 @@ fn parse_curl(input: &str) -> Result<CurlRequest> {
                 }
             }
 
-            // Flags that take no argument — silently skip.
+            // Flags that take no argument   silently skip.
             "--compressed"
             | "--silent"
             | "-s"
@@ -314,7 +337,7 @@ fn split_url(url: &str) -> (String, String, String) {
         return (format!("{scheme}://{after_scheme}"), "/".to_string(), query);
     }
 
-    // No scheme — treat entire string as a path.
+    // No scheme   treat entire string as a path.
     (String::new(), format!("/{base}"), query)
 }
 

@@ -6,7 +6,7 @@ icon: "download"
 
 ## Requirements
 
-Trellis 1.0.0 ships as a single static binary with no runtime dependencies — no Node, no Python, no JVM required.
+Trellis 1.0.0 ships as a single static binary with no runtime dependencies no Node, no Python, no JVM required.
 
 | Install method | Requirement |
 |---|---|
@@ -22,78 +22,78 @@ Trellis 1.0.0 ships as a single static binary with no runtime dependencies — n
 ## Install methods
 
 <Tabs>
-  <Tab title="Shell installer">
-    Recommended for most macOS and Linux users. The installer fetches the latest prebuilt binary and places it in `~/.local/bin`.
+ <Tab title="Shell installer">
+ Recommended for most macOS and Linux users. The installer fetches the latest prebuilt binary and places it in `~/.local/bin`.
 
-    ```bash
-    curl -fsSL https://trellis.dev/install.sh | sh
-    ```
+ ```bash
+ curl -fsSL https://trellis.dev/install.sh | sh
+ ```
 
-    If `~/.local/bin` is not on your `PATH`, the installer prints the exact line to add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
+ If `~/.local/bin` is not on your `PATH`, the installer prints the exact line to add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
 
-    <Note>
-      The shell installer script is open-source and auditable at [github.com/trellis-md/trellis](https://github.com/trellis-md/trellis/blob/main/install.sh).
-    </Note>
-  </Tab>
+ <Note>
+ The shell installer script is open-source and auditable at [github.com/trellis-md/trellis](https://github.com/trellis-md/trellis/blob/main/install.sh).
+ </Note>
+ </Tab>
 
-  <Tab title="Cargo">
-    Install directly from [crates.io](https://crates.io/crates/trellis). This builds Trellis from source and places the binary in `~/.cargo/bin`.
+ <Tab title="Cargo">
+ Install directly from [crates.io](https://crates.io/crates/trellis). This builds Trellis from source and places the binary in `~/.cargo/bin`.
 
-    ```bash
-    cargo install trellis
-    ```
+ ```bash
+ cargo install trellis
+ ```
 
-    Requires Rust 1.75 or later. Upgrade your toolchain with `rustup update stable` if needed.
-  </Tab>
+ Requires Rust 1.75 or later. Upgrade your toolchain with `rustup update stable` if needed.
+ </Tab>
 
-  <Tab title="Homebrew">
-    Install via the official Trellis tap on macOS (or Linux with Homebrew):
+ <Tab title="Homebrew">
+ Install via the official Trellis tap on macOS (or Linux with Homebrew):
 
-    ```bash
-    brew install trellis-md/tap/trellis
-    ```
+ ```bash
+ brew install trellis-md/tap/trellis
+ ```
 
-    Homebrew manages upgrades via `brew upgrade trellis`. No separate tap add step is required — the formula URL handles it.
-  </Tab>
+ Homebrew manages upgrades via `brew upgrade trellis`. No separate tap add step is required the formula URL handles it.
+ </Tab>
 
-  <Tab title="npm">
-    Install via npm for Node.js projects. This bundles a prebuilt binary for macOS, Linux, and Windows — no Rust toolchain needed.
+ <Tab title="npm">
+ Install via npm for Node.js projects. This bundles a prebuilt binary for macOS, Linux, and Windows no Rust toolchain needed.
 
-    ```bash
-    npm install -g trellis-md
-    ```
+ ```bash
+ npm install -g trellis-md
+ ```
 
-    The npm package is a thin wrapper around the native binary. You can also pin it as a `devDependency` to lock the version per project:
+ The npm package is a thin wrapper around the native binary. You can also pin it as a `devDependency` to lock the version per project:
 
-    ```bash
-    npm install --save-dev trellis-md
-    npx trellis validate api-docs/
-    ```
-  </Tab>
+ ```bash
+ npm install --save-dev trellis-md
+ npx trellis validate api-docs/
+ ```
+ </Tab>
 
-  <Tab title="Docker">
-    Use the official image from GitHub Container Registry. Mount your project directory at `/work`:
+ <Tab title="Docker">
+ Use the official image from GitHub Container Registry. Mount your project directory at `/work`:
 
-    ```bash
-    docker pull ghcr.io/trellis-md/trellis:latest
-    docker run --rm -v "$(pwd)":/work -w /work \
-      ghcr.io/trellis-md/trellis:latest validate api-docs/
-    ```
+ ```bash
+ docker pull ghcr.io/trellis-md/trellis:latest
+ docker run --rm -v "$(pwd)":/work -w /work \
+ ghcr.io/trellis-md/trellis:latest validate api-docs/
+ ```
 
-    Replace `validate api-docs/` with any `trellis` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
+ Replace `validate api-docs/` with any `trellis` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
 
-    <Tip>
-      Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/trellis-md/trellis:1.0.0`.
-    </Tip>
-  </Tab>
+ <Tip>
+ Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/trellis-md/trellis:1.0.0`.
+ </Tip>
+ </Tab>
 
-  <Tab title="Windows (MSI)">
-    Download the `.msi` installer from the [releases page](https://github.com/trellis-md/trellis/releases). Run the installer and `trellis` is added to your system PATH automatically — no manual PATH edits needed.
+ <Tab title="Windows (MSI)">
+ Download the `.msi` installer from the [releases page](https://github.com/trellis-md/trellis/releases). Run the installer and `trellis` is added to your system PATH automatically no manual PATH edits needed.
 
-    <Note>
-      Windows support is available from Trellis 1.0.0. The MSI installer targets Windows 10 and Windows Server 2019 or later.
-    </Note>
-  </Tab>
+ <Note>
+ Windows support is available from Trellis 1.0.0. The MSI installer targets Windows 10 and Windows Server 2019 or later.
+ </Note>
+ </Tab>
 </Tabs>
 
 ---
@@ -110,7 +110,7 @@ trellis doctor
 ```
 
 <Note>
-  `trellis doctor` runs a series of checks: it verifies that `api-docs/` exists, that `.env.local` is listed in `.gitignore`, that all specs in the project are valid, and that any installed AI agent skills match the current binary version.
+ `trellis doctor` runs a series of checks: it verifies that `api-docs/` exists, that `.env.local` is listed in `.gitignore`, that all specs in the project are valid, and that any installed AI agent skills match the current binary version.
 </Note>
 
 ---
@@ -120,23 +120,23 @@ trellis doctor
 Generate and install completions for your shell so you get tab-completion for subcommands and flags:
 
 <Tabs>
-  <Tab title="Bash">
-    ```bash
-    trellis completion bash >> ~/.bashrc
-    source ~/.bashrc
-    ```
-  </Tab>
-  <Tab title="Zsh">
-    ```bash
-    trellis completion zsh > "${fpath[1]}/_trellis"
-    # Restart your shell or run: exec zsh
-    ```
-  </Tab>
-  <Tab title="Fish">
-    ```bash
-    trellis completion fish > ~/.config/fish/completions/trellis.fish
-    ```
-  </Tab>
+ <Tab title="Bash">
+ ```bash
+ trellis completion bash >> ~/.bashrc
+ source ~/.bashrc
+ ```
+ </Tab>
+ <Tab title="Zsh">
+ ```bash
+ trellis completion zsh > "${fpath[1]}/_trellis"
+ # Restart your shell or run: exec zsh
+ ```
+ </Tab>
+ <Tab title="Fish">
+ ```bash
+ trellis completion fish > ~/.config/fish/completions/trellis.fish
+ ```
+ </Tab>
 </Tabs>
 
 ---
@@ -144,30 +144,30 @@ Generate and install completions for your shell so you get tab-completion for su
 ## Upgrading
 
 <Tabs>
-  <Tab title="Shell installer">
-    Re-run the installer — it replaces the existing binary in place:
+ <Tab title="Shell installer">
+ Re-run the installer it replaces the existing binary in place:
 
-    ```bash
-    curl -fsSL https://trellis.dev/install.sh | sh
-    ```
-  </Tab>
-  <Tab title="Cargo">
-    ```bash
-    cargo install trellis --force
-    ```
-  </Tab>
-  <Tab title="Homebrew">
-    ```bash
-    brew upgrade trellis
-    ```
-  </Tab>
-  <Tab title="npm">
-    ```bash
-    npm install -g trellis-md
-    ```
-  </Tab>
+ ```bash
+ curl -fsSL https://trellis.dev/install.sh | sh
+ ```
+ </Tab>
+ <Tab title="Cargo">
+ ```bash
+ cargo install trellis --force
+ ```
+ </Tab>
+ <Tab title="Homebrew">
+ ```bash
+ brew upgrade trellis
+ ```
+ </Tab>
+ <Tab title="npm">
+ ```bash
+ npm install -g trellis-md
+ ```
+ </Tab>
 </Tabs>
 
 <Tip>
-  After upgrading, run `trellis doctor --fix` to automatically update any installed AI agent skills (Claude Code, Cursor, Copilot) to the new version. Stale skill files can cause agents to call deprecated flags.
+ After upgrading, run `trellis doctor --fix` to automatically update any installed AI agent skills (Claude Code, Cursor, Copilot) to the new version. Stale skill files can cause agents to call deprecated flags.
 </Tip>

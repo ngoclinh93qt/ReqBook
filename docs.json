@@ -56,6 +56,42 @@
         ]
       },
       {
+        "tab": "trellis-cli",
+        "groups": [
+          {
+            "group": "Terminal interface",
+            "pages": [
+              "docs/cli/overview",
+              "docs/cli/request"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "docs/reference/cli"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "trellis-ui",
+        "groups": [
+          {
+            "group": "Browser interface",
+            "pages": [
+              "docs/ui/overview",
+              "docs/ui/new-request"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "docs/guides/web-preview"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Agent integration",
         "groups": [
           {

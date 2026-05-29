@@ -1,0 +1,67 @@
+---
+title: "trellis request"
+description: "Send an ad-hoc HTTP request from the terminal without creating a spec file first."
+---
+
+## Overview
+
+`trellis request` lets you fire off any HTTP request from the terminal no spec file needed. It feels like `curl` but with automatic variable resolution and optional spec saving.
+
+## Usage
+
+```bash
+trellis request <METHOD> <URL> [options]
+```
+
+## Examples
+
+```bash
+# Simple GET
+trellis request GET https://api.example.com/users
+
+# POST with JSON body
+trellis request POST https://api.example.com/users \
+ -H "Content-Type: application/json" \
+ -d '{"name":"Ada Lovelace"}'
+
+# Use variables from env.md
+trellis request GET https://api.example.com/users/{{userId}} --var userId=42
+
+# Dry-run (print resolved request, don't send)
+trellis request GET https://api.example.com/users --dry-run
+
+# Save result as a spec file
+trellis request GET https://api.example.com/users --save api-docs/apis/users/get-users.md
+
+# Auto-save to current collection
+trellis request GET https://api.example.com/users --save
+```
+
+## Default output
+
+Compact by default (agent-friendly):
+
+```
+200 OK 147ms
+[{"id":1,"name":"Ada Lovelace"}]
+```
+
+Add `--verbose` for the full diff view.
+
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `-H, --header <Name: Value>` | Add a request header. Repeatable. |
+| `-d, --data <body>` | Request body string, or `@file` to read from a file. |
+| `--var <key=value>` | Variable override. Repeatable. |
+| `--env <name>` | Environment for variable resolution (default: `dev`). |
+| `--dry-run` | Print the resolved request without sending. |
+| `--timeout <ms>` | Timeout override in milliseconds. |
+| `--save [path]` | Save result as a spec file. Omit path to auto-save to collection. |
+| `--verbose` | Full diff output. |
+
+## Workspace behaviour
+
+- **Inside a git repo**: the collection is at `<repo-root>/api-docs/`. Auto-saved requests go to `<repo-root>/api-docs/apis/scratch/`.
+- **Outside a git repo**: the collection is at `~/.trellis/workspace/default/api-docs/`. Unsaved requests go to `~/.trellis/workspace/scratch/api-docs/`.

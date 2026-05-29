@@ -1,0 +1,38 @@
+---
+title: "trellis-cli overview"
+description: "All Trellis capabilities from the terminal same binary as trellis-ui, different interface."
+---
+
+## What is trellis-cli?
+
+**trellis-cli** is the terminal interface to Trellis. Every capability is accessible as a subcommand.
+
+Use it for:
+- Scripted API testing and CI/CD pipelines
+- Importing and validating specs
+- Running ad-hoc HTTP requests from the terminal
+- AI agent tool integration via MCP
+
+## Commands
+
+| Command | What it does |
+|---------|-------------|
+| `trellis init` | Scaffold a new collection in the current project |
+| `trellis request <METHOD> <URL>` | Send an ad-hoc HTTP request |
+| `trellis exec <file>` | Execute one endpoint spec |
+| `trellis flow <file>` | Run a multi-step pipeline |
+| `trellis validate <path>` | Validate endpoint or pipeline files |
+| `trellis import postman\|insomnia\|openapi\|curl` | Import from another tool |
+| `trellis serve` | Launch trellis-ui in a browser |
+| `trellis mock` | Start a mock HTTP server |
+| `trellis mcp` | Start MCP server for AI agent integration |
+| `trellis doctor` | Diagnose project setup |
+
+## Same binary two interfaces
+
+```
+trellis serve → opens trellis-ui in your browser
+trellis exec → runs in the terminal (trellis-cli)
+```
+
+Both ship in one binary. There is no separate installation.

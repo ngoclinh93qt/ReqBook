@@ -4,15 +4,15 @@ description: "Two SKILL.md playbooks that teach agents the Trellis spec format, 
 icon: "book-open"
 ---
 
-Skills are markdown playbooks embedded in the Trellis binary. When installed, agents read them from their config directories and apply them automatically when a user prompt matches a known phrase. You do not need to mention Trellis explicitly — the skills fire based on intent.
+Skills are markdown playbooks embedded in the Trellis binary. When installed, agents read them from their config directories and apply them automatically when a user prompt matches a known phrase. You do not need to mention Trellis explicitly the skills fire based on intent.
 
 <CardGroup cols={2}>
-  <Card title="trellis-sync" icon="arrows-rotate">
-    Teaches agents how to set up a new Trellis project, import all routes, and enrich partial specs with real request and response shapes from handler source code.
-  </Card>
-  <Card title="trellis-debug" icon="bug">
-    Teaches agents how to diagnose a failing endpoint or pipeline using a structured decision tree: validate, dry-run, execute, and diff.
-  </Card>
+ <Card title="trellis-sync" icon="arrows-rotate">
+ Teaches agents how to set up a new Trellis project, import all routes, and enrich partial specs with real request and response shapes from handler source code.
+ </Card>
+ <Card title="trellis-debug" icon="bug">
+ Teaches agents how to diagnose a failing endpoint or pipeline using a structured decision tree: validate, dry-run, execute, and diff.
+ </Card>
 </CardGroup>
 
 ---
@@ -34,58 +34,58 @@ The agent activates this skill when it sees phrases like:
 - "scan this project for routes"
 
 <Steps>
-  <Step title="Init">
-    If `api-docs/` does not exist, the agent detects the project name and base URL from the codebase, then runs:
+ <Step title="Init">
+ If `api-docs/` does not exist, the agent detects the project name and base URL from the codebase, then runs:
 
-    ```bash
-    trellis init --name=<project> --dev-url=<url> --yes
-    ```
+ ```bash
+ trellis init --name=<project> --dev-url=<url> --yes
+ ```
 
-    This creates `api-docs/`, an example endpoint file, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
-  </Step>
+ This creates `api-docs/`, an example endpoint file, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
+ </Step>
 
-  <Step title="Import">
-    The agent runs the project importer and reads the output to choose the right strategy:
+ <Step title="Import">
+ The agent runs the project importer and reads the output to choose the right strategy:
 
-    ```bash
-    trellis import project
-    ```
+ ```bash
+ trellis import project
+ ```
 
-    | Import result | Strategy |
-    |---|---|
-    | OpenAPI spec found | Full type extraction — skip to validation |
-    | No OpenAPI, routes found | Static scan → stub files → enrich in Step 3 |
-    | No routes found | Manual scan with `rg` to locate route definitions |
+ | Import result | Strategy |
+ |---|---|
+ | OpenAPI spec found | Full type extraction skip to validation |
+ | No OpenAPI, routes found | Static scan → stub files → enrich in Step 3 |
+ | No routes found | Manual scan with `rg` to locate route definitions |
 
-    For static scans, the agent writes stub specs with placeholder request/response blocks, then enriches them in the next step.
-  </Step>
+ For static scans, the agent writes stub specs with placeholder request/response blocks, then enriches them in the next step.
+ </Step>
 
-  <Step title="Enrich">
-    For each stub spec, the agent enriches expected contracts first. It does not generate tests unless you explicitly ask for tests or provide a scenario.
+ <Step title="Enrich">
+ For each stub spec, the agent enriches expected contracts first. It does not generate tests unless you explicitly ask for tests or provide a scenario.
 
-    The agent looks for:
-    - FastAPI `response_model=` and `responses={...}` annotations
-    - NestJS `@Body() dto: CreateDto` declarations — reads the DTO class
-    - Spring Boot `@RequestBody CreateRequest` annotations — reads the class fields
-    - Express Zod/Joi schemas defined near the route handler
-    - Gin `c.ShouldBindJSON(&req)` bindings — reads the struct JSON tags
+ The agent looks for:
+ - FastAPI `response_model=` and `responses={...}` annotations
+ - NestJS `@Body() dto: CreateDto` declarations reads the DTO class
+ - Spring Boot `@RequestBody CreateRequest` annotations reads the class fields
+ - Express Zod/Joi schemas defined near the route handler
+ - Gin `c.ShouldBindJSON(&req)` bindings reads the struct JSON tags
 
-    The extracted fields are written into the `## Request` body and `## Expected response` block of each spec file. If error behavior is defined in the source, the agent can also add a reference-only `## Error responses` section. If the source does not define the shape, the agent stops and asks for an example instead of guessing.
+ The extracted fields are written into the `## Request` body and `## Expected response` block of each spec file. If error behavior is defined in the source, the agent can also add a reference-only `## Error responses` section. If the source does not define the shape, the agent stops and asks for an example instead of guessing.
 
-    <Note>
-      The enrich step is what populates `## Expected response` blocks with real field names. This is the same data that `trellis mock` uses when serving mock responses. Specs that skip enrichment will have empty or partial mock responses.
-    </Note>
-  </Step>
+ <Note>
+ The enrich step is what populates `## Expected response` blocks with real field names. This is the same data that `trellis mock` uses when serving mock responses. Specs that skip enrichment will have empty or partial mock responses.
+ </Note>
+ </Step>
 
-  <Step title="Validate">
-    After all specs are written or updated, the agent validates the full spec tree:
+ <Step title="Validate">
+ After all specs are written or updated, the agent validates the full spec tree:
 
-    ```bash
-    trellis validate api-docs/
-    ```
+ ```bash
+ trellis validate api-docs/
+ ```
 
-    Any structural errors, unresolved variables, or secret patterns are reported with file path and line number before the agent considers the task complete.
-  </Step>
+ Any structural errors, unresolved variables, or secret patterns are reported with file path and line number before the agent considers the task complete.
+ </Step>
 </Steps>
 
 ### Framework patterns the skill knows
@@ -93,10 +93,10 @@ The agent activates this skill when it sees phrases like:
 | Framework | Where the agent looks |
 |---|---|
 | FastAPI | `response_model=`, `responses={404: ...}` on route decorators |
-| NestJS | `@Body() dto: CreateDto` — reads the DTO class definition |
-| Spring Boot | `@RequestBody CreateRequest` — reads class fields and JSON annotations |
+| NestJS | `@Body() dto: CreateDto` reads the DTO class definition |
+| Spring Boot | `@RequestBody CreateRequest` reads class fields and JSON annotations |
 | Express | Zod/Joi schema defined near the route handler |
-| Gin | `c.ShouldBindJSON(&req)` — reads struct JSON tags |
+| Gin | `c.ShouldBindJSON(&req)` reads struct JSON tags |
 
 ---
 
@@ -119,53 +119,53 @@ The agent activates this skill when it sees phrases like:
 
 ```
 Single endpoint failure? → exec path (Steps 1–5)
-Pipeline step failure?   → flow trace path
-Spec won't validate?     → validate path (Step 3)
+Pipeline step failure? → flow trace path
+Spec won't validate? → validate path (Step 3)
 ```
 
 ### Single endpoint debug
 
 <Steps>
-  <Step title="Locate the spec">
-    Use `trellis_list_specs` (MCP) or `rg` to find the correct spec file by method + path.
-  </Step>
+ <Step title="Locate the spec">
+ Use `trellis_list_specs` (MCP) or `rg` to find the correct spec file by method + path.
+ </Step>
 
-  <Step title="Validate before running">
-    ```bash
-    trellis validate api-docs/apis/<resource>/<method>-<slug>.md
-    ```
+ <Step title="Validate before running">
+ ```bash
+ trellis validate api-docs/apis/<resource>/<method>-<slug>.md
+ ```
 
-    A spec that fails validation will always fail execution. Fix structural issues first.
-  </Step>
+ A spec that fails validation will always fail execution. Fix structural issues first.
+ </Step>
 
-  <Step title="Dry-run to inspect the resolved request">
-    ```bash
-    trellis exec <spec> --dry-run
-    ```
+ <Step title="Dry-run to inspect the resolved request">
+ ```bash
+ trellis exec <spec> --dry-run
+ ```
 
-    Inspect the resolved URL, headers, and body without sending a network request. Catches variable resolution failures and path param mismatches.
-  </Step>
+ Inspect the resolved URL, headers, and body without sending a network request. Catches variable resolution failures and path param mismatches.
+ </Step>
 
-  <Step title="Execute with vars">
-    ```bash
-    trellis exec <spec> --env=dev --var id=usr_123
-    ```
+ <Step title="Execute with vars">
+ ```bash
+ trellis exec <spec> --env=dev --var id=usr_123
+ ```
 
-    Run the live request and capture the full response.
-  </Step>
+ Run the live request and capture the full response.
+ </Step>
 
-  <Step title="Interpret the result">
-    Read the exit code and diff output to determine the failure category:
+ <Step title="Interpret the result">
+ Read the exit code and diff output to determine the failure category:
 
-    | Exit code | Meaning | Next action |
-    |---|---|---|
-    | `0` | Passed — response matched the spec | No action needed |
-    | `1` | Response mismatch — request succeeded but diff failed | Compare actual vs expected; update spec or report API regression |
-    | `2` | Invalid spec — frontmatter error, unresolved variable, env mismatch | Fix the spec; re-run validate |
-    | `3` | Engine error — request could not be built | Check `--verbose` output for internal failure detail |
-    | `4` | Network error — DNS, connection refused, or timeout | Check service health, VPN, or `BASE_URL` value |
-    | `5` | Secret detected in spec file | Move the value to `.env.local` or a `TRELLIS_*` env variable |
-  </Step>
+ | Exit code | Meaning | Next action |
+ |---|---|---|
+ | `0` | Passed response matched the spec | No action needed |
+ | `1` | Response mismatch request succeeded but diff failed | Compare actual vs expected; update spec or report API regression |
+ | `2` | Invalid spec frontmatter error, unresolved variable, env mismatch | Fix the spec; re-run validate |
+ | `3` | Engine error request could not be built | Check `--verbose` output for internal failure detail |
+ | `4` | Network error DNS, connection refused, or timeout | Check service health, VPN, or `BASE_URL` value |
+ | `5` | Secret detected in spec file | Move the value to `.env.local` or a `TRELLIS_*` env variable |
+ </Step>
 </Steps>
 
 ### Pipeline debug

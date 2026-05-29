@@ -1,33 +1,33 @@
 ---
 title: "MCP server"
-description: "Three structured tools for Claude Code — exec, flow, and author. The agent reads files directly and runs CLI commands; MCP tools cover the operations that return structured data or need a write-guard."
+description: "Eight structured tools for Claude Code exec, flow, author, vars, search, history, session, and exec_batch. Compact output by default; verbose mode for debugging."
 icon: "plug"
 ---
 
-The MCP server exposes a minimal set of Trellis operations as structured JSON-RPC tools. The design is intentional: operations where the agent can read files or run CLI commands directly don't need MCP wrappers. MCP tools exist only where structured output or a write-guard makes a real difference.
+The MCP server exposes Trellis operations as structured JSON-RPC tools. Every tool returns compact JSON by default full request/response payloads only appear when you pass `verbose: true`. This keeps agent context lean.
 
 ---
 
 ## Register with Claude Code
 
 <Steps>
-  <Step title="Add the MCP server">
-    ```bash
-    claude mcp add trellis -- trellis mcp
-    ```
-  </Step>
+ <Step title="Add the MCP server">
+ ```bash
+ claude mcp add trellis -- trellis mcp
+ ```
+ </Step>
 
-  <Step title="Verify registration">
-    ```bash
-    claude mcp list
-    ```
+ <Step title="Verify registration">
+ ```bash
+ claude mcp list
+ ```
 
-    Expected output:
+ Expected output:
 
-    ```
-    trellis: trellis mcp - ✓ Connected
-    ```
-  </Step>
+ ```
+ trellis: trellis mcp - ✓ Connected
+ ```
+ </Step>
 </Steps>
 
 ---
@@ -36,18 +36,59 @@ The MCP server exposes a minimal set of Trellis operations as structured JSON-RP
 
 | Tool | Purpose |
 |---|---|
-| `trellis_exec` | Execute one endpoint spec, return structured HTTP result |
-| `trellis_flow` | Run a pipeline, return per-step results |
-| `trellis_author` | Create or update a spec (validates before writing, refuses to silently overwrite) |
+| `trellis_exec` | Execute one endpoint spec compact result by default |
+| `trellis_flow` | Run a pipeline compact per-step summary by default |
+| `trellis_author` | Create or update a spec (validates before writing, refuses silent overwrite) |
+| `trellis_vars` | Show which variables a spec needs and which are resolved |
+| `trellis_search` | Search specs by method, path, tag, or text no file reading required |
+| `trellis_history` | Execution history and trend for a spec |
+| `trellis_session` | Get/set session env + vars (defaults for all exec/flow calls) |
+| `trellis_exec_batch` | Run multiple specs and return a summary table |
 
-**Not in MCP — use these directly:**
+**Not in MCP use these directly:**
 
 | Operation | How |
 |---|---|
-| List specs | `ls api-docs/apis/**/*.md` or `rg -rn "^method:\|^path:" api-docs/` |
-| Read a spec | Read the file directly |
-| Validate | `trellis validate <path>` |
-| Start the server | `trellis serve` |
+| Validate specs | `trellis validate <path>` |
+| Start the browser UI | `trellis serve` |
+| Import from cURL | `trellis import curl '...'` |
+
+---
+
+## Compact vs verbose output
+
+By default, `trellis_exec` and `trellis_flow` return only what agents need to act: pass/fail, status code, diff, and error type. Full request and response bodies are omitted.
+
+```json
+{
+ "passed": false,
+ "status": 422,
+ "duration_ms": 234,
+ "error_type": "CONTRACT_MISMATCH",
+ "hint": "Update ## Expected response in the spec to match actual, or fix the API",
+ "diff": { "passed": false, "status": null, "headers": [], "body": "response body did not match expected shape" }
+}
+```
+
+Pass `verbose: true` to include the full `request` and `response` objects.
+
+---
+
+## Error taxonomy
+
+All tools use a consistent set of error type strings so agents can branch without parsing text:
+
+| `error_type` | Meaning |
+|---|---|
+| `CONTRACT_MISMATCH` | Response doesn't match `## Expected response` |
+| `VAR_MISSING` | One or more `{{variables}}` could not be resolved |
+| `AUTH_FAILED` | Response was 401 or 403 |
+| `NETWORK_ERROR` | Connection or timeout failure |
+| `SPEC_PARSE_ERROR` | Spec file has invalid frontmatter or missing sections |
+| `VALIDATION_ERROR` | Request or expected response block has a syntax error |
+| `UNSUPPORTED_PROTOCOL` | Spec uses `ws` or `sse` (not yet implemented) |
+
+Every error includes a `hint` field with a short actionable string.
 
 ---
 
@@ -55,30 +96,58 @@ The MCP server exposes a minimal set of Trellis operations as structured JSON-RP
 
 ### trellis_exec
 
-Execute one endpoint spec and return the full HTTP result as structured data.
+Execute one endpoint spec and return the HTTP result.
 
 **Input**
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `spec_path` | string | yes | — | Path to the spec file |
-| `env` | string | no | `"dev"` | Environment name |
+| `spec_path` | string | yes | | Path to the spec file |
+| `env` | string | no | session or `"dev"` | Environment name |
 | `vars` | object | no | `{}` | Runtime variable overrides |
+| `verbose` | boolean | no | `false` | Include full request + response objects |
+| `dry_run` | boolean | no | `false` | Resolve variables and return request without sending |
+| `infer_expected` | boolean | no | `false` | Add `inferred_expected` block ready to paste into the spec |
 
-**Output** — HTTP result plus a diff report comparing the actual response to `## Expected response`:
+**Compact output (default)**
 
 ```json
 {
-  "status": 200,
-  "duration_ms": 143,
-  "headers": { "content-type": "application/json" },
-  "body": { "id": "usr_123", "email": "ada@example.com" },
-  "diff": { "passed": true, "mismatches": [] },
-  "exit_code": 0
+ "passed": true,
+ "status": 201,
+ "duration_ms": 143,
+ "error_type": null,
+ "diff": { "passed": true, "status": null, "headers": [], "body": null },
+ "assertion_results": []
 }
 ```
 
-**Why MCP instead of CLI:** The structured result — especially the `diff` field — is easier for the agent to act on than parsing ANSI terminal output.
+**On failure CONTRACT_MISMATCH with hints**
+
+```json
+{
+ "passed": false,
+ "status": 200,
+ "error_type": "CONTRACT_MISMATCH",
+ "hint": "Update ## Expected response in the spec to match actual, or fix the API",
+ "hints": [
+ "Update ## Expected response: change status line to HTTP/1.1 200 <reason>",
+ "Run with infer_expected: true to get the actual response as an Expected Response block"
+ ],
+ "diff": { "passed": false, "status": "expected 201, got 200", "headers": [], "body": null }
+}
+```
+
+**With `infer_expected: true`**
+
+```json
+{
+ "passed": true,
+ "inferred_expected": "HTTP/1.1 201 Created\nContent-Type: application/json\n\n{\"id\":\"usr_123\",\"email\":\"ada@example.com\"}"
+}
+```
+
+Paste the value into your spec's `## Expected response` block.
 
 ---
 
@@ -90,12 +159,22 @@ Run a pipeline and return per-step results.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `pipeline_path` | string | yes | — | Path to the pipeline file |
-| `env` | string | no | `"dev"` | Environment name |
+| `pipeline_path` | string | yes | | Path to the pipeline file |
+| `env` | string | no | session or `"dev"` | Environment name |
+| `verbose` | boolean | no | `false` | Include full execution objects per step |
 
-**Output** — Per-step results: endpoint, status, captured values (secrets masked), assertion outcomes, and the index of the first failing step.
+**Compact output (default)**
 
-**Why MCP instead of CLI:** Multi-step flows produce structured state (captured variables, per-step pass/fail) that the agent needs to reason about for debugging the failure.
+```json
+{
+ "passed": false,
+ "captures": { "orderId": "ord_456" },
+ "steps": [
+ { "name": "Create order", "endpoint": "apis/orders/post-orders.md", "passed": true, "status": 201, "error_type": null },
+ { "name": "Fetch order", "endpoint": "apis/orders/get-order.md", "passed": false, "status": 404, "error_type": "CONTRACT_MISMATCH" }
+ ]
+}
+```
 
 ---
 
@@ -107,17 +186,180 @@ Create a new spec file or update an existing one.
 
 | Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `spec_path` | string | yes | — | Destination file path |
-| `content` | string | yes | — | Full markdown content of the spec |
+| `spec_path` | string | yes | | Destination file path |
+| `content` | string | yes | | Full markdown content of the spec |
 | `overwrite` | boolean | no | `false` | Allow replacing an existing file |
 
-**Output** — On success: `{ "created": true, "file": "api-docs/..." }`
+**Output** `{ "created": true, "file": "api-docs/...", "method": "POST", "path": "/users", "title": "Create User" }`
 
 On validation failure: the error from the parser. The file is not created or modified.
 
 <Note>
-  `trellis_author` validates the spec before touching the filesystem. If validation fails, nothing is written. This prevents agents from creating silently broken specs during broad operations. To replace an existing spec, pass `overwrite: true` explicitly — this forces an intentional decision at each overwrite.
+ `trellis_author` validates the spec before touching the filesystem. If validation fails, nothing is written.
 </Note>
+
+---
+
+### trellis_vars
+
+Show which variables a spec requires and which are resolved for the current environment.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `spec_path` | string | yes | | Path to the spec file |
+| `env` | string | no | session or `"dev"` | Environment to check against |
+
+**Output**
+
+```json
+{
+ "spec": "apis/users/create-user.md",
+ "env": "dev",
+ "ready": false,
+ "variables": [
+ { "name": "baseUrl", "kind": "template", "resolved": true, "source": "env.md" },
+ { "name": "authToken", "kind": "template", "resolved": false, "hint": "Set in _shared/env.md [dev] or pass as vars: {\"authToken\": \"...\"}" },
+ { "name": "userId", "kind": "path_param", "resolved": false, "hint": "Pass as vars: {\"userId\": \"...\"}" }
+ ]
+}
+```
+
+`ready: true` means all variables are resolved and the spec can be executed immediately.
+
+---
+
+### trellis_search
+
+Search specs without reading individual files. Useful for discovering relevant specs before deciding which ones to run.
+
+**Input** (all optional)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `q` | string | Text search in title or description |
+| `method` | string | HTTP method filter (`"GET"`, `"POST"`, etc.) |
+| `path` | string | URL path substring match |
+| `tag` | string | Tag filter |
+
+**Output**
+
+```json
+{
+ "count": 3,
+ "results": [
+ { "file": "apis/users/create-user.md", "method": "POST", "path": "/users", "title": "Create User", "tags": ["users", "write"] },
+ { "file": "apis/users/get-user.md", "method": "GET", "path": "/users/:userId", "title": "Get User", "tags": ["users", "read"] }
+ ]
+}
+```
+
+---
+
+### trellis_history
+
+Return recent execution history for a spec.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `spec_path` | string | yes | | Path to the spec file |
+| `last` | integer | no | `10` | Number of recent entries to return |
+
+**Output**
+
+```json
+{
+ "spec": "apis/users/create-user.md",
+ "trend": "regressing",
+ "entries": [
+ { "timestamp": "2026-05-29T10:00:00Z", "passed": true, "status": 201, "duration_ms": 230, "error_type": null },
+ { "timestamp": "2026-05-29T10:05:00Z", "passed": false, "status": 422, "duration_ms": 89, "error_type": "CONTRACT_MISMATCH" }
+ ]
+}
+```
+
+`trend` is `"stable"`, `"improving"`, or `"regressing"` based on the last 6 executions.
+
+---
+
+### trellis_session
+
+Get or set the session context. Session env and vars are used as defaults by all exec/flow tools explicit params always take priority.
+
+**Input**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `action` | `"get"` \| `"set"` | yes | Get current session or update it |
+| `env` | string | no (set only) | Environment to store in session |
+| `vars` | object | no (set only) | Variables to store in session |
+
+**Example set staging session**
+
+```json
+{ "action": "set", "env": "staging", "vars": { "authToken": "tok_xyz" } }
+```
+
+After this, all `trellis_exec` / `trellis_flow` calls use `env: "staging"` and `authToken` by default.
+
+---
+
+### trellis_exec_batch
+
+Execute multiple specs in one call and return a compact summary table.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `specs` | string[] | yes | | List of spec file paths |
+| `env` | string | no | session or `"dev"` | Environment name |
+| `vars` | object | no | `{}` | Variable overrides |
+
+**Output**
+
+```json
+{
+ "summary": { "total": 3, "passed": 2, "failed": 1, "duration_ms": 789 },
+ "results": [
+ { "spec": "apis/users/create-user.md", "passed": true, "status": 201, "duration_ms": 312 },
+ { "spec": "apis/users/get-user.md", "passed": true, "status": 200, "duration_ms": 234 },
+ { "spec": "apis/orders/post-orders.md", "passed": false, "status": 422, "error_type": "CONTRACT_MISMATCH", "duration_ms": 243, "hint": "Update ## Expected response in the spec to match actual, or fix the API" }
+ ]
+}
+```
+
+---
+
+## Assertion DSL
+
+Specs can include structured assertions in a `## Assertions` section. Trellis evaluates these after each execution and returns results in `assertion_results`.
+
+```markdown
+## Assertions
+- status: 201
+- body.id: exists
+- body.email: equals "ada@example.com"
+- body.role: in [admin, user]
+- headers.content-type: contains application/json
+- body.slug: matches ^[a-z-]+$
+```
+
+Supported operators: `exists`, `equals`, `contains`, `in`, `matches` (regex).
+
+Assertion results appear in `trellis_exec` output:
+
+```json
+{
+ "assertion_results": [
+ { "rule": "status: equals 201", "passed": true, "message": "= 201" },
+ { "rule": "body.role: in [admin, user]", "passed": false, "message": "expected one of [admin, user], got `guest`" }
+ ]
+}
+```
 
 ---
 
@@ -127,48 +369,27 @@ Specs are also accessible as MCP Resources under the `trellis://spec/` URI schem
 
 ---
 
-## Typical workflow
+## Typical agent workflow
 
 ```text
-1. Agent reads api-docs/apis/ via filesystem or rg
-   → Finds api-docs/apis/orders/post-orders.md
+1. trellis_search { "method": "POST", "tag": "orders" }
+ → Finds api-docs/apis/orders/post-orders.md
 
-2. Agent reads the spec file directly
-   → Sees the request body is missing "customerId"
+2. trellis_vars { "spec_path": "api-docs/apis/orders/post-orders.md" }
+ → ready: false authToken is missing
 
-3. trellis_exec { "spec_path": "api-docs/apis/orders/post-orders.md", "env": "dev" }
-   → Returns HTTP 422, diff shows body mismatch
+3. trellis_session { "action": "set", "env": "dev", "vars": { "authToken": "tok_abc" } }
+ → Session set
 
-4. Agent reads the handler source to find the correct body shape
+4. trellis_exec { "spec_path": "api-docs/apis/orders/post-orders.md" }
+ → { "passed": false, "error_type": "CONTRACT_MISMATCH", "hints": [...] }
 
-5. trellis_author {
-     "spec_path": "api-docs/apis/orders/post-orders.md",
-     "content": "...(corrected spec with customerId)...",
-     "overwrite": true
-   }
-   → Validates and writes the corrected spec
-```
+5. trellis_exec { "spec_path": "...", "infer_expected": true }
+ → { "inferred_expected": "HTTP/1.1 201 Created\n..." }
 
----
+6. trellis_author { "spec_path": "...", "content": "...(with inferred expected)...", "overwrite": true }
+ → Spec updated
 
-## Prompts for MCP-enabled sessions
-
-```text
-Run the create order endpoint in dev. If it fails, tell me whether
-the spec, the variables, or the API response is wrong.
-```
-
-```text
-Add a spec for POST /subscriptions. Read the handler in
-src/routes/subscriptions.ts to get the correct request and response shapes.
-```
-
-```text
-Run the checkout flow and tell me which step fails first and what
-the captured values were at that point.
-```
-
-```text
-Find all specs that have a stub {} Expected response and enrich them
-by executing against dev and rewriting the block with the real shape.
+7. trellis_exec_batch { "specs": ["...", "...", "..."] }
+ → { "summary": { "total": 3, "passed": 3 } }
 ```
