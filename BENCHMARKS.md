@@ -8,8 +8,8 @@ Current status: release benchmark numbers have not been captured on clean releas
 | --- | ---: | ---: | --- |
 | Default binary size, stripped | < 10 MB | TBD | `make bench-size` |
 | Minimal binary size, stripped | < 4 MB | TBD | `make bench-size-minimal` |
-| Cold start, `trellis --help` | < 20 ms | TBD | `make bench-cold-start` |
-| `trellis validate <file>` parser time | < 10 ms | TBD | `cargo bench --bench parse_endpoint` |
+| Cold start, `mad --help` | < 20 ms | TBD | `make bench-cold-start` |
+| `mad validate <file>` parser time | < 10 ms | TBD | `cargo bench --bench parse_endpoint` |
 | Engine overhead excluding network | < 5 ms | TBD | targeted engine benchmark |
 | Web first response | < 100 ms | TBD | `make bench-web` |
 | File watcher to web refresh | < 100 ms | TBD | manual browser timing |
@@ -21,7 +21,7 @@ Current status: release benchmark numbers have not been captured on clean releas
 make release-check
 cargo bench --bench parse_endpoint
 cargo build --release --locked
-ls -lh target/release/trellis
+ls -lh target/release/mad
 ```
 
 ## Release notes

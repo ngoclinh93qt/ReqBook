@@ -1,5 +1,5 @@
-export function TrellisMark({ className = 'trellis-mark' }: { className?: string }) {
+export function MadMark({ className = 'mad-mark' }: { className?: string }) {
   return (
-    <img className={className} src="/brand/trellis-mark.svg" alt="" aria-hidden="true" />
+    <img className={className} src="/brand/mad-mark.svg" alt="" aria-hidden="true" />
   );
 }

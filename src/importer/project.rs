@@ -1,4 +1,4 @@
-//! Scan a project's source code for API route definitions and produce Trellis
+//! Scan a project's source code for API route definitions and produce MarkApiDown
 //! endpoint specs.
 //!
 //! Supports: Express/Fastify (JS/TS), FastAPI/Flask/Django (Python),
@@ -269,7 +269,7 @@ fn normalise_path(raw: &str) -> String {
     };
     // Convert {param} / <param> / :param styles to :param.
     let normed = convert_path_params(&with_slash);
-    // Axum 0.7 wildcard routes use `/*path`; Trellis keeps path params as `:path`.
+    // Axum 0.7 wildcard routes use `/*path`; MarkApiDown keeps path params as `:path`.
     let normed = normed.replace("/*", "/:").replace(":*", ":");
     // Convert <type:name> (Flask) and <name> to :name.
     let re_angle = Regex::new(r"<(?:[^:>]+:)?([^>]+)>").expect("valid");
@@ -730,7 +730,7 @@ pub fn detect_framework(root: &Path) -> Option<FrameworkInfo> {
         // Generic Go project
         return Some(FrameworkInfo {
             name: "Go",
-            export_cmd: "swag init  # for Gin/swaggo → trellis import openapi docs/swagger.json",
+            export_cmd: "swag init  # for Gin/swaggo → mad import openapi docs/swagger.json",
             default_ports: vec![8080, 3000],
             openapi_paths: vec!["/openapi.json", "/swagger/doc.json"],
         });

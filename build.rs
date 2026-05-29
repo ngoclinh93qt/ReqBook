@@ -7,8 +7,8 @@ fn main() {
         std::fs::write(
             dist.join("index.html"),
             "<!DOCTYPE html><html><body>\
-             <h1>Trellis UI not built</h1>\
-             <p>Run <code>cd web &amp;&amp; npm run build</code> then restart <code>trellis serve</code>.</p>\
+             <h1>MarkApiDown UI not built</h1>\
+             <p>Run <code>cd web &amp;&amp; npm run build</code> then restart <code>mad serve</code>.</p>\
              </body></html>",
         )
         .expect("cannot write placeholder index.html");
@@ -17,7 +17,7 @@ fn main() {
     println!("cargo:rerun-if-changed=web/src");
     println!("cargo:rerun-if-changed=web/dist");
 
-    // Capture git SHA for `trellis doctor` and `trellis --version` build info.
+    // Capture git SHA for `mad doctor` and `mad --version` build info.
     // Falls back to "unknown" if git is unavailable (e.g. in CI without checkout depth).
     let sha = std::process::Command::new("git")
         .args(["rev-parse", "--short=8", "HEAD"])
@@ -33,7 +33,7 @@ fn main() {
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|| "unknown".to_string());
 
-    println!("cargo:rustc-env=TRELLIS_BUILD_SHA={sha}");
+    println!("cargo:rustc-env=MAD_BUILD_SHA={sha}");
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-changed=.git/refs");
 }

@@ -1,6 +1,6 @@
-# Contributing to Trellis
+# Contributing to MarkApiDown
 
-Thanks for helping improve Trellis. This project is still moving quickly, so small, focused changes are easiest to review.
+Thanks for helping improve MarkApiDown. This project is still moving quickly, so small, focused changes are easiest to review.
 
 ## Development setup
 
@@ -11,8 +11,8 @@ Requirements:
 - npm
 
 ```bash
-git clone https://github.com/trellis-md/trellis.git
-cd trellis
+git clone https://github.com/mark-api-down/mad.git
+cd mad
 cargo build
 cd web && npm ci && npm run build
 ```

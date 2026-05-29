@@ -21,14 +21,14 @@ validate:
 
 bench-size:
 	cargo build --release --locked
-	ls -lh target/release/trellis
+	ls -lh target/release/mad
 
 bench-size-minimal:
 	cargo build --release --locked --no-default-features --features minimal
-	ls -lh target/release/trellis
+	ls -lh target/release/mad
 
 bench-cold-start:
-	hyperfine --warmup 5 './target/release/trellis --help'
+	hyperfine --warmup 5 './target/release/mad --help'
 
 bench-web:
 	cargo run --release -- serve --port 7700 --host 127.0.0.1

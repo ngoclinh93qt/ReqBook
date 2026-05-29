@@ -8,10 +8,10 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 
 <CardGroup cols={2}>
  <Card title="Skills" icon="book-open">
- A single markdown playbook that teaches agents the Trellis spec format, file layout, and how to choose the right approach for each task. All agents get the skill.
+ A single markdown playbook that teaches agents the MarkApiDown spec format, file layout, and how to choose the right approach for each task. All agents get the skill.
  </Card>
  <Card title="Slash commands" icon="terminal">
- Two `/trellis` commands for Claude Code and Codex CLI: `/trellis` for creating, enriching, and building flows; `/trellis-debug` for diagnosing failures.
+ Two `/mad` commands for Claude Code and Codex CLI: `/mad` for creating, enriching, and building flows; `/mad-debug` for diagnosing failures.
  </Card>
  <Card title="MCP server" icon="plug">
  Structured tools for Claude Code: exec, flow, author, and more. Agents get typed results without parsing shell output.
@@ -30,7 +30,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  Run the installer from the root of your project. It auto-detects which agents are present and writes the correct files for each.
 
  ```bash
- trellis skills install
+ mad skills install
  ```
 
  The command writes the skill and (for Claude Code / Codex CLI) slash commands to the directories each agent reads.
@@ -38,17 +38,17 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 
  <Step title="Verify">
  ```bash
- trellis skills list
+ mad skills list
  ```
 
  Example output:
 
  ```
- claude-code detected .claude/skills/trellis/SKILL.md
-                       .claude/commands/trellis.md
-                       .claude/commands/trellis-debug.md
- cursor     detected   .cursor/rules/trellis.mdc
- copilot    detected   .github/instructions/trellis.instructions.md
+ claude-code detected .claude/skills/mad/SKILL.md
+                       .claude/commands/mad.md
+                       .claude/commands/mad-debug.md
+ cursor     detected   .cursor/rules/mad.mdc
+ copilot    detected   .github/instructions/mad.instructions.md
  ```
  </Step>
 
@@ -56,7 +56,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  The MCP server gives Claude Code structured access to spec execution, pipelines, and authoring — no terminal output parsing.
 
  ```bash
- claude mcp add trellis -- trellis mcp
+ claude mcp add mad -- mad mcp
  ```
 
  Verify:
@@ -74,37 +74,37 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 <CodeGroup>
 
 ```bash Claude Code
-trellis skills install --agent=claude-code
+mad skills install --agent=claude-code
 # Installs: 1 skill + 2 slash commands
-# Locations: .claude/skills/trellis/, .claude/commands/
+# Locations: .claude/skills/mad/, .claude/commands/
 ```
 
 ```bash Codex CLI
-trellis skills install --agent=codex-cli
+mad skills install --agent=codex-cli
 # Installs: 1 skill + 2 slash commands
-# Locations: ~/.codex/skills/trellis/, ~/.codex/commands/
+# Locations: ~/.codex/skills/mad/, ~/.codex/commands/
 ```
 
 ```bash Cursor
-trellis skills install --agent=cursor
+mad skills install --agent=cursor
 # Installs: 1 skill as .mdc rule
 # Location: .cursor/rules/
 ```
 
 ```bash GitHub Copilot
-trellis skills install --agent=copilot
+mad skills install --agent=copilot
 # Installs: 1 skill as .instructions.md
 # Location: .github/instructions/
 ```
 
 ```bash Antigravity
-trellis skills install --agent=antigravity
+mad skills install --agent=antigravity
 # Installs: 1 skill
 # Location: .agents/skills/
 ```
 
 ```bash OpenCode
-trellis skills install --agent=opencode
+mad skills install --agent=opencode
 # Installs: 1 skill
 # Location: .opencode/skills/
 ```
@@ -126,18 +126,18 @@ trellis skills install --agent=opencode
 
 ## Keep skills current
 
-After upgrading Trellis, check whether installed skills match the current binary:
+After upgrading MarkApiDown, check whether installed skills match the current binary:
 
 ```bash
-trellis doctor
+mad doctor
 ```
 
 To update stale skills automatically:
 
 ```bash
-trellis doctor --fix
+mad doctor --fix
 ```
 
 <Warning>
- Stale skills are the most common cause of agents missing new commands or writing files in unexpected ways. Run `trellis doctor --fix` after every Trellis upgrade.
+ Stale skills are the most common cause of agents missing new commands or writing files in unexpected ways. Run `mad doctor --fix` after every MarkApiDown upgrade.
 </Warning>

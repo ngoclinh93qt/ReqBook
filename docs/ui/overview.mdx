@@ -1,11 +1,11 @@
 ---
-title: "trellis-ui overview"
-description: "The browser interface to Trellis same binary as trellis-cli, different interface."
+title: "mad-ui overview"
+description: "The browser interface to MarkApiDown same binary as mad-cli, different interface."
 ---
 
-## What is trellis-ui?
+## What is mad-ui?
 
-**trellis-ui** is the browser interface to Trellis, accessed via `trellis serve`. It provides a visual environment for:
+**mad-ui** is the browser interface to MarkApiDown, accessed via `mad serve`. It provides a visual environment for:
 
 - Browsing and searching your API spec collection
 - Sending requests with interactive variable overrides
@@ -17,13 +17,13 @@ description: "The browser interface to Trellis same binary as trellis-cli, diffe
 ## Launch
 
 ```bash
-trellis serve
+mad serve
 # Opens at http://127.0.0.1:8080
 ```
 
 Custom host/port:
 ```bash
-trellis serve --host 0.0.0.0 --port 3000
+mad serve --host 0.0.0.0 --port 3000
 ```
 
 ## Features
@@ -37,11 +37,11 @@ trellis serve --host 0.0.0.0 --port 3000
 | Edit spec source | Endpoint page → Edit source |
 | Import from curl | Import curl button in top bar |
 | Scan project | Scan button in top bar |
-| Mock mode | `trellis serve --mock` |
+| Mock mode | `mad serve --mock` |
 
 ## Same binary two interfaces
 
 ```
-trellis serve → opens trellis-ui (this)
-trellis exec → runs in the terminal (trellis-cli)
+mad serve → opens mad-ui (this)
+mad exec → runs in the terminal (mad-cli)
 ```

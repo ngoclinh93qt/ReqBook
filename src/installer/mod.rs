@@ -8,7 +8,7 @@ use std::{
 use serde::Deserialize;
 use thiserror::Error;
 
-const TRELLIS: &str = include_str!("../../skills/trellis/SKILL.md");
+const MAD: &str = include_str!("../../skills/mad/SKILL.md");
 
 // ─── Slash-command definitions ────────────────────────────────────────────────
 
@@ -19,15 +19,15 @@ struct CommandDef {
     content: &'static str,
 }
 
-/// All Trellis slash commands, in order.
+/// All MarkApiDown slash commands, in order.
 const COMMANDS: &[CommandDef] = &[
     CommandDef {
-        slug: "trellis",
-        content: include_str!("../../.claude/commands/trellis.md"),
+        slug: "mad",
+        content: include_str!("../../.claude/commands/mad.md"),
     },
     CommandDef {
-        slug: "trellis-debug",
-        content: include_str!("../../.claude/commands/trellis-debug.md"),
+        slug: "mad-debug",
+        content: include_str!("../../.claude/commands/mad-debug.md"),
     },
 ];
 
@@ -133,13 +133,13 @@ pub enum InstallError {
         source: serde_yaml::Error,
     },
     /// Unknown skill name.
-    #[error("unknown skill \"{name}\". Available skills: trellis")]
+    #[error("unknown skill \"{name}\". Available skills: mad")]
     UnknownSkill {
         /// Name provided by the user.
         name: String,
     },
     /// Unknown slash command slug.
-    #[error("unknown command \"{name}\". Available commands: trellis, trellis-debug")]
+    #[error("unknown command \"{name}\". Available commands: mad, mad-debug")]
     UnknownCommand {
         /// Slug provided by the user.
         name: String,
@@ -188,7 +188,7 @@ pub fn detect_agents(root: &Path) -> Vec<AgentStatus> {
     .collect()
 }
 
-/// Install all Trellis skills **and slash commands** for one explicit agent or
+/// Install all MarkApiDown skills **and slash commands** for one explicit agent or
 /// all detected agents.
 pub fn install(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, InstallError> {
     let agents = resolve_agents(root, agent)?;
@@ -285,7 +285,7 @@ pub fn install_command(root: &Path, agent: Option<&str>, slug: &str) -> Result<V
     Ok(installed)
 }
 
-/// Remove installed Trellis skills and slash commands.
+/// Remove installed MarkApiDown skills and slash commands.
 pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, InstallError> {
     let agents = if let Some(agent) = agent {
         vec![
@@ -380,7 +380,7 @@ fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, Instal
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
-    [TRELLIS]
+    [MAD]
         .into_iter()
         .map(parse_skill)
         .collect()
@@ -485,11 +485,11 @@ mod tests {
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
         assert_eq!(installed.len(), 2); // 1 skill each
         let cursor =
-            fs::read_to_string(dir.path().join(".cursor/rules/trellis.mdc")).unwrap();
+            fs::read_to_string(dir.path().join(".cursor/rules/mad.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
         let copilot = fs::read_to_string(
             dir.path()
-                .join(".github/instructions/trellis.instructions.md"),
+                .join(".github/instructions/mad.instructions.md"),
         )
         .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
@@ -504,15 +504,15 @@ mod tests {
         // 1 skill + 2 commands = 3
         assert_eq!(installed.len(), 3);
 
-        for slug in &["trellis", "trellis-debug"] {
+        for slug in &["mad", "mad-debug"] {
             let path = dir.path().join(format!(".claude/commands/{slug}.md"));
             assert!(path.exists(), "{slug} command not created");
             let content = fs::read_to_string(&path).unwrap();
             assert!(content.contains("description:"), "{slug}: missing description");
         }
 
-        let skill = dir.path().join(".claude/skills/trellis/SKILL.md");
-        assert!(skill.exists(), "trellis skill not created");
+        let skill = dir.path().join(".claude/skills/mad/SKILL.md");
+        assert!(skill.exists(), "mad skill not created");
     }
 
     #[test]
@@ -537,17 +537,17 @@ mod tests {
     fn install_single_command_by_slug() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
-        let installed = install_command(dir.path(), Some("claude-code"), "trellis").unwrap();
+        let installed = install_command(dir.path(), Some("claude-code"), "mad").unwrap();
         assert_eq!(installed.len(), 1);
-        assert!(dir.path().join(".claude/commands/trellis.md").exists());
-        assert!(!dir.path().join(".claude/commands/trellis-debug.md").exists());
+        assert!(dir.path().join(".claude/commands/mad.md").exists());
+        assert!(!dir.path().join(".claude/commands/mad-debug.md").exists());
     }
 
     #[test]
     fn install_single_command_unknown_slug_errors() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
-        let result = install_command(dir.path(), Some("claude-code"), "trellis-nonexistent");
+        let result = install_command(dir.path(), Some("claude-code"), "mad-nonexistent");
         assert!(matches!(result, Err(InstallError::UnknownCommand { .. })));
     }
 
@@ -557,7 +557,7 @@ mod tests {
         fs::create_dir(dir.path().join(".claude")).unwrap();
         install(dir.path(), Some("claude-code")).unwrap();
 
-        let cmd = dir.path().join(".claude/commands/trellis.md");
+        let cmd = dir.path().join(".claude/commands/mad.md");
         assert!(cmd.exists());
 
         uninstall(dir.path(), Some("claude-code")).unwrap();

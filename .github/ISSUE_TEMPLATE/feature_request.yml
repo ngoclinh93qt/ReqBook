@@ -14,7 +14,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: What should Trellis do?
+      description: What should MarkApiDown do?
     validations:
       required: true
   - type: textarea

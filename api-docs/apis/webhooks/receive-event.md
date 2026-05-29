@@ -22,7 +22,7 @@ Preview a webhook-style request with a path parameter, custom signature header, 
 ```http
 POST {{baseUrl}}/webhooks/:eventType
 Content-Type: application/json
-X-Trellis-Signature: {{signature}}
+X-MarkApiDown-Signature: {{signature}}
 X-Request-Id: {{requestId}}
 
 {

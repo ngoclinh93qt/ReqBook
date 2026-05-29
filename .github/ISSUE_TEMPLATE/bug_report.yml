@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Trellis.
+description: Report a reproducible problem in MarkApiDown.
 title: "bug: "
 labels: ["bug"]
 body:
@@ -30,8 +30,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Trellis version
-      placeholder: trellis 0.1.0
+      label: MarkApiDown version
+      placeholder: mad 0.1.0
   - type: input
     id: os
     attributes:

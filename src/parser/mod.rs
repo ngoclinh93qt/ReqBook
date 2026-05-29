@@ -1,4 +1,4 @@
-//! Markdown parsing for Trellis specs.
+//! Markdown parsing for MarkApiDown specs.
 
 use std::{collections::BTreeMap, path::Path};
 
@@ -65,7 +65,7 @@ pub enum AssertionOp {
 pub struct EndpointSchema {
     /// Resource group, usually matching the containing folder.
     pub resource: String,
-    /// Protocol. Trellis v1.0 executes HTTP only.
+    /// Protocol. MarkApiDown v1.0 executes HTTP only.
     pub protocol: Protocol,
     /// HTTP method.
     pub method: HttpMethod,
@@ -287,7 +287,7 @@ pub enum ParseError {
         fix: String,
     },
     /// Secret detected in versioned markdown.
-    #[error("{path}: possible secret detected\nFix: move this value to .env.local or TRELLIS_* environment variables.")]
+    #[error("{path}: possible secret detected\nFix: move this value to .env.local or MAD_* environment variables.")]
     SecretDetected {
         /// File path.
         path: String,

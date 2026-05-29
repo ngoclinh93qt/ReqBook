@@ -83,5 +83,5 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name == 'push' }}
-          tags: ghcr.io/trellis-md/trellis:${{ github.ref_name }},ghcr.io/trellis-md/trellis:latest
+          tags: ghcr.io/mark-api-down/mad:${{ github.ref_name }},ghcr.io/mark-api-down/mad:latest
 

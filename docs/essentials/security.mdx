@@ -1,18 +1,18 @@
 ---
 title: "Security"
-description: "Trellis prevents secrets from being committed to version control. Learn about secret detection, allowed secret locations, and output masking."
+description: "MarkApiDown prevents secrets from being committed to version control. Learn about secret detection, allowed secret locations, and output masking."
 icon: "shield"
 ---
 
 ## Never commit secrets
 
-Trellis treats all markdown spec files as safe-to-commit artifacts. Secrets belong in `.env.local`, CI environment variables, or a secret manager never in `env.md`, endpoint files, pipeline files, or `trellis.md`. The parser actively enforces this before any request is sent.
+MarkApiDown treats all markdown spec files as safe-to-commit artifacts. Secrets belong in `.env.local`, CI environment variables, or a secret manager never in `env.md`, endpoint files, pipeline files, or `mad.md`. The parser actively enforces this before any request is sent.
 
 ---
 
 ## Secret detection
 
-Trellis scans `env.md`, endpoint files, pipeline files, and `trellis.md` for common secret patterns during `trellis validate` and before every execution. If a match is found, the command exits with **code 5** no network request is made.
+MarkApiDown scans `env.md`, endpoint files, pipeline files, and `mad.md` for common secret patterns during `mad validate` and before every execution. If a match is found, the command exits with **code 5** no network request is made.
 
 ### Patterns that trigger exit code 5
 
@@ -27,7 +27,7 @@ Trellis scans `env.md`, endpoint files, pipeline files, and `trellis.md` for com
 
 ```
 api-docs/_shared/env.md:12: possible secret detected
-Fix: move this value to .env.local or TRELLIS_* environment variables.
+Fix: move this value to .env.local or MAD_* environment variables.
 ```
 
 The error includes the file path and line number so you can find and move the offending value immediately.
@@ -39,18 +39,18 @@ The error includes the file path and line number so you can find and move the of
 | Location | When to use |
 |---|---|
 | `.env.local` | Local development. Must be listed in `.gitignore`. Never committed. |
-| `TRELLIS_*` OS env vars | CI/CD pipelines and shared environments. Set in your CI provider's secret store. |
-| Secret manager + env | `TRELLIS_AUTH_TOKEN=$(vault read secret/api-token)` inject at runtime from HashiCorp Vault, AWS Secrets Manager, or similar. |
+| `MAD_*` OS env vars | CI/CD pipelines and shared environments. Set in your CI provider's secret store. |
+| Secret manager + env | `MAD_AUTH_TOKEN=$(vault read secret/api-token)` inject at runtime from HashiCorp Vault, AWS Secrets Manager, or similar. |
 
 <Tip>
- `trellis doctor` checks that `.env.local` is listed in `.gitignore` and reports an error with a fix suggestion if it is not. Run it after `trellis init` and before onboarding new contributors.
+ `mad doctor` checks that `.env.local` is listed in `.gitignore` and reports an error with a fix suggestion if it is not. Run it after `mad init` and before onboarding new contributors.
 </Tip>
 
 ---
 
 ## Output masking
 
-Trellis masks auth header values and known secret variable names in all output surfaces: CLI console, JSON reports, JUnit XML, markdown reports, and the web preview response history.
+MarkApiDown masks auth header values and known secret variable names in all output surfaces: CLI console, JSON reports, JUnit XML, markdown reports, and the web preview response history.
 
 | Input | Masked output |
 |---|---|
@@ -58,23 +58,23 @@ Trellis masks auth header values and known secret variable names in all output s
 | `Authorization: Basic dXNlcjpwYXNz` | `Authorization: Basic ****` |
 | `authToken=abc123` | `authToken=****` |
 
-Masking is applied before writing to any file, stream, or storage. Unmasked values are never written to disk by Trellis.
+Masking is applied before writing to any file, stream, or storage. Unmasked values are never written to disk by MarkApiDown.
 
 ---
 
 ## Production confirmation
 
-Running against a `prod` environment requires explicit confirmation in an interactive terminal. Trellis prompts before sending any request when `--env=prod` is passed.
+Running against a `prod` environment requires explicit confirmation in an interactive terminal. MarkApiDown prompts before sending any request when `--env=prod` is passed.
 
 ```bash
-trellis exec api-docs/apis/users/delete-user.md --env=prod
-# Trellis: You are about to run against prod. Confirm? [y/N]
+mad exec api-docs/apis/users/delete-user.md --env=prod
+# MarkApiDown: You are about to run against prod. Confirm? [y/N]
 ```
 
 Pass `--yes` to skip the confirmation prompt in automated pipelines:
 
 ```bash
-trellis exec api-docs/apis/users/get-users.md --env=prod --yes
+mad exec api-docs/apis/users/get-users.md --env=prod --yes
 ```
 
 <Warning>
@@ -85,13 +85,13 @@ trellis exec api-docs/apis/users/get-users.md --env=prod --yes
 
 ## Exit codes
 
-Every Trellis command exits with a stable, machine-readable code. CI pipelines can branch on these codes to distinguish test failures from spec errors.
+Every MarkApiDown command exits with a stable, machine-readable code. CI pipelines can branch on these codes to distinguish test failures from spec errors.
 
 | Code | Meaning |
 |---|---|
 | `0` | Passed |
 | `1` | Test failed response did not match expected |
 | `2` | Invalid spec missing field, unresolved variable, or malformed file |
-| `3` | Engine error internal Trellis error |
+| `3` | Engine error internal MarkApiDown error |
 | `4` | Network error connection refused, timeout, or DNS failure |
 | `5` | Secret detected a versioned file contains a possible credential |

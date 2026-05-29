@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use trellis::parser::parse_endpoint;
+use mark_api_down::parser::parse_endpoint;
 
 fn parse_50_line_endpoint(c: &mut Criterion) {
     let source = r#"---

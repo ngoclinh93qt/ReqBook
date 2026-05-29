@@ -1,12 +1,12 @@
 ---
 title: "Installation"
-description: "Install Trellis on macOS, Linux, or Windows."
+description: "Install MarkApiDown on macOS, Linux, or Windows."
 icon: "download"
 ---
 
 ## Requirements
 
-Trellis 1.0.0 ships as a single static binary with no runtime dependencies no Node, no Python, no JVM required.
+MarkApiDown 1.0.0 ships as a single static binary with no runtime dependencies no Node, no Python, no JVM required.
 
 | Install method | Requirement |
 |---|---|
@@ -26,48 +26,48 @@ Trellis 1.0.0 ships as a single static binary with no runtime dependencies no No
  Recommended for most macOS and Linux users. The installer fetches the latest prebuilt binary and places it in `~/.local/bin`.
 
  ```bash
- curl -fsSL https://trellis.dev/install.sh | sh
+ curl -fsSL https://markApiDown.dev/install.sh | sh
  ```
 
  If `~/.local/bin` is not on your `PATH`, the installer prints the exact line to add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
 
  <Note>
- The shell installer script is open-source and auditable at [github.com/trellis-md/trellis](https://github.com/trellis-md/trellis/blob/main/install.sh).
+ The shell installer script is open-source and auditable at [github.com/mark-api-down/mad](https://github.com/mark-api-down/mad/blob/main/install.sh).
  </Note>
  </Tab>
 
  <Tab title="Cargo">
- Install directly from [crates.io](https://crates.io/crates/trellis). This builds Trellis from source and places the binary in `~/.cargo/bin`.
+ Install directly from [crates.io](https://crates.io/crates/mark-api-down). This builds MarkApiDown from source and places the binary in `~/.cargo/bin`.
 
  ```bash
- cargo install trellis
+ cargo install mark-api-down
  ```
 
  Requires Rust 1.75 or later. Upgrade your toolchain with `rustup update stable` if needed.
  </Tab>
 
  <Tab title="Homebrew">
- Install via the official Trellis tap on macOS (or Linux with Homebrew):
+ Install via the official MarkApiDown tap on macOS (or Linux with Homebrew):
 
  ```bash
- brew install trellis-md/tap/trellis
+ brew install mark-api-down/tap/mad
  ```
 
- Homebrew manages upgrades via `brew upgrade trellis`. No separate tap add step is required the formula URL handles it.
+ Homebrew manages upgrades via `brew upgrade mad`. No separate tap add step is required the formula URL handles it.
  </Tab>
 
  <Tab title="npm">
  Install via npm for Node.js projects. This bundles a prebuilt binary for macOS, Linux, and Windows no Rust toolchain needed.
 
  ```bash
- npm install -g trellis-md
+ npm install -g mark-api-down
  ```
 
  The npm package is a thin wrapper around the native binary. You can also pin it as a `devDependency` to lock the version per project:
 
  ```bash
- npm install --save-dev trellis-md
- npx trellis validate api-docs/
+ npm install --save-dev mark-api-down
+ npx mad validate api-docs/
  ```
  </Tab>
 
@@ -75,23 +75,23 @@ Trellis 1.0.0 ships as a single static binary with no runtime dependencies no No
  Use the official image from GitHub Container Registry. Mount your project directory at `/work`:
 
  ```bash
- docker pull ghcr.io/trellis-md/trellis:latest
+ docker pull ghcr.io/mark-api-down/mad:latest
  docker run --rm -v "$(pwd)":/work -w /work \
- ghcr.io/trellis-md/trellis:latest validate api-docs/
+ ghcr.io/mark-api-down/mad:latest validate api-docs/
  ```
 
- Replace `validate api-docs/` with any `trellis` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
+ Replace `validate api-docs/` with any `mad` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
 
  <Tip>
- Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/trellis-md/trellis:1.0.0`.
+ Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/mark-api-down/mad:1.0.0`.
  </Tip>
  </Tab>
 
  <Tab title="Windows (MSI)">
- Download the `.msi` installer from the [releases page](https://github.com/trellis-md/trellis/releases). Run the installer and `trellis` is added to your system PATH automatically no manual PATH edits needed.
+ Download the `.msi` installer from the [releases page](https://github.com/mark-api-down/mad/releases). Run the installer and `mad` is added to your system PATH automatically no manual PATH edits needed.
 
  <Note>
- Windows support is available from Trellis 1.0.0. The MSI installer targets Windows 10 and Windows Server 2019 or later.
+ Windows support is available from MarkApiDown 1.0.0. The MSI installer targets Windows 10 and Windows Server 2019 or later.
  </Note>
  </Tab>
 </Tabs>
@@ -103,14 +103,14 @@ Trellis 1.0.0 ships as a single static binary with no runtime dependencies no No
 After installing, confirm the binary is on your PATH and run the built-in diagnostics:
 
 ```bash
-trellis version
+mad version
 # 1.0.0
 
-trellis doctor
+mad doctor
 ```
 
 <Note>
- `trellis doctor` runs a series of checks: it verifies that `api-docs/` exists, that `.env.local` is listed in `.gitignore`, that all specs in the project are valid, and that any installed AI agent skills match the current binary version.
+ `mad doctor` runs a series of checks: it verifies that `api-docs/` exists, that `.env.local` is listed in `.gitignore`, that all specs in the project are valid, and that any installed AI agent skills match the current binary version.
 </Note>
 
 ---
@@ -122,19 +122,19 @@ Generate and install completions for your shell so you get tab-completion for su
 <Tabs>
  <Tab title="Bash">
  ```bash
- trellis completion bash >> ~/.bashrc
+ mad completion bash >> ~/.bashrc
  source ~/.bashrc
  ```
  </Tab>
  <Tab title="Zsh">
  ```bash
- trellis completion zsh > "${fpath[1]}/_trellis"
+ mad completion zsh > "${fpath[1]}/_mad"
  # Restart your shell or run: exec zsh
  ```
  </Tab>
  <Tab title="Fish">
  ```bash
- trellis completion fish > ~/.config/fish/completions/trellis.fish
+ mad completion fish > ~/.config/fish/completions/mad.fish
  ```
  </Tab>
 </Tabs>
@@ -148,26 +148,26 @@ Generate and install completions for your shell so you get tab-completion for su
  Re-run the installer it replaces the existing binary in place:
 
  ```bash
- curl -fsSL https://trellis.dev/install.sh | sh
+ curl -fsSL https://markApiDown.dev/install.sh | sh
  ```
  </Tab>
  <Tab title="Cargo">
  ```bash
- cargo install trellis --force
+ cargo install mark-api-down --force
  ```
  </Tab>
  <Tab title="Homebrew">
  ```bash
- brew upgrade trellis
+ brew upgrade mad
  ```
  </Tab>
  <Tab title="npm">
  ```bash
- npm install -g trellis-md
+ npm install -g mark-api-down
  ```
  </Tab>
 </Tabs>
 
 <Tip>
- After upgrading, run `trellis doctor --fix` to automatically update any installed AI agent skills (Claude Code, Cursor, Copilot) to the new version. Stale skill files can cause agents to call deprecated flags.
+ After upgrading, run `mad doctor --fix` to automatically update any installed AI agent skills (Claude Code, Cursor, Copilot) to the new version. Stale skill files can cause agents to call deprecated flags.
 </Tip>

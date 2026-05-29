@@ -1,10 +1,10 @@
 //! Workspace and collection root detection.
 //!
-//! A "collection" is an `api-docs/` directory with a `trellis.md` manifest.
+//! A "collection" is an `api-docs/` directory with a `mad.md` manifest.
 //! Resolution priority:
 //!   1. Explicit `--config` path (unchanged from prior behaviour).
 //!   2. Git repo root: `git rev-parse --show-toplevel` → `<root>/api-docs/`.
-//!   3. Global default: `~/.trellis/workspace/default/api-docs/`.
+//!   3. Global default: `~/.mad/workspace/default/api-docs/`.
 
 use std::path::{Path, PathBuf};
 
@@ -22,21 +22,21 @@ pub fn collection_root(explicit_config: Option<&Path>) -> PathBuf {
     global_default_dir()
 }
 
-/// `~/.trellis/workspace/default/api-docs/`   used when not in a git repo.
+/// `~/.mad/workspace/default/api-docs/`   used when not in a git repo.
 pub fn global_default_dir() -> PathBuf {
-    home_dir().join(".trellis/workspace/default/api-docs")
+    home_dir().join(".mad/workspace/default/api-docs")
 }
 
-/// `~/.trellis/workspace/scratch/api-docs/`   unsaved ad-hoc requests.
+/// `~/.mad/workspace/scratch/api-docs/`   unsaved ad-hoc requests.
 pub fn scratch_dir() -> PathBuf {
-    home_dir().join(".trellis/workspace/scratch/api-docs")
+    home_dir().join(".mad/workspace/scratch/api-docs")
 }
 
-/// Ensure the scratch workspace exists and has a minimal `trellis.md`.
+/// Ensure the scratch workspace exists and has a minimal `mad.md`.
 pub fn ensure_scratch_workspace() -> std::io::Result<PathBuf> {
     let dir = scratch_dir();
     std::fs::create_dir_all(dir.join("apis/scratch"))?;
-    let config = dir.join("trellis.md");
+    let config = dir.join("mad.md");
     if !config.exists() {
         std::fs::write(
             &config,

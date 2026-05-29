@@ -1,7 +1,7 @@
 ---
 type: pipeline
 name: demo-post-flow
-description: Created in Trellis web canvas
+description: Created in MarkApiDown web canvas
 continue-on-error: false
 parallel: false
 ---

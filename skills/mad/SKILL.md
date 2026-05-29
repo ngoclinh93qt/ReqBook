@@ -1,17 +1,17 @@
 ---
-name: trellis
-description: Apply when working with api-docs/ files, authoring or running specs, building flows, or debugging API calls. Covers the full Trellis workflow.
+name: mad
+description: Apply when working with api-docs/ files, authoring or running specs, building flows, or debugging API calls. Covers the full MarkApiDown workflow.
 ---
 
-# Trellis
+# MarkApiDown
 
-Local-first API workspace — specs, environments, and pipelines are plain markdown files in `api-docs/`. The CLI validates and executes them; the browser UI (`trellis serve`) renders them interactively.
+Local-first API workspace — specs, environments, and pipelines are plain markdown files in `api-docs/`. The CLI validates and executes them; the browser UI (`mad serve`) renders them interactively.
 
 ## Project layout
 
 ```
 api-docs/
-├── trellis.md              # project config (name, default-env, timeouts)
+├── mad.md                  # project config (name, default-env, timeouts)
 ├── _shared/env.md          # base URLs and variables per environment
 ├── apis/<resource>/<method>-<slug>.md   # one file per endpoint
 └── flows/<name>.md         # multi-step pipelines
@@ -21,10 +21,10 @@ api-docs/
 
 | Situation | Action |
 |---|---|
-| Create or update specs | `/trellis` |
-| Debug a failing endpoint or pipeline | `/trellis-debug` |
-| Execute a spec | `trellis_exec` MCP tool |
-| Run a pipeline | `trellis_flow` MCP tool |
+| Create or update specs | `/mad` |
+| Debug a failing endpoint or pipeline | `/mad-debug` |
+| Execute a spec | `mad_exec` MCP tool |
+| Run a pipeline | `mad_flow` MCP tool |
 
 ## Endpoint format
 
@@ -75,17 +75,17 @@ Content-Type: application/json
 
 | Tool | Use for |
 |---|---|
-| `trellis_exec` | Run one spec |
-| `trellis_flow` | Run a pipeline |
-| `trellis_author` | Create or update a spec (validates before writing — prefer over direct file writes) |
-| `trellis_search` | Find specs by method, path, or tag |
-| `trellis_vars` | Show variable resolution for a spec |
-| `trellis_exec_batch` | Run multiple specs in one call |
+| `mad_exec` | Run one spec |
+| `mad_flow` | Run a pipeline |
+| `mad_author` | Create or update a spec (validates before writing — prefer over direct file writes) |
+| `mad_search` | Find specs by method, path, or tag |
+| `mad_vars` | Show variable resolution for a spec |
+| `mad_exec_batch` | Run multiple specs in one call |
 
 ## Rules
 
-- Variables: `{{name}}` resolved from `_shared/env.md` → `.env.local` → `TRELLIS_*` env vars.
-- Secrets never in markdown — use `.env.local` or `TRELLIS_*`.
-- Use `trellis_author` not direct file writes.
-- After writing specs: `trellis index`.
+- Variables: `{{name}}` resolved from `_shared/env.md` → `.env.local` → `MAD_*` env vars.
+- Secrets never in markdown — use `.env.local` or `MAD_*`.
+- Use `mad_author` not direct file writes.
+- After writing specs: `mad index`.
 - Default to `--env=dev`. Confirm before `--env=prod`.

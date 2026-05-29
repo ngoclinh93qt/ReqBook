@@ -9,7 +9,7 @@ use anyhow::{bail, Context as AnyhowContext, Result};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{generate, Shell};
 use owo_colors::OwoColorize;
-use trellis::{
+use mark_api_down::{
     adhoc::{self, AdHocParams},
     engine::{self, ExecOpts},
     parser::{self, parse_endpoint, parse_pipeline},
@@ -20,9 +20,9 @@ use trellis::{
 };
 
 #[derive(Debug, Parser)]
-#[command(name = "trellis", version, about = "API workspace   design specs, send requests, validate contracts")]
+#[command(name = "mad", version, about = "API workspace   design specs, send requests, validate contracts")]
 struct Cli {
-    /// Path to api-docs/trellis.md.
+    /// Path to api-docs/mad.md.
     #[arg(long, global = true)]
     config: Option<PathBuf>,
     /// Disable colored output.
@@ -215,8 +215,8 @@ enum ImportCommand {
     /// Import a raw curl command (paste from browser DevTools).
     ///
     /// Reads from FILE if provided, otherwise reads from stdin.
-    /// Example: trellis import curl curl.txt
-    /// Example: pbpaste | trellis import curl
+    /// Example: mad import curl curl.txt
+    /// Example: pbpaste | mad import curl
     Curl {
         /// File containing the curl command (omit to read from stdin).
         file: Option<PathBuf>,
@@ -229,9 +229,9 @@ enum ImportCommand {
     ///   3. Running dev server probed on localhost (--port or framework default)
     ///   4. Regex-based source-code scan (fallback, method+path only)
     ///
-    /// Example: trellis import project
-    /// Example: trellis import project ./src --port 8000
-    /// Example: trellis import project --url http://localhost:8000/openapi.json
+    /// Example: mad import project
+    /// Example: mad import project ./src --port 8000
+    /// Example: mad import project --url http://localhost:8000/openapi.json
     Project {
         /// Root directory to scan (default: current directory).
         path: Option<PathBuf>,
@@ -250,11 +250,11 @@ enum InstallCommand {
     /// Install AI agent skills (all or by name).
     ///
     /// Examples:
-    ///   trellis install skills
-    ///   trellis install skills trellis-sync
-    ///   trellis install skills --agent=cursor
+    ///   mad install skills
+    ///   mad install skills mad-sync
+    ///   mad install skills --agent=cursor
     Skills {
-        /// Install only one specific skill by name (e.g. trellis-sync, trellis-debug).
+        /// Install only one specific skill by name (e.g. mad-sync, mad-debug).
         name: Option<String>,
         /// Agent name (e.g. claude-code, cursor, copilot).
         #[arg(long)]
@@ -263,19 +263,19 @@ enum InstallCommand {
     /// Install slash commands for Claude Code and Codex CLI (all or by name).
     ///
     /// Examples:
-    ///   trellis install slashcmd
-    ///   trellis install slashcmd trellis-scan
-    ///   trellis install slashcmd --agent=codex-cli
+    ///   mad install slashcmd
+    ///   mad install slashcmd mad-scan
+    ///   mad install slashcmd --agent=codex-cli
     Slashcmd {
-        /// Install only one specific command by slug (e.g. trellis-scan, trellis-debug).
+        /// Install only one specific command by slug (e.g. mad-scan, mad-debug).
         name: Option<String>,
         /// Agent name (claude-code or codex-cli).
         #[arg(long)]
         agent: Option<String>,
     },
-    /// Register the Trellis MCP server with Claude Code.
+    /// Register the MarkApiDown MCP server with Claude Code.
     ///
-    /// Runs: claude mcp add trellis -- trellis mcp
+    /// Runs: claude mcp add mad -- mad mcp
     Mcp,
     /// List detected agents and installation status.
     List,
@@ -301,7 +301,7 @@ async fn main() -> Result<()> {
             init(args, &collection)?;
             println!("\nScanning for existing API routes...");
             import(ImportCommand::Project { path: None, port: None, url: None }, &collection).await?;
-            println!("\nRun `trellis serve` to open the web preview.");
+            println!("\nRun `mad serve` to open the web preview.");
         }
         Command::Validate { path } => validate_path(path)?,
         Command::Exec(args) => exec(args).await?,
@@ -312,11 +312,11 @@ async fn main() -> Result<()> {
         Command::Serve(args) => serve(args, &collection).await?,
         Command::Mock(args) => mock(args).await?,
         Command::Request(args) => request(args, &collection).await?,
-        Command::Mcp => trellis::mcp::run_mcp_server().await?,
+        Command::Mcp => mark_api_down::mcp::run_mcp_server().await?,
         Command::Doctor(args) => doctor(args, &collection)?,
         Command::Completion { shell } => {
             let mut cmd = Cli::command();
-            generate(shell, &mut cmd, "trellis", &mut io::stdout());
+            generate(shell, &mut cmd, "mad", &mut io::stdout());
         }
         Command::Version => println!("{}", env!("CARGO_PKG_VERSION")),
     }
@@ -463,13 +463,13 @@ fn init(args: InitArgs, collection: &Path) -> Result<()> {
     fs::create_dir_all(collection.join("_shared"))?;
     fs::create_dir_all(collection.join("apis/posts"))?;
     fs::create_dir_all(collection.join("flows"))?;
-    write_new(&collection.join("trellis.md"), &project_config(&name))?;
+    write_new(&collection.join("mad.md"), &project_config(&name))?;
     write_new(&collection.join("_shared/env.md"), &env_config(&dev_url))?;
     write_new(&collection.join("apis/posts/get-posts.md"), example_endpoint())?;
     ensure_gitignore_has_env_local()?;
     regenerate_index(collection)?;
 
-    println!("{} Created trellis.md (project config)", "✓".green());
+    println!("{} Created mad.md (project config)", "✓".green());
     println!("{} Created api-docs/ with 1 example", "✓".green());
     Ok(())
 }
@@ -643,7 +643,7 @@ fn validate_file(path: &Path) -> Result<()> {
         parser::parse_env_config(&source, path).map(|_| ())
     } else if path
         .file_name()
-        .is_some_and(|name| name == "trellis.md" || name == "README.md")
+        .is_some_and(|name| name == "mad.md" || name == "README.md")
     {
         Ok(())
     } else if path
@@ -762,7 +762,7 @@ async fn request(args: RequestArgs, collection: &Path) -> Result<()> {
 
     let endpoint = adhoc::build_endpoint(&params)?;
     let context = {
-        let dummy = collection.join("trellis.md");
+        let dummy = collection.join("mad.md");
         execution_context(&dummy, &args.env, &args.vars)?
     };
     let execution = engine::execute(
@@ -853,7 +853,7 @@ fn execution_context(path: &Path, env: &str, vars: &[String]) -> Result<Context>
     let mut context = Context::default();
     load_env_file(path, env, &mut context)?;
     load_dotenv_local(path, &mut context)?;
-    load_trellis_env(&mut context);
+    load_mad_env(&mut context);
     let cli_context = context_from_vars(vars)?;
     merge_context(&mut context, cli_context, SourceKind::Cli);
     Ok(context)
@@ -905,9 +905,9 @@ fn load_dotenv_local(path: &Path, context: &mut Context) -> Result<()> {
     Ok(())
 }
 
-fn load_trellis_env(context: &mut Context) {
+fn load_mad_env(context: &mut Context) {
     for (key, value) in std::env::vars() {
-        if let Some(name) = key.strip_prefix("TRELLIS_") {
+        if let Some(name) = key.strip_prefix("MAD_") {
             context.insert(SourceKind::OsEnv, env_name_to_var(name), value);
         }
     }
@@ -950,7 +950,7 @@ fn env_name_to_var(name: &str) -> String {
     out
 }
 
-fn print_report(format: OutputFormat, execution: &trellis::Execution) -> Result<()> {
+fn print_report(format: OutputFormat, execution: &mark_api_down::Execution) -> Result<()> {
     let output = match format {
         OutputFormat::Console => ConsoleReporter.report(execution)?,
         OutputFormat::Junit => JunitReporter.report(execution)?,
@@ -970,7 +970,7 @@ fn regenerate_index(root: &Path) -> Result<()> {
     let mut lines = vec![
         "# API docs".to_string(),
         String::new(),
-        "Generated by `trellis index`. Do not edit by hand.".to_string(),
+        "Generated by `mad index`. Do not edit by hand.".to_string(),
         String::new(),
     ];
     for file in files {
@@ -986,9 +986,9 @@ fn regenerate_index(root: &Path) -> Result<()> {
 }
 
 fn doctor(args: DoctorArgs, collection: &Path) -> Result<()> {
-    let sha = env!("TRELLIS_BUILD_SHA");
+    let sha = env!("MAD_BUILD_SHA");
     println!(
-        "Trellis {} ({})",
+        "MarkApiDown {} ({})",
         env!("CARGO_PKG_VERSION"),
         sha
     );
@@ -1030,7 +1030,7 @@ fn doctor(args: DoctorArgs, collection: &Path) -> Result<()> {
 /// Compare installed skill files against what this binary embeds.
 /// Prints a warning and reinstalls when `--fix` is passed.
 fn check_skills_freshness(fix: bool) {
-    use trellis::installer::Agent;
+    use mark_api_down::installer::Agent;
 
     let skill_dir = Path::new(".claude/skills");
     if !skill_dir.exists() {
@@ -1040,7 +1040,7 @@ fn check_skills_freshness(fix: bool) {
 
     // Skill slugs embedded in this binary (must stay in sync with installer).
     let embedded: &[(&str, &str)] = &[
-        ("trellis", include_str!("../skills/trellis/SKILL.md")),
+        ("mad", include_str!("../skills/mad/SKILL.md")),
     ];
 
     let mut stale: Vec<&str> = Vec::new();
@@ -1060,9 +1060,9 @@ fn check_skills_freshness(fix: bool) {
             "✗".red(),
             stale.join(", ")
         );
-        println!("  Fix: run `trellis install skills` to update installed skills.");
+        println!("  Fix: run `mad install skills` to update installed skills.");
         if fix {
-            match trellis::installer::install(Path::new("."), Some(Agent::ClaudeCode.name())) {
+            match mark_api_down::installer::install(Path::new("."), Some(Agent::ClaudeCode.name())) {
                 Ok(files) => {
                     for f in &files {
                         println!("  reinstalled: {}", f.path.display());
@@ -1097,19 +1097,19 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
         ImportCommand::Postman { file } => run_import(
             &file,
             "Postman collection",
-            trellis::importer::postman::import,
+            mark_api_down::importer::postman::import,
             collection,
         ),
         ImportCommand::Insomnia { file } => run_import(
             &file,
             "Insomnia export",
-            trellis::importer::insomnia::import,
+            mark_api_down::importer::insomnia::import,
             collection,
         ),
         ImportCommand::Openapi { file } => run_import(
             &file,
             "OpenAPI spec",
-            trellis::importer::openapi::import,
+            mark_api_down::importer::openapi::import,
             collection,
         ),
         ImportCommand::Curl { file } => {
@@ -1124,13 +1124,13 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
                 }
             };
             let (name, endpoints) =
-                trellis::importer::curl::import(&source).context("invalid curl command")?;
+                mark_api_down::importer::curl::import(&source).context("invalid curl command")?;
             if endpoints.is_empty() {
                 println!("no endpoints parsed");
                 return Ok(());
             }
             let parent = collection.parent().unwrap_or(Path::new("."));
-            let written = trellis::importer::write_endpoints(parent, &endpoints)?;
+            let written = mark_api_down::importer::write_endpoints(parent, &endpoints)?;
             println!("imported from {name}");
             for path in &written {
                 println!("  created {}", path.display());
@@ -1142,7 +1142,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
             Ok(())
         }
         ImportCommand::Project { path, port, url } => {
-            use trellis::importer::project::{ImportSource, smart_import};
+            use mark_api_down::importer::project::{ImportSource, smart_import};
 
             let root = path.unwrap_or_else(|| Path::new(".").to_path_buf());
             let started = std::time::Instant::now();
@@ -1184,7 +1184,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
                             );
                             println!("    {}", fw.export_cmd);
                             println!(
-                                "  Then: trellis import openapi openapi.json"
+                                "  Then: mad import openapi openapi.json"
                             );
                             println!();
                         } else {
@@ -1193,7 +1193,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
                                 "  Tip: start your dev server and re-run:"
                             );
                             println!(
-                                "    trellis import project --port <PORT>"
+                                "    mad import project --port <PORT>"
                             );
                             println!();
                         }
@@ -1211,7 +1211,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
             }
 
             let parent = collection.parent().unwrap_or(Path::new("."));
-            let written = trellis::importer::write_endpoints(parent, &endpoints)?;
+            let written = mark_api_down::importer::write_endpoints(parent, &endpoints)?;
             println!(
                 "imported {}   {} route(s) found ({}ms)",
                 name,
@@ -1231,7 +1231,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
                 let env_path = collection.join("_shared/env.md");
                 println!(
                     "Next: set baseUrl in {}, \
-                     then run `trellis validate {}`",
+                     then run `mad validate {}`",
                     env_path.display(),
                     collection.display()
                 );
@@ -1244,7 +1244,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
 fn run_import(
     file: &Path,
     kind: &str,
-    parse: impl Fn(&str) -> anyhow::Result<(String, Vec<trellis::importer::ImportedEndpoint>)>,
+    parse: impl Fn(&str) -> anyhow::Result<(String, Vec<mark_api_down::importer::ImportedEndpoint>)>,
     collection: &Path,
 ) -> Result<()> {
     let source = read_text(file, &format!("reading {kind}"))?;
@@ -1255,7 +1255,7 @@ fn run_import(
         return Ok(());
     }
     let parent = collection.parent().unwrap_or(Path::new("."));
-    let written = trellis::importer::write_endpoints(parent, &endpoints)?;
+    let written = mark_api_down::importer::write_endpoints(parent, &endpoints)?;
     println!("imported from {} ({})", name, file.display());
     for path in &written {
         println!("  created {}", path.display());
@@ -1272,7 +1272,7 @@ async fn install(command: InstallCommand) -> Result<()> {
     {
         let _ = command;
         bail!(
-            "install support is not compiled into this binary\nFix: install Trellis with default features."
+            "install support is not compiled into this binary\nFix: install MarkApiDown with default features."
         );
     }
 
@@ -1280,9 +1280,9 @@ async fn install(command: InstallCommand) -> Result<()> {
     match command {
         InstallCommand::Skills { name, agent } => {
             let installed = if let Some(skill_name) = name {
-                trellis::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
+                mark_api_down::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
             } else {
-                trellis::installer::install_skills(Path::new("."), agent.as_deref())?
+                mark_api_down::installer::install_skills(Path::new("."), agent.as_deref())?
             };
             for file in &installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
@@ -1292,9 +1292,9 @@ async fn install(command: InstallCommand) -> Result<()> {
         }
         InstallCommand::Slashcmd { name, agent } => {
             let installed = if let Some(slug) = name {
-                trellis::installer::install_command(Path::new("."), agent.as_deref(), &slug)?
+                mark_api_down::installer::install_command(Path::new("."), agent.as_deref(), &slug)?
             } else {
-                trellis::installer::install_commands(Path::new("."), agent.as_deref())?
+                mark_api_down::installer::install_commands(Path::new("."), agent.as_deref())?
             };
             for file in &installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
@@ -1304,7 +1304,7 @@ async fn install(command: InstallCommand) -> Result<()> {
         }
         InstallCommand::Mcp => install_mcp(),
         InstallCommand::List => {
-            for status in trellis::installer::detect_agents(Path::new(".")) {
+            for status in mark_api_down::installer::detect_agents(Path::new(".")) {
                 println!(
                     "{}: {}",
                     status.agent.name(),
@@ -1317,9 +1317,9 @@ async fn install(command: InstallCommand) -> Result<()> {
 }
 
 fn install_mcp() -> Result<()> {
-    println!("Registering Trellis MCP server with Claude Code...");
+    println!("Registering MarkApiDown MCP server with Claude Code...");
     let status = std::process::Command::new("claude")
-        .args(["mcp", "add", "trellis", "--", "trellis", "mcp"])
+        .args(["mcp", "add", "mad", "--", "mad", "mcp"])
         .status();
     match status {
         Ok(s) if s.success() => {
@@ -1327,13 +1327,13 @@ fn install_mcp() -> Result<()> {
             Ok(())
         }
         Ok(_) => bail!(
-            "claude mcp add failed\nFix: run `claude mcp add trellis -- trellis mcp` manually."
+            "claude mcp add failed\nFix: run `claude mcp add mad -- mad mcp` manually."
         ),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => bail!(
-            "claude CLI not found\nFix: install Claude Code, then run `claude mcp add trellis -- trellis mcp`."
+            "claude CLI not found\nFix: install Claude Code, then run `claude mcp add mad -- mad mcp`."
         ),
         Err(e) => bail!(
-            "failed to run claude: {e}\nFix: run `claude mcp add trellis -- trellis mcp` manually."
+            "failed to run claude: {e}\nFix: run `claude mcp add mad -- mad mcp` manually."
         ),
     }
 }
@@ -1348,24 +1348,24 @@ async fn serve(args: ServeArgs, collection: &Path) -> Result<()> {
         let root = args.path.unwrap_or_else(|| {
             collection.parent().unwrap_or(Path::new(".")).to_path_buf()
         });
-        return trellis::preview::run(root, &args.host, args.port, &args.env, args.mock).await;
+        return mark_api_down::preview::run(root, &args.host, args.port, &args.env, args.mock).await;
     }
     #[cfg(not(feature = "web"))]
     bail!(
-        "web preview is not compiled into this binary\nFix: install Trellis with default features."
+        "web preview is not compiled into this binary\nFix: install MarkApiDown with default features."
     )
 }
 
 async fn mock(args: MockArgs) -> Result<()> {
     #[cfg(feature = "web")]
     {
-        trellis::mock::run_mock_server(args.dir, args.port, args.latency).await
+        mark_api_down::mock::run_mock_server(args.dir, args.port, args.latency).await
     }
     #[cfg(not(feature = "web"))]
     {
         let _ = args;
         bail!(
-            "mock server is not compiled into this binary\nFix: install Trellis with default features."
+            "mock server is not compiled into this binary\nFix: install MarkApiDown with default features."
         )
     }
 }

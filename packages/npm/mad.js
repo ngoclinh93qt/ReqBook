@@ -7,9 +7,9 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 const https = require("https");
 
-const version = process.env.TRELLIS_VERSION || require("./package.json").version;
-const repo = process.env.TRELLIS_REPO || "trellis-md/trellis";
-const cacheRoot = process.env.TRELLIS_CACHE_DIR || path.join(os.homedir(), ".cache", "trellis-md");
+const version = process.env.MAD_VERSION || require("./package.json").version;
+const repo = process.env.MAD_REPO || "mark-api-down/mad";
+const cacheRoot = process.env.MAD_CACHE_DIR || path.join(os.homedir(), ".cache", "mark-api-down");
 
 function target() {
   const platform = os.platform();
@@ -26,7 +26,7 @@ function extension() {
 }
 
 function binaryName() {
-  return os.platform() === "win32" ? "trellis.exe" : "trellis";
+  return os.platform() === "win32" ? "mad.exe" : "mad";
 }
 
 function download(url, dest) {
@@ -50,8 +50,8 @@ function download(url, dest) {
 }
 
 async function ensureBinary() {
-  if (process.env.TRELLIS_BINARY) {
-    return process.env.TRELLIS_BINARY;
+  if (process.env.MAD_BINARY) {
+    return process.env.MAD_BINARY;
   }
   const triple = target();
   const dir = path.join(cacheRoot, version, triple);
@@ -59,7 +59,7 @@ async function ensureBinary() {
   if (fs.existsSync(bin)) return bin;
 
   fs.mkdirSync(dir, { recursive: true });
-  const archive = `trellis-${triple}${extension()}`;
+  const archive = `mad-${triple}${extension()}`;
   const archivePath = path.join(dir, archive);
   const url = `https://github.com/${repo}/releases/download/v${version}/${archive}`;
   await download(url, archivePath);

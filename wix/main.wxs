@@ -60,9 +60,9 @@
 
     <Product
         Id='*'
-        Name='trellis'
+        Name='MarkApiDown'
         UpgradeCode='CCF909E6-11F5-4899-BBF0-E7EDBAE416A4'
-        Manufacturer='Trellis contributors'
+        Manufacturer='MarkApiDown contributors'
         Language='1033'
         Codepage='1252'
         Version='$(var.Version)'>
@@ -70,7 +70,7 @@
         <Package Id='*'
             Keywords='Installer'
             Description='Markdown-native API specs with execution, pipelines, and cross-agent workflows.'
-            Manufacturer='Trellis contributors'
+            Manufacturer='MarkApiDown contributors'
             InstallerVersion='450'
             Languages='1033'
             Compressed='yes'
@@ -83,11 +83,11 @@
             DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.'/>
 
         <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1'/>
-        <Property Id='DiskPrompt' Value='trellis Installation'/>
+        <Property Id='DiskPrompt' Value='MarkApiDown Installation'/>
 
         <Directory Id='TARGETDIR' Name='SourceDir'>
             <Directory Id='$(var.PlatformProgramFilesFolder)' Name='PFiles'>
-                <Directory Id='APPLICATIONFOLDER' Name='trellis'>
+                <Directory Id='APPLICATIONFOLDER' Name='mad'>
                     
                     <!--
                       Enabling the license sidecar file in the installer is a four step process:
@@ -123,9 +123,9 @@
                         <Component Id='binary0' Guid='*'>
                             <File
                                 Id='exe0'
-                                Name='trellis.exe'
+                                Name='mad.exe'
                                 DiskId='1'
-                                Source='$(var.CargoTargetBinDir)\trellis.exe'
+                                Source='$(var.CargoTargetBinDir)\mad.exe'
                                 KeyPath='yes'/>
                         </Component>
                     </Directory>
@@ -173,7 +173,7 @@
         <!--<Icon Id='ProductICO' SourceFile='wix\Product.ico'/>-->
         <!--<Property Id='ARPPRODUCTICON' Value='ProductICO' />-->
 
-        <Property Id='ARPHELPLINK' Value='https://trellis.dev'/>
+        <Property Id='ARPHELPLINK' Value='https://markApiDown.dev'/>
         
         <UI>
             <UIRef Id='WixUI_FeatureTree'/>

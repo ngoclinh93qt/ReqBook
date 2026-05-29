@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Trellis is preparing its first public release. Security fixes target the latest released version and the current `main` branch.
+MarkApiDown is preparing its first public release. Security fixes target the latest released version and the current `main` branch.
 
 ## Reporting a vulnerability
 
@@ -11,7 +11,7 @@ Please do not open public issues for vulnerabilities.
 Report security issues by emailing:
 
 ```text
-security@trellis.dev
+security@markApiDown.dev
 ```
 
 Include:
@@ -42,7 +42,7 @@ Out of scope:
 
 ## Security expectations
 
-- Trellis should mask Authorization headers and known secret patterns.
+- MarkApiDown should mask Authorization headers and known secret patterns.
 - `api-docs/_shared/env.md` must not contain secrets.
 - `.env.local` should be gitignored and used for local sensitive values.
 - The web preview binds to `127.0.0.1` by default.

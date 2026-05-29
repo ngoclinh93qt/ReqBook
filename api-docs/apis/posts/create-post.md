@@ -27,7 +27,7 @@ X-Workspace-Id: {{workspaceId}}
 X-Request-Id: {{requestId}}
 
 {
-  "title": "Trellis preview",
+  "title": "MarkApiDown preview",
   "body": "Runtime body edits should not change markdown.",
   "userId": 1
 }
@@ -40,7 +40,7 @@ HTTP/1.1 201 Created
 Content-Type: application/json
 
 {
-  "title": "Trellis preview",
+  "title": "MarkApiDown preview",
   "body": "Runtime body edits should not change markdown.",
   "userId": 1,
   "id": 101

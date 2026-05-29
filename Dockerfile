@@ -5,8 +5,8 @@ COPY . .
 RUN cargo build --release --no-default-features --features minimal --locked
 
 FROM alpine:3.20
-RUN addgroup -S trellis && adduser -S trellis -G trellis
-COPY --from=builder /src/target/release/trellis /usr/local/bin/trellis
-USER trellis
+RUN addgroup -S mad && adduser -S mad -G mad
+COPY --from=builder /src/target/release/mad /usr/local/bin/mad
+USER mad
 WORKDIR /work
-ENTRYPOINT ["trellis"]
+ENTRYPOINT ["mad"]

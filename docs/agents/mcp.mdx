@@ -4,7 +4,7 @@ description: "Eight structured tools for Claude Code exec, flow, author, vars, s
 icon: "plug"
 ---
 
-The MCP server exposes Trellis operations as structured JSON-RPC tools. Every tool returns compact JSON by default full request/response payloads only appear when you pass `verbose: true`. This keeps agent context lean.
+The MCP server exposes MarkApiDown operations as structured JSON-RPC tools. Every tool returns compact JSON by default full request/response payloads only appear when you pass `verbose: true`. This keeps agent context lean.
 
 ---
 
@@ -13,7 +13,7 @@ The MCP server exposes Trellis operations as structured JSON-RPC tools. Every to
 <Steps>
  <Step title="Add the MCP server">
  ```bash
- claude mcp add trellis -- trellis mcp
+ claude mcp add mad -- mad mcp
  ```
  </Step>
 
@@ -25,7 +25,7 @@ The MCP server exposes Trellis operations as structured JSON-RPC tools. Every to
  Expected output:
 
  ```
- trellis: trellis mcp - ✓ Connected
+ mad: mad mcp - ✓ Connected
  ```
  </Step>
 </Steps>
@@ -36,28 +36,28 @@ The MCP server exposes Trellis operations as structured JSON-RPC tools. Every to
 
 | Tool | Purpose |
 |---|---|
-| `trellis_exec` | Execute one endpoint spec compact result by default |
-| `trellis_flow` | Run a pipeline compact per-step summary by default |
-| `trellis_author` | Create or update a spec (validates before writing, refuses silent overwrite) |
-| `trellis_vars` | Show which variables a spec needs and which are resolved |
-| `trellis_search` | Search specs by method, path, tag, or text no file reading required |
-| `trellis_history` | Execution history and trend for a spec |
-| `trellis_session` | Get/set session env + vars (defaults for all exec/flow calls) |
-| `trellis_exec_batch` | Run multiple specs and return a summary table |
+| `mad_exec` | Execute one endpoint spec compact result by default |
+| `mad_flow` | Run a pipeline compact per-step summary by default |
+| `mad_author` | Create or update a spec (validates before writing, refuses silent overwrite) |
+| `mad_vars` | Show which variables a spec needs and which are resolved |
+| `mad_search` | Search specs by method, path, tag, or text no file reading required |
+| `mad_history` | Execution history and trend for a spec |
+| `mad_session` | Get/set session env + vars (defaults for all exec/flow calls) |
+| `mad_exec_batch` | Run multiple specs and return a summary table |
 
 **Not in MCP use these directly:**
 
 | Operation | How |
 |---|---|
-| Validate specs | `trellis validate <path>` |
-| Start the browser UI | `trellis serve` |
-| Import from cURL | `trellis import curl '...'` |
+| Validate specs | `mad validate <path>` |
+| Start the browser UI | `mad serve` |
+| Import from cURL | `mad import curl '...'` |
 
 ---
 
 ## Compact vs verbose output
 
-By default, `trellis_exec` and `trellis_flow` return only what agents need to act: pass/fail, status code, diff, and error type. Full request and response bodies are omitted.
+By default, `mad_exec` and `mad_flow` return only what agents need to act: pass/fail, status code, diff, and error type. Full request and response bodies are omitted.
 
 ```json
 {
@@ -94,7 +94,7 @@ Every error includes a `hint` field with a short actionable string.
 
 ## Tool reference
 
-### trellis_exec
+### mad_exec
 
 Execute one endpoint spec and return the HTTP result.
 
@@ -151,7 +151,7 @@ Paste the value into your spec's `## Expected response` block.
 
 ---
 
-### trellis_flow
+### mad_flow
 
 Run a pipeline and return per-step results.
 
@@ -178,7 +178,7 @@ Run a pipeline and return per-step results.
 
 ---
 
-### trellis_author
+### mad_author
 
 Create a new spec file or update an existing one.
 
@@ -195,12 +195,12 @@ Create a new spec file or update an existing one.
 On validation failure: the error from the parser. The file is not created or modified.
 
 <Note>
- `trellis_author` validates the spec before touching the filesystem. If validation fails, nothing is written.
+ `mad_author` validates the spec before touching the filesystem. If validation fails, nothing is written.
 </Note>
 
 ---
 
-### trellis_vars
+### mad_vars
 
 Show which variables a spec requires and which are resolved for the current environment.
 
@@ -230,7 +230,7 @@ Show which variables a spec requires and which are resolved for the current envi
 
 ---
 
-### trellis_search
+### mad_search
 
 Search specs without reading individual files. Useful for discovering relevant specs before deciding which ones to run.
 
@@ -257,7 +257,7 @@ Search specs without reading individual files. Useful for discovering relevant s
 
 ---
 
-### trellis_history
+### mad_history
 
 Return recent execution history for a spec.
 
@@ -285,7 +285,7 @@ Return recent execution history for a spec.
 
 ---
 
-### trellis_session
+### mad_session
 
 Get or set the session context. Session env and vars are used as defaults by all exec/flow tools explicit params always take priority.
 
@@ -303,11 +303,11 @@ Get or set the session context. Session env and vars are used as defaults by all
 { "action": "set", "env": "staging", "vars": { "authToken": "tok_xyz" } }
 ```
 
-After this, all `trellis_exec` / `trellis_flow` calls use `env: "staging"` and `authToken` by default.
+After this, all `mad_exec` / `mad_flow` calls use `env: "staging"` and `authToken` by default.
 
 ---
 
-### trellis_exec_batch
+### mad_exec_batch
 
 Execute multiple specs in one call and return a compact summary table.
 
@@ -336,7 +336,7 @@ Execute multiple specs in one call and return a compact summary table.
 
 ## Assertion DSL
 
-Specs can include structured assertions in a `## Assertions` section. Trellis evaluates these after each execution and returns results in `assertion_results`.
+Specs can include structured assertions in a `## Assertions` section. MarkApiDown evaluates these after each execution and returns results in `assertion_results`.
 
 ```markdown
 ## Assertions
@@ -350,7 +350,7 @@ Specs can include structured assertions in a `## Assertions` section. Trellis ev
 
 Supported operators: `exists`, `equals`, `contains`, `in`, `matches` (regex).
 
-Assertion results appear in `trellis_exec` output:
+Assertion results appear in `mad_exec` output:
 
 ```json
 {
@@ -365,31 +365,31 @@ Assertion results appear in `trellis_exec` output:
 
 ## MCP resources
 
-Specs are also accessible as MCP Resources under the `trellis://spec/` URI scheme. Agents can browse and read spec content directly through the protocol without calling any tool.
+Specs are also accessible as MCP Resources under the `mad://spec/` URI scheme. Agents can browse and read spec content directly through the protocol without calling any tool.
 
 ---
 
 ## Typical agent workflow
 
 ```text
-1. trellis_search { "method": "POST", "tag": "orders" }
+1. mad_search { "method": "POST", "tag": "orders" }
  → Finds api-docs/apis/orders/post-orders.md
 
-2. trellis_vars { "spec_path": "api-docs/apis/orders/post-orders.md" }
+2. mad_vars { "spec_path": "api-docs/apis/orders/post-orders.md" }
  → ready: false authToken is missing
 
-3. trellis_session { "action": "set", "env": "dev", "vars": { "authToken": "tok_abc" } }
+3. mad_session { "action": "set", "env": "dev", "vars": { "authToken": "tok_abc" } }
  → Session set
 
-4. trellis_exec { "spec_path": "api-docs/apis/orders/post-orders.md" }
+4. mad_exec { "spec_path": "api-docs/apis/orders/post-orders.md" }
  → { "passed": false, "error_type": "CONTRACT_MISMATCH", "hints": [...] }
 
-5. trellis_exec { "spec_path": "...", "infer_expected": true }
+5. mad_exec { "spec_path": "...", "infer_expected": true }
  → { "inferred_expected": "HTTP/1.1 201 Created\n..." }
 
-6. trellis_author { "spec_path": "...", "content": "...(with inferred expected)...", "overwrite": true }
+6. mad_author { "spec_path": "...", "content": "...(with inferred expected)...", "overwrite": true }
  → Spec updated
 
-7. trellis_exec_batch { "specs": ["...", "...", "..."] }
+7. mad_exec_batch { "specs": ["...", "...", "..."] }
  → { "summary": { "total": 3, "passed": 3 } }
 ```

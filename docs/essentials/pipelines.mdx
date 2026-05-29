@@ -94,7 +94,7 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
  - Inject: `authToken`, `userId`
  ```
 
- Injected variables are resolved from earlier `Capture` directives. If the named capture has not happened yet because the producing step hasn't run or failed Trellis returns an error before sending the request.
+ Injected variables are resolved from earlier `Capture` directives. If the named capture has not happened yet because the producing step hasn't run or failed MarkApiDown returns an error before sending the request.
  </Tab>
  <Tab title="Assert">
  Add a pass/fail condition evaluated after the step's `## Expected response` comparison.
@@ -121,7 +121,7 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
  - Use sequential pipelines whenever later steps depend on the results of earlier ones which is true for most real-world flows.
  </Tab>
  <Tab title="Parallel">
- Set `parallel: true` in the frontmatter to allow Trellis to run independent steps concurrently.
+ Set `parallel: true` in the frontmatter to allow MarkApiDown to run independent steps concurrently.
 
  - A step that uses `Inject` always waits for the step that produced the required `Capture` before it starts.
  - Steps with no `Inject` dependency may run at the same time as other independent steps.
@@ -138,7 +138,7 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
 <Tabs>
  <Tab title="Web UI">
  ```bash
- trellis serve
+ mad serve
  ```
 
  Open the flow canvas, select a flow, run it, and inspect each step result. Use the canvas when you are designing captures and connections.
@@ -146,16 +146,16 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
  <Tab title="CLI">
  ```bash
  # Run a pipeline
- trellis flow api-docs/flows/user-onboarding.md --env=dev
+ mad flow api-docs/flows/user-onboarding.md --env=dev
 
  # Inject additional variables at the CLI level
- trellis flow api-docs/flows/user-onboarding.md --env=staging --var email=test@example.com
+ mad flow api-docs/flows/user-onboarding.md --env=staging --var email=test@example.com
 
  # Force sequential execution even if parallel: true is set
- trellis flow api-docs/flows/user-onboarding.md --no-parallel
+ mad flow api-docs/flows/user-onboarding.md --no-parallel
 
  # Structured JSON output for CI
- trellis flow api-docs/flows/user-onboarding.md --output=json
+ mad flow api-docs/flows/user-onboarding.md --output=json
  ```
  </Tab>
 </Tabs>

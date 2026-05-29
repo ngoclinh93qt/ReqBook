@@ -1,25 +1,25 @@
 ---
 title: "Migrating from other tools"
-description: "Import existing API specs from Postman, Insomnia, or OpenAPI into Trellis with a single command."
+description: "Import existing API specs from Postman, Insomnia, or OpenAPI into MarkApiDown with a single command."
 icon: "right-left"
 ---
 
 ## General approach
 
-The import commands convert foreign formats into Trellis markdown endpoint files. Structural information URLs, HTTP methods, headers, request bodies, status codes maps cleanly and is imported directly. Dynamic behavior pre-request scripts, JavaScript assertions, OAuth flows cannot be mechanically converted and is imported as `agent-task` blocks for manual review.
+The import commands convert foreign formats into MarkApiDown markdown endpoint files. Structural information URLs, HTTP methods, headers, request bodies, status codes maps cleanly and is imported directly. Dynamic behavior pre-request scripts, JavaScript assertions, OAuth flows cannot be mechanically converted and is imported as `agent-task` blocks for manual review.
 
 ### Post-import checklist
 
 <Steps>
  <Step title="Validate the imported specs">
- Run `trellis validate api-docs/` and fix any exit code `2` errors before doing anything else. Each error includes the file path, line number when known, and a suggested fix.
+ Run `mad validate api-docs/` and fix any exit code `2` errors before doing anything else. Each error includes the file path, line number when known, and a suggested fix.
 
  ```bash
- trellis validate api-docs/
+ mad validate api-docs/
  ```
  </Step>
  <Step title="Move secrets out of spec files">
- If `trellis validate` exits with code `5`, a secret was imported into a versioned spec file. Move the value to `.env.local` or a `TRELLIS_*` environment variable, then re-run validation.
+ If `mad validate` exits with code `5`, a secret was imported into a versioned spec file. Move the value to `.env.local` or a `MAD_*` environment variable, then re-run validation.
 
  ```bash
  # .env.local
@@ -31,17 +31,17 @@ The import commands convert foreign formats into Trellis markdown endpoint files
  Each `agent-task` block marks a place where the original spec had JavaScript logic, a dynamic variable, or a pre-request script that needs manual implementation. Open each flagged file and decide whether to implement it as an `## Expected response` assertion or a pipeline capture.
  </Step>
  <Step title="Verify round-trip with exec">
- Run `trellis exec` against your development environment on at least one imported endpoint to confirm the spec resolves and the response matches.
+ Run `mad exec` against your development environment on at least one imported endpoint to confirm the spec resolves and the response matches.
 
  ```bash
- trellis exec api-docs/apis/users/get-users.md --env=dev
+ mad exec api-docs/apis/users/get-users.md --env=dev
  ```
  </Step>
  <Step title="Regenerate the index if needed">
  If you added or renamed files manually after the import, regenerate `api-docs/README.md`.
 
  ```bash
- trellis index
+ mad index
  ```
  </Step>
 </Steps>
@@ -59,13 +59,13 @@ The import commands convert foreign formats into Trellis markdown endpoint files
  **2. Run the import**
 
  ```bash
- trellis import postman my-collection.json
+ mad import postman my-collection.json
  ```
 
  **3. Validate**
 
  ```bash
- trellis validate api-docs/
+ mad validate api-docs/
  ```
 
  **4. Move secrets**
@@ -84,14 +84,14 @@ The import commands convert foreign formats into Trellis markdown endpoint files
  **6. Re-run validation and exec**
 
  ```bash
- trellis validate api-docs/
- trellis exec api-docs/apis/users/get-users.md --env=dev
+ mad validate api-docs/
+ mad exec api-docs/apis/users/get-users.md --env=dev
  ```
  </Tab>
  <Tab title="Concept mapping">
- | Postman | Trellis | Notes |
+ | Postman | MarkApiDown | Notes |
  |---|---|---|
- | Collection | `api-docs/` project | Name and description become project prose in `trellis.md`. |
+ | Collection | `api-docs/` project | Name and description become project prose in `mad.md`. |
  | Folder | Resource directory (e.g. `apis/users/`) | Folder names become resource directory names. |
  | Request | Endpoint `.md` file | One request becomes one `<method>-<slug>.md` file. |
  | URL + method | `path` frontmatter + `http` request block | `{{var}}` syntax is preserved. |
@@ -102,17 +102,17 @@ The import commands convert foreign formats into Trellis markdown endpoint files
  | Pre-request scripts | `agent-task` block | Not executable; imported as review instructions. |
  | Collection variables | `_shared/env.md` or `.env.local` | Non-secret values only in `env.md`. |
  | Environments | `_shared/env.md` sections | Each Postman environment becomes a `## <name>` heading. |
- | Auth helper (bearer/basic) | `auth:` in frontmatter or `trellis.md` | Maps directly for `bearer` and `basic` types. |
+ | Auth helper (bearer/basic) | `auth:` in frontmatter or `mad.md` | Maps directly for `bearer` and `basic` types. |
 
  **What needs manual review after import**
 
  | Item | Reason |
  |---|---|
  | Pre-request scripts | JavaScript cannot be converted to markdown. Imported as `agent-task` instructions. |
- | Dynamic variables (`{{$timestamp}}`, `{{$randomEmail}}`) | No direct Trellis equivalent. Replace with `--var` flags, `env.md` values, or pipeline captures. |
+ | Dynamic variables (`{{$timestamp}}`, `{{$randomEmail}}`) | No direct MarkApiDown equivalent. Replace with `--var` flags, `env.md` values, or pipeline captures. |
  | Complex assertions | JavaScript test logic becomes `agent-task` items. Re-implement as `## Expected response` checks where possible. |
- | Environment secrets | Postman environments containing tokens must move to `.env.local` or `TRELLIS_*` env vars. |
- | Chained requests | Use a Trellis pipeline to chain requests and capture response values between steps. |
+ | Environment secrets | Postman environments containing tokens must move to `.env.local` or `MAD_*` env vars. |
+ | Chained requests | Use a MarkApiDown pipeline to chain requests and capture response values between steps. |
  </Tab>
 </Tabs>
 
@@ -129,13 +129,13 @@ The import commands convert foreign formats into Trellis markdown endpoint files
  **2. Run the import**
 
  ```bash
- trellis import insomnia insomnia_export.json
+ mad import insomnia insomnia_export.json
  ```
 
  **3. Validate**
 
  ```bash
- trellis validate api-docs/
+ mad validate api-docs/
  ```
 
  **4. Move secrets and review agent-task blocks**
@@ -143,7 +143,7 @@ The import commands convert foreign formats into Trellis markdown endpoint files
  Move any flagged secret values to `.env.local`. Review `agent-task` blocks for plugin logic and template tags that need manual implementation.
  </Tab>
  <Tab title="Concept mapping">
- | Insomnia | Trellis | Notes |
+ | Insomnia | MarkApiDown | Notes |
  |---|---|---|
  | Workspace | `api-docs/` project | Workspace name becomes the project name. |
  | Request group (folder) | Resource directory | Group names become resource directory names. |
@@ -161,10 +161,10 @@ The import commands convert foreign formats into Trellis markdown endpoint files
 
  | Item | Reason |
  |---|---|
- | Template tags (`{% now %}`, `{% uuid %}`) | Insomnia-specific tags have no direct Trellis equivalent. Replace with pipeline captures or `--var` flags. |
+ | Template tags (`{% now %}`, `{% uuid %}`) | Insomnia-specific tags have no direct MarkApiDown equivalent. Replace with pipeline captures or `--var` flags. |
  | Plugin-based pre/post-request logic | Imported as `agent-task` instructions. |
- | Environment secrets | Must move to `.env.local` or `TRELLIS_*` env vars. |
- | OAuth 2.0 flows | Multi-step auth flows should become a Trellis pipeline that captures the token and injects it into subsequent steps. |
+ | Environment secrets | Must move to `.env.local` or `MAD_*` env vars. |
+ | OAuth 2.0 flows | Multi-step auth flows should become a MarkApiDown pipeline that captures the token and injects it into subsequent steps. |
  </Tab>
 </Tabs>
 
@@ -173,9 +173,9 @@ The import commands convert foreign formats into Trellis markdown endpoint files
 ## Importing from OpenAPI
 
 ```bash
-trellis import openapi openapi.yaml
+mad import openapi openapi.yaml
 # or
-trellis import openapi openapi.json
+mad import openapi openapi.json
 ```
 
 <Tabs>
@@ -187,13 +187,13 @@ trellis import openapi openapi.json
  **2. Run the import**
 
  ```bash
- trellis import openapi openapi.yaml
+ mad import openapi openapi.yaml
  ```
 
  **3. Validate the result**
 
  ```bash
- trellis validate api-docs/
+ mad validate api-docs/
  ```
 
  **4. Add additional environments**
@@ -213,9 +213,9 @@ trellis import openapi openapi.json
  OpenAPI specs often have JSON Schema validation constraints that become `agent-task` review items. Decide whether to implement them as `## Expected response` body assertions or to leave them as documentation.
  </Tab>
  <Tab title="Concept mapping">
- | OpenAPI | Trellis | Notes |
+ | OpenAPI | MarkApiDown | Notes |
  |---|---|---|
- | `info.title` | `name` in `trellis.md` | |
+ | `info.title` | `name` in `mad.md` | |
  | `servers[0].url` | `baseUrl` in `_shared/env.md` dev section | Additional servers need manual env sections. |
  | `paths.<path>.<method>` | Endpoint `.md` file | One operation becomes one `<method>-<slug>.md` file. |
  | `operationId` | File slug | Used to generate the filename. Falls back to method + path. |
@@ -231,8 +231,8 @@ trellis import openapi openapi.json
  | Item | Reason |
  |---|---|
  | Multiple response codes | Only the first documented response is imported. Add others manually in `## Notes`. |
- | JSON Schema validation | Schema constraints are not executable in Trellis v1.0.0. Added as `agent-task` assertions for manual review. |
- | OAuth 2.0 / OpenID Connect | Model as a Trellis pipeline that captures the token and injects it into subsequent steps. |
+ | JSON Schema validation | Schema constraints are not executable in MarkApiDown v1.0.0. Added as `agent-task` assertions for manual review. |
+ | OAuth 2.0 / OpenID Connect | Model as a MarkApiDown pipeline that captures the token and injects it into subsequent steps. |
  | Multiple servers | Only the first server is imported as `dev`. Add remaining servers as additional `env.md` sections. |
  | Callbacks and webhooks | Must be documented manually. `protocol: ws` and `protocol: sse` are reserved for future use. |
  </Tab>

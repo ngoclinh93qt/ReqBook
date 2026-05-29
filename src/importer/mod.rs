@@ -14,7 +14,7 @@ use std::{
 
 use anyhow::{Context, Result};
 
-/// A single endpoint ready to be written as a Trellis markdown file.
+/// A single endpoint ready to be written as a MarkApiDown markdown file.
 #[derive(Debug, Clone, Default)]
 pub struct ImportedEndpoint {
     pub resource: String,
@@ -55,7 +55,7 @@ pub fn write_endpoints(root: &Path, endpoints: &[ImportedEndpoint]) -> Result<Ve
     Ok(written)
 }
 
-/// Render one `ImportedEndpoint` as a Trellis markdown string.
+/// Render one `ImportedEndpoint` as a MarkApiDown markdown string.
 pub(crate) fn render_endpoint(ep: &ImportedEndpoint) -> String {
     let resource = if ep.resource.is_empty() {
         "resources".to_string()
@@ -207,9 +207,9 @@ pub(crate) fn normalize_variables(s: &str) -> String {
     re.replace_all(s, "{{$1}}").into_owned()
 }
 
-/// Extract Trellis path and request URL from a raw URL.
-/// Returns `(trellis_path, request_url)` where:
-/// - trellis_path: `/users/:id`
+/// Extract MarkApiDown path and request URL from a raw URL.
+/// Returns `(mad_path, request_url)` where:
+/// - mad_path: `/users/:id`
 /// - request_url: `{{baseUrl}}/users/:id`
 pub(crate) fn parse_url(raw: &str) -> (String, String) {
     let raw = normalize_variables(raw);

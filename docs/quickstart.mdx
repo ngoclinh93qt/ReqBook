@@ -1,31 +1,31 @@
 ---
 title: "Quickstart"
-description: "Install Trellis, open the web UI, and run your first agent-friendly API spec."
+description: "Install MarkApiDown, open the web UI, and run your first agent-friendly API spec."
 icon: "rocket"
 ---
 
 # Quickstart
 
-This path is for a developer who wants Trellis working with a coding agent and a browser UI in a few minutes. The terminal is still there for automation, but it is not the only interface.
+This path is for a developer who wants MarkApiDown working with a coding agent and a browser UI in a few minutes. The terminal is still there for automation, but it is not the only interface.
 
 ---
 
-## 1. Install Trellis
+## 1. Install MarkApiDown
 
 <Tabs>
  <Tab title="Shell installer">
  ```bash
- curl -fsSL https://trellis.dev/install.sh | sh
+ curl -fsSL https://markApiDown.dev/install.sh | sh
  ```
  </Tab>
  <Tab title="Cargo">
  ```bash
- cargo install trellis
+ cargo install mark-api-down
  ```
  </Tab>
  <Tab title="npm wrapper">
  ```bash
- npm install -g trellis-md
+ npm install -g mark-api-down
  ```
  </Tab>
 </Tabs>
@@ -33,7 +33,7 @@ This path is for a developer who wants Trellis working with a coding agent and a
 Verify the install:
 
 ```bash
-trellis version
+mad version
 ```
 
 ---
@@ -42,15 +42,15 @@ trellis version
 
 ```bash
 mkdir my-api && cd my-api
-trellis init --name=my-api --dev-url=https://jsonplaceholder.typicode.com --yes
+mad init --name=my-api --dev-url=https://jsonplaceholder.typicode.com --yes
 ```
 
-Trellis creates:
+MarkApiDown creates:
 
 ```text
 api-docs/
 ├── README.md
-├── trellis.md
+├── mad.md
 ├── _shared/
 │ └── env.md
 ├── apis/
@@ -67,7 +67,7 @@ The generated endpoint uses JSONPlaceholder, so it can run immediately.
 ## 3. Open the web UI
 
 ```bash
-trellis serve
+mad serve
 ```
 
 Open `http://127.0.0.1:8080`.
@@ -91,7 +91,7 @@ Use the browser UI to:
 ## 4. Run the same spec from the terminal
 
 ```bash
-trellis exec api-docs/apis/posts/get-posts.md --env=dev
+mad exec api-docs/apis/posts/get-posts.md --env=dev
 ```
 
 Expected output:
@@ -105,7 +105,7 @@ duration: 180ms
 Dry-run shows the resolved request without sending it:
 
 ```bash
-trellis exec api-docs/apis/posts/get-posts.md --env=dev --dry-run
+mad exec api-docs/apis/posts/get-posts.md --env=dev --dry-run
 ```
 
 ```text
@@ -121,21 +121,21 @@ headers:
 ## 5. Install agent skills
 
 ```bash
-trellis skills install
+mad skills install
 ```
 
 Or choose one agent:
 
 ```bash
-trellis skills install --agent=claude-code
-trellis skills install --agent=cursor
-trellis skills install --agent=copilot
+mad skills install --agent=claude-code
+mad skills install --agent=cursor
+mad skills install --agent=copilot
 ```
 
 Now you can ask your coding agent:
 
 ```text
-Add a Trellis spec for GET /users/:userId and validate it.
+Add a MarkApiDown spec for GET /users/:userId and validate it.
 ```
 
 Or:
@@ -149,7 +149,7 @@ Create a flow that gets a post, captures userId, then gets that user.
 ## 6. Validate before commit
 
 ```bash
-trellis validate api-docs/
+mad validate api-docs/
 ```
 
 Commit the markdown files, not hidden app state.
@@ -166,6 +166,6 @@ Commit the markdown files, not hidden app state.
  Learn the browser UI: request tweaks, mock mode, cURL import, flow canvas.
  </Card>
  <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
- Patterns for using Trellis as the API layer in your agent loop.
+ Patterns for using MarkApiDown as the API layer in your agent loop.
  </Card>
 </CardGroup>

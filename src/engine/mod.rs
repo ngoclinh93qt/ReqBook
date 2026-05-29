@@ -14,7 +14,7 @@ use crate::{
     resolver::{mask, resolve, Context, ResolveError},
 };
 
-/// HTTP client type used by Trellis.
+/// HTTP client type used by MarkApiDown.
 pub type Client = reqwest::Client;
 
 /// Execution options.

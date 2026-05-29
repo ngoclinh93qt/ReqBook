@@ -9,23 +9,23 @@ import { RequestPage } from './pages/RequestPage';
 import { Icon } from './ui';
 import type { IndexData, VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
-import { TrellisMark } from './brand';
+import { MadMark } from './brand';
 
 export function App() {
   return (
     <BrowserRouter>
-      <TrellisShell />
+      <MadShell />
     </BrowserRouter>
   );
 }
 
-function TrellisShell() {
+function MadShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const { vars: browserVars, save: saveBrowserVars } = useBrowserVars();
   const [varsData, setVarsData] = useState<VarsData | null>(null);
   const [env, setEnv] = useState('dev');
-  const [theme, setTheme] = useState(() => localStorage.getItem('trellis-theme') ?? 'light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('mad-theme') ?? 'light');
   const [mockMode, setMockMode] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
@@ -35,7 +35,7 @@ function TrellisShell() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('trellis-theme', theme);
+    localStorage.setItem('mad-theme', theme);
   }, [theme]);
 
   useEffect(() => {
@@ -48,7 +48,7 @@ function TrellisShell() {
     }).catch(() => {});
   }, []);
 
-  const projectName = 'Trellis';
+  const projectName = 'MarkApiDown';
   const relPath = location.pathname.startsWith('/spec/') ? decodeURIComponent(location.pathname.slice('/spec/'.length)) : '';
 
   async function scanProject() {
@@ -158,8 +158,8 @@ function TopBar({ projectName, relPath, onHome, onFlows, onNewRequest, theme, se
   return (
     <header className="topbar">
       <button className="brand" onClick={onHome}>
-        <span className="brand-mark"><TrellisMark /></span>
-        <span className="brand-name">Trellis</span>
+        <span className="brand-mark"><MadMark /></span>
+        <span className="brand-name">MarkApiDown</span>
       </button>
       <div className="crumbs">
         <span className="sep">/</span>

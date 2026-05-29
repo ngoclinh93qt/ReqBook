@@ -10,20 +10,20 @@ Diagnose the issue in $ARGUMENTS (a spec file, pipeline file, or endpoint descri
 
 **1. Locate:**
 ```bash
-trellis_search   # via MCP — search by method/path/tag
+mad_search   # via MCP — search by method/path/tag
 rg -rn "^method:\|^path:" api-docs/apis/ | grep -i "$ARGUMENTS"
 ```
 
 **2. Validate then dry-run:**
 ```bash
-trellis validate <file>
-trellis exec <file> --env=dev --dry-run
+mad validate <file>
+mad exec <file> --env=dev --dry-run
 ```
 Check: correct baseUrl, auth header present, path params substituted, body shape correct.
 
 **3. Execute:**
 ```json
-{ "tool": "trellis_exec", "spec_path": "<file>", "env": "dev", "vars": { "id": "123" } }
+{ "tool": "mad_exec", "spec_path": "<file>", "env": "dev", "vars": { "id": "123" } }
 ```
 
 **4. Interpret:**
@@ -32,7 +32,7 @@ Check: correct baseUrl, auth header present, path params substituted, body shape
 |---|---|
 | Exit 2 — invalid spec | Fix frontmatter or `## Request` http block |
 | Exit 4 — network error | Check `baseUrl` in `_shared/env.md`, server running |
-| Exit 5 — secret detected | Move value to `.env.local` or `TRELLIS_*` |
+| Exit 5 — secret detected | Move value to `.env.local` or `MAD_*` |
 | Response mismatch | Update `## Expected response` if API changed intentionally, otherwise fix the API |
 | 401 / 403 | Check `authToken` in env, `auth:` frontmatter matches header |
 | Unresolved variable | Check `_shared/env.md` for `baseUrl`, `.env.local` for tokens |
@@ -49,7 +49,7 @@ Check step order, capture expressions, inject names, all referenced spec files e
 
 **2. Execute:**
 ```json
-{ "tool": "trellis_flow", "pipeline_path": "<file>", "env": "dev" }
+{ "tool": "mad_flow", "pipeline_path": "<file>", "env": "dev" }
 ```
 
 **3. Trace the failure:**
@@ -59,4 +59,4 @@ Check step order, capture expressions, inject names, all referenced spec files e
 
 ---
 
-**Rules:** Never print raw auth tokens. Default to `--env=dev`. Confirm before `--env=prod`. If no spec exists for the failing endpoint, run `/trellis` first.
+**Rules:** Never print raw auth tokens. Default to `--env=dev`. Confirm before `--env=prod`. If no spec exists for the failing endpoint, run `/mad` first.

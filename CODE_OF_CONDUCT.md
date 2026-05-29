@@ -1,6 +1,6 @@
 # Code of conduct
 
-Trellis follows the Contributor Covenant Code of Conduct, version 2.1.
+MarkApiDown follows the Contributor Covenant Code of Conduct, version 2.1.
 
 ## Our pledge
 
@@ -29,7 +29,7 @@ Examples of unacceptable behavior:
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to:
 
 ```text
-security@trellis.dev
+security@markApiDown.dev
 ```
 
 Maintainers are responsible for clarifying and enforcing standards of acceptable behavior and may remove, edit, or reject comments, commits, code, issues, and other contributions that are not aligned with this Code of Conduct.

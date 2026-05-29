@@ -107,7 +107,7 @@ impl Reporter for MarkdownReporter {
             "diff": result.diff,
         });
         Ok(format!(
-            "# Trellis execution\n\n- Method: `{}`\n- URL: `{}`\n- Duration: `{}` ms\n\n```json\n{}\n```",
+            "# MarkApiDown execution\n\n- Method: `{}`\n- URL: `{}`\n- Duration: `{}` ms\n\n```json\n{}\n```",
             result.request.method,
             result.request.url,
             result.duration_ms,

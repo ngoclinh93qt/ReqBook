@@ -1,4 +1,4 @@
-//! Public API for embedding Trellis.
+//! Public API for embedding MarkApiDown.
 
 pub mod adhoc;
 pub mod engine;

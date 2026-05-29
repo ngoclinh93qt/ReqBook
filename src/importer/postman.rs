@@ -54,7 +54,7 @@ fn convert_item(item: &Value, resource: &str) -> Option<ImportedEndpoint> {
         req["url"].as_str().unwrap_or("/").to_string()
     };
 
-    let (trellis_path, request_url) = parse_url(&raw_url);
+    let (mad_path, request_url) = parse_url(&raw_url);
 
     // Headers
     let headers = req["header"].as_array().cloned().unwrap_or_default();
@@ -96,7 +96,7 @@ fn convert_item(item: &Value, resource: &str) -> Option<ImportedEndpoint> {
     Some(ImportedEndpoint {
         resource: resource.to_string(),
         method,
-        path: trellis_path,
+        path: mad_path,
         title,
         description: String::new(),
         request,

@@ -1,12 +1,12 @@
 ---
-name: trellis-demo
+name: mad-demo
 version: 1
 default-env: dev
 ---
 
-# Trellis demo
+# MarkApiDown demo
 
-Demo workspace for previewing the Trellis web UI.
+Demo workspace for previewing the MarkApiDown web UI.
 
 ## Defaults
 

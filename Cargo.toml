@@ -1,14 +1,14 @@
 [package]
-name = "trellis"
+name = "mark-api-down"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "Apache-2.0"
-authors = ["Trellis contributors"]
+authors = ["MarkApiDown contributors"]
 description = "API workspace — design specs, send requests, validate contracts, from CLI and browser."
-repository = "https://github.com/trellis-md/trellis"
-homepage = "https://trellis.dev"
-documentation = "https://trellis.dev"
+repository = "https://github.com/mark-api-down/mad"
+homepage = "https://markApiDown.dev"
+documentation = "https://markApiDown.dev"
 readme = "README.md"
 keywords = ["api", "markdown", "cli", "testing", "agents"]
 categories = ["command-line-utilities", "development-tools::testing"]
@@ -30,11 +30,11 @@ exclude = [
 ]
 
 [lib]
-name = "trellis"
+name = "mark_api_down"
 path = "src/lib.rs"
 
 [[bin]]
-name = "trellis"
+name = "mad"
 path = "src/main.rs"
 
 [features]
@@ -109,7 +109,7 @@ targets = [
   "x86_64-pc-windows-msvc",
 ]
 install-path = "~/.local/bin"
-tap = "trellis-md/homebrew-tap"
+tap = "mark-api-down/homebrew-tap"
 publish-jobs = ["homebrew"]
 pr-run-mode = "plan"
 allow-dirty = ["ci"]

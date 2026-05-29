@@ -1,14 +1,14 @@
 //! MCP (Model Context Protocol) server over stdio.
 //!
 //! Exposes tools to any MCP-compatible AI agent:
-//! - `trellis_exec`          execute one endpoint spec
-//! - `trellis_flow`          execute a pipeline
-//! - `trellis_author`        create or update a spec file
-//! - `trellis_vars`          show variable resolution for a spec
-//! - `trellis_search`        search specs by method/path/tag/text
-//! - `trellis_history`       execution history for a spec
-//! - `trellis_session`       get/set session context (env + vars)
-//! - `trellis_exec_batch`    execute multiple specs in one call
+//! - `mad_exec`          execute one endpoint spec
+//! - `mad_flow`          execute a pipeline
+//! - `mad_author`        create or update a spec file
+//! - `mad_vars`          show variable resolution for a spec
+//! - `mad_search`        search specs by method/path/tag/text
+//! - `mad_history`       execution history for a spec
+//! - `mad_session`       get/set session context (env + vars)
+//! - `mad_exec_batch`    execute multiple specs in one call
 //!
 //! Transport: JSON-RPC 2.0 over stdio (NDJSON, one message per line).
 //! Protocol version: 2024-11-05.
@@ -184,7 +184,7 @@ struct Session {
 }
 
 fn session_path() -> std::path::PathBuf {
-    std::env::temp_dir().join("trellis-session.json")
+    std::env::temp_dir().join("mad-session.json")
 }
 
 fn read_session() -> Session {
@@ -273,8 +273,8 @@ fn tools_list_result() -> Value {
     json!({
         "tools": [
             {
-                "name": "trellis_exec",
-                "description": "Execute a Trellis endpoint spec and return the HTTP result.",
+                "name": "mad_exec",
+                "description": "Execute a MarkApiDown endpoint spec and return the HTTP result.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -308,8 +308,8 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_flow",
-                "description": "Execute a Trellis pipeline and return per-step results.",
+                "name": "mad_flow",
+                "description": "Execute a MarkApiDown pipeline and return per-step results.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -330,8 +330,8 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_author",
-                "description": "Create a new Trellis endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.\n\nRequired frontmatter fields: resource, protocol (http), method (GET/POST/PUT/PATCH/DELETE), path (/res/:param), version (1).\nRequired sections in order: ## Request (```http block), ## Expected response (```http block).\nOptional sections: ## Error responses (reference only, not executed), ## Assertions (structured rules), ## Tests (```agent-task block), ## Notes.\nVariables use {{name}} syntax in http blocks. Path params use :param in the path field and URL.\nSee api-docs/_shared/env.md for available environments and variable names.",
+                "name": "mad_author",
+                "description": "Create a new MarkApiDown endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.\n\nRequired frontmatter fields: resource, protocol (http), method (GET/POST/PUT/PATCH/DELETE), path (/res/:param), version (1).\nRequired sections in order: ## Request (```http block), ## Expected response (```http block).\nOptional sections: ## Error responses (reference only, not executed), ## Assertions (structured rules), ## Tests (```agent-task block), ## Notes.\nVariables use {{name}} syntax in http blocks. Path params use :param in the path field and URL.\nSee api-docs/_shared/env.md for available environments and variable names.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -352,7 +352,7 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_vars",
+                "name": "mad_vars",
                 "description": "Show which variables a spec requires and which are resolved in the current env.",
                 "inputSchema": {
                     "type": "object",
@@ -370,7 +370,7 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_search",
+                "name": "mad_search",
                 "description": "Search endpoint specs by method, path, tag, or text.",
                 "inputSchema": {
                     "type": "object",
@@ -396,7 +396,7 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_history",
+                "name": "mad_history",
                 "description": "Return recent execution history for a spec.",
                 "inputSchema": {
                     "type": "object",
@@ -414,7 +414,7 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_session",
+                "name": "mad_session",
                 "description": "Get or set the session context (env + vars) used as defaults by exec/flow.",
                 "inputSchema": {
                     "type": "object",
@@ -438,7 +438,7 @@ fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "trellis_exec_batch",
+                "name": "mad_exec_batch",
                 "description": "Execute multiple endpoint specs sequentially and return a summary.",
                 "inputSchema": {
                     "type": "object",
@@ -873,9 +873,9 @@ async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
         }
     }
 
-    // Load TRELLIS_* OS env vars (best-effort).
+    // Load MAD_* OS env vars (best-effort).
     for (k, v) in std::env::vars() {
-        if let Some(stripped) = k.strip_prefix("TRELLIS_") {
+        if let Some(stripped) = k.strip_prefix("MAD_") {
             context.insert(SourceKind::OsEnv, stripped, v);
         }
     }
@@ -1026,7 +1026,7 @@ fn walk_specs_inner(root: &Path, dir: &Path, cb: &mut impl FnMut(&Path, String))
             }
         } else if p.extension().is_some_and(|e| e == "md") {
             let name = p.file_name().unwrap_or_default().to_string_lossy();
-            if matches!(name.as_ref(), "README.md" | "trellis.md" | "env.md") {
+            if matches!(name.as_ref(), "README.md" | "mad.md" | "env.md") {
                 continue;
             }
             let rel = p
@@ -1291,7 +1291,7 @@ fn http_reason(status: u16) -> &'static str {
 // ─── MCP Resources protocol ───────────────────────────────────────────────────
 
 /// `resources/list`   enumerate all endpoint spec files as MCP resources.
-/// URIs use the scheme `trellis://spec/<path-relative-to-api-docs>`.
+/// URIs use the scheme `mad://spec/<path-relative-to-api-docs>`.
 fn handle_resources_list() -> Value {
     let root = Path::new("api-docs");
     let mut resources: Vec<Value> = Vec::new();
@@ -1316,11 +1316,11 @@ fn collect_resource_uris(root: &Path, dir: &Path, out: &mut Vec<Value>) {
             }
         } else if p.extension().is_some_and(|e| e == "md") {
             let name = p.file_name().unwrap_or_default().to_string_lossy();
-            if matches!(name.as_ref(), "README.md" | "trellis.md" | "env.md") {
+            if matches!(name.as_ref(), "README.md" | "mad.md" | "env.md") {
                 continue;
             }
             let rel = p.strip_prefix(root).unwrap_or(&p);
-            let uri = format!("trellis://spec/{}", rel.display());
+            let uri = format!("mad://spec/{}", rel.display());
             // Best-effort description from parsed spec.
             let description = std::fs::read_to_string(&p)
                 .ok()
@@ -1345,7 +1345,7 @@ fn handle_resources_read(params: &Value) -> Result<Value, (i32, String)> {
         .ok_or_else(|| (-32602, "Invalid params: uri is required".to_string()))?;
 
     let rel = uri
-        .strip_prefix("trellis://spec/")
+        .strip_prefix("mad://spec/")
         .ok_or_else(|| (-32000, format!("unsupported URI scheme: {uri}")))?;
 
     let file_path = Path::new("api-docs").join(rel);
@@ -1391,7 +1391,7 @@ async fn dispatch(req: McpRequest) -> String {
                     "resources": {}
                 },
                 "serverInfo": {
-                    "name": "trellis",
+                    "name": "mad",
                     "version": env!("CARGO_PKG_VERSION")
                 }
             }),
@@ -1409,35 +1409,35 @@ async fn dispatch(req: McpRequest) -> String {
                 .cloned()
                 .unwrap_or(Value::Object(Default::default()));
             match name {
-                "trellis_exec" => match handle_exec(&args).await {
+                "mad_exec" => match handle_exec(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_flow" => match handle_flow(&args).await {
+                "mad_flow" => match handle_flow(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_author" => match handle_author(&args) {
+                "mad_author" => match handle_author(&args) {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_vars" => match handle_vars(&args).await {
+                "mad_vars" => match handle_vars(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_search" => match handle_search(&args).await {
+                "mad_search" => match handle_search(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_history" => match handle_history(&args).await {
+                "mad_history" => match handle_history(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_session" => match handle_session(&args) {
+                "mad_session" => match handle_session(&args) {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "trellis_exec_batch" => match handle_exec_batch(&args).await {
+                "mad_exec_batch" => match handle_exec_batch(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
@@ -1562,14 +1562,14 @@ mod tests {
             .iter()
             .map(|t| t["name"].as_str().unwrap())
             .collect();
-        assert!(names.contains(&"trellis_exec"));
-        assert!(names.contains(&"trellis_flow"));
-        assert!(names.contains(&"trellis_author"));
-        assert!(names.contains(&"trellis_vars"));
-        assert!(names.contains(&"trellis_search"));
-        assert!(names.contains(&"trellis_history"));
-        assert!(names.contains(&"trellis_session"));
-        assert!(names.contains(&"trellis_exec_batch"));
+        assert!(names.contains(&"mad_exec"));
+        assert!(names.contains(&"mad_flow"));
+        assert!(names.contains(&"mad_author"));
+        assert!(names.contains(&"mad_vars"));
+        assert!(names.contains(&"mad_search"));
+        assert!(names.contains(&"mad_history"));
+        assert!(names.contains(&"mad_session"));
+        assert!(names.contains(&"mad_exec_batch"));
     }
 
     #[test]
@@ -1596,7 +1596,7 @@ mod tests {
         let s = dispatch(req).await;
         let v: Value = serde_json::from_str(&s).unwrap();
         assert_eq!(v["result"]["protocolVersion"], "2024-11-05");
-        assert_eq!(v["result"]["serverInfo"]["name"], "trellis");
+        assert_eq!(v["result"]["serverInfo"]["name"], "mad");
         assert!(v["result"]["capabilities"]["tools"].is_object());
     }
 
@@ -1640,7 +1640,7 @@ mod tests {
         let req = make_req(
             4,
             "tools/call",
-            json!({"name": "trellis_exec", "arguments": {}}),
+            json!({"name": "mad_exec", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1651,7 +1651,7 @@ mod tests {
         let req = make_req(
             5,
             "tools/call",
-            json!({"name": "trellis_flow", "arguments": {}}),
+            json!({"name": "mad_flow", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1664,7 +1664,7 @@ mod tests {
         let req = make_req(
             7,
             "tools/call",
-            json!({"name": "trellis_exec", "arguments": {"spec_path": "/no/such/file.md"}}),
+            json!({"name": "mad_exec", "arguments": {"spec_path": "/no/such/file.md"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32000);
@@ -1683,14 +1683,14 @@ mod tests {
         assert_eq!(v["error"]["code"], -32601);
     }
 
-    // ── trellis_author ──
+    // ── mad_author ──
 
     #[tokio::test]
     async fn author_missing_params_returns_32602() {
         let req = make_req(
             40,
             "tools/call",
-            json!({"name": "trellis_author", "arguments": {}}),
+            json!({"name": "mad_author", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1704,10 +1704,10 @@ mod tests {
             41,
             "tools/call",
             json!({
-                "name": "trellis_author",
+                "name": "mad_author",
                 "arguments": {
                     "spec_path": path.to_str().unwrap(),
-                    "content": "not a valid trellis spec"
+                    "content": "not a valid mad spec"
                 }
             }),
         );
@@ -1726,7 +1726,7 @@ mod tests {
             42,
             "tools/call",
             json!({
-                "name": "trellis_author",
+                "name": "mad_author",
                 "arguments": {
                     "spec_path": path.to_str().unwrap(),
                     "content": content
@@ -1748,7 +1748,7 @@ mod tests {
             43,
             "tools/call",
             json!({
-                "name": "trellis_author",
+                "name": "mad_author",
                 "arguments": {
                     "spec_path": path.to_str().unwrap(),
                     "content": content
@@ -1795,20 +1795,20 @@ mod tests {
         let req = make_req(
             62,
             "resources/read",
-            json!({"uri": "trellis://spec/no/such/file.md"}),
+            json!({"uri": "mad://spec/no/such/file.md"}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32000);
     }
 
-    // ── trellis_vars ──
+    // ── mad_vars ──
 
     #[tokio::test]
     async fn vars_missing_spec_path_returns_32602() {
         let req = make_req(
             70,
             "tools/call",
-            json!({"name": "trellis_vars", "arguments": {}}),
+            json!({"name": "mad_vars", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1823,7 +1823,7 @@ mod tests {
         let req = make_req(
             71,
             "tools/call",
-            json!({"name": "trellis_vars", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
+            json!({"name": "mad_vars", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
@@ -1840,14 +1840,14 @@ mod tests {
         assert!(names.contains(&"authToken"));
     }
 
-    // ── trellis_search ──
+    // ── mad_search ──
 
     #[tokio::test]
     async fn search_returns_results_structure() {
         let req = make_req(
             80,
             "tools/call",
-            json!({"name": "trellis_search", "arguments": {"method": "GET"}}),
+            json!({"name": "mad_search", "arguments": {"method": "GET"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
@@ -1857,14 +1857,14 @@ mod tests {
         assert!(data["results"].is_array());
     }
 
-    // ── trellis_history ──
+    // ── mad_history ──
 
     #[tokio::test]
     async fn history_missing_spec_path_returns_32602() {
         let req = make_req(
             90,
             "tools/call",
-            json!({"name": "trellis_history", "arguments": {}}),
+            json!({"name": "mad_history", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1878,7 +1878,7 @@ mod tests {
         let req = make_req(
             91,
             "tools/call",
-            json!({"name": "trellis_history", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
+            json!({"name": "mad_history", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
@@ -1888,14 +1888,14 @@ mod tests {
         assert!(data["trend"].is_string());
     }
 
-    // ── trellis_session ──
+    // ── mad_session ──
 
     #[tokio::test]
     async fn session_missing_action_returns_32602() {
         let req = make_req(
             100,
             "tools/call",
-            json!({"name": "trellis_session", "arguments": {}}),
+            json!({"name": "mad_session", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1906,20 +1906,20 @@ mod tests {
         let req = make_req(
             101,
             "tools/call",
-            json!({"name": "trellis_session", "arguments": {"action": "get"}}),
+            json!({"name": "mad_session", "arguments": {"action": "get"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
     }
 
-    // ── trellis_exec_batch ──
+    // ── mad_exec_batch ──
 
     #[tokio::test]
     async fn exec_batch_missing_specs_returns_32602() {
         let req = make_req(
             110,
             "tools/call",
-            json!({"name": "trellis_exec_batch", "arguments": {}}),
+            json!({"name": "mad_exec_batch", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -1931,7 +1931,7 @@ mod tests {
         let req = make_req(
             111,
             "tools/call",
-            json!({"name": "trellis_exec_batch", "arguments": {"specs": ["/no/such/file.md"]}}),
+            json!({"name": "mad_exec_batch", "arguments": {"specs": ["/no/such/file.md"]}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");

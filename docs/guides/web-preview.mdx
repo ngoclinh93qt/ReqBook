@@ -1,20 +1,20 @@
 ---
 title: "Web preview"
-description: "Use the Trellis browser UI to browse, execute, tweak, edit, import, and connect markdown API specs."
+description: "Use the MarkApiDown browser UI to browse, execute, tweak, edit, import, and connect markdown API specs."
 icon: "desktop"
 ---
 
 # Browser UI for markdown API specs.
 
-`trellis serve` starts a local browser workspace over the markdown files in `api-docs/`. It is designed to sit beside your editor and coding agent: agents can write files, you can inspect and run them visually, and everything stays in sync through the filesystem.
+`mad serve` starts a local browser workspace over the markdown files in `api-docs/`. It is designed to sit beside your editor and coding agent: agents can write files, you can inspect and run them visually, and everything stays in sync through the filesystem.
 
 ```bash
-trellis serve
+mad serve
 # Preview: http://127.0.0.1:8080
 ```
 
 <Note>
- Trellis binds to `127.0.0.1` by default. Use `--host=0.0.0.0` only when you intentionally want to share the preview on your local network.
+ MarkApiDown binds to `127.0.0.1` by default. Use `--host=0.0.0.0` only when you intentionally want to share the preview on your local network.
 </Note>
 
 ---
@@ -37,7 +37,7 @@ The CLI is great for CI and automation. The UI is better when you are actively d
  Design workflows visually by connecting endpoint blocks, captures, and injections. The result is saved as `api-docs/flows/*.md`.
  </Card>
  <Card title="cURL import" icon="terminal">
- Paste a cURL command from DevTools and generate a Trellis endpoint spec.
+ Paste a cURL command from DevTools and generate a MarkApiDown endpoint spec.
  </Card>
  <Card title="Agent review loop" icon="robot">
  Keep the UI open while your agent edits specs. Review and run the changed files immediately.
@@ -77,7 +77,7 @@ Use it to:
 The saved flow can then be run from either surface:
 
 ```bash
-trellis flow api-docs/flows/checkout.md --env=dev
+mad flow api-docs/flows/checkout.md --env=dev
 ```
 
 or from the browser UI with the Run flow action.
@@ -97,7 +97,7 @@ postId: 1
 ```
 ````
 
-Use `.env.local` or `TRELLIS_*` for secrets. Trellis masks auth values in UI responses and reports.
+Use `.env.local` or `MAD_*` for secrets. MarkApiDown masks auth values in UI responses and reports.
 
 ---
 
@@ -108,7 +108,7 @@ Use `.env.local` or `TRELLIS_*` for secrets. Trellis masks auth values in UI res
  Ask your agent to add endpoint specs or scan the project for missing routes.
  </Step>
  <Step title="UI refreshes from disk">
- Open `trellis serve` and inspect the new files in the sidebar.
+ Open `mad serve` and inspect the new files in the sidebar.
  </Step>
  <Step title="Run with temporary inputs">
  Fill runtime-only params and headers, click Run, and inspect the response.
@@ -125,7 +125,7 @@ Use `.env.local` or `TRELLIS_*` for secrets. Trellis masks auth values in UI res
 Start the preview with `--mock` when the real backend is unavailable during frontend development, on an airplane, or before the API exists:
 
 ```bash
-trellis serve --mock
+mad serve --mock
 ```
 
 In mock mode:
@@ -135,15 +135,15 @@ In mock mode:
 - A **mock** chip appears in the top navigation bar while mock mode is active.
 - Path parameters such as `/users/:id` are matched automatically any ID value returns the same recorded body.
 
-Mock mode reads the same `## Expected response` blocks that `trellis mock` uses on the standalone mock server. Both features share the same source of truth.
+Mock mode reads the same `## Expected response` blocks that `mad mock` uses on the standalone mock server. Both features share the same source of truth.
 
 <Tip>
- If your specs have empty `## Expected response` blocks (stub `{}`), run `/trellis enrich` to enrich them with real field names, or execute against a live server once and copy the response body into the spec manually.
+ If your specs have empty `## Expected response` blocks (stub `{}`), run `/mad enrich` to enrich them with real field names, or execute against a live server once and copy the response body into the spec manually.
 </Tip>
 
 ### Mock mode vs standalone mock server
 
-| | `trellis serve --mock` | `trellis mock` |
+| | `mad serve --mock` | `mad mock` |
 |---|---|---|
 | Use case | Interactive review in the browser | Frontend app points to a mock base URL |
 | Backend traffic | None | None |
@@ -155,9 +155,9 @@ Mock mode reads the same `## Expected response` blocks that `trellis mock` uses 
 ## Server flags
 
 ```bash
-trellis serve --port=9000 --env=staging
-trellis serve --mock
-trellis serve /path/to/other-project
+mad serve --port=9000 --env=staging
+mad serve --mock
+mad serve /path/to/other-project
 ```
 
 | Flag | Description |

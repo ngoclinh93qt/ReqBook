@@ -1,4 +1,4 @@
-use trellis::{engine, parser, ExecOpts};
+use mark_api_down::{engine, parser, ExecOpts};
 
 #[tokio::test]
 async fn executes_real_get_to_httpbin() {

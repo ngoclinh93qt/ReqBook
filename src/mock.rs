@@ -1,6 +1,6 @@
-//! Mock HTTP server that replays recorded responses from Trellis spec files.
+//! Mock HTTP server that replays recorded responses from MarkApiDown spec files.
 //!
-//! `trellis mock [--port 4001] [--dir api-docs/]`
+//! `mad mock [--port 4001] [--dir api-docs/]`
 //!
 //! Walks all endpoint `.md` files under `<dir>/apis/`, extracts the
 //! `## Expected response` block from each spec, and serves those responses
@@ -8,7 +8,7 @@
 //! a running backend.
 //!
 //! Route matching uses a simple linear scan with `:param` wildcard support,
-//! identical to the syntax used in Trellis spec paths.
+//! identical to the syntax used in MarkApiDown spec paths.
 
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
 

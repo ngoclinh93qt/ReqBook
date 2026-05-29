@@ -1,6 +1,6 @@
 ---
 title: "CLI reference"
-description: "Complete reference for all trellis subcommands, flags, and exit codes."
+description: "Complete reference for all mad subcommands, flags, and exit codes."
 icon: "terminal"
 ---
 
@@ -10,7 +10,7 @@ Every subcommand accepts these flags. They must be placed before the subcommand 
 
 | Flag | Type | Description |
 |---|---|---|
-| `--config <path>` | path | Path to `api-docs/trellis.md`. Overrides the default discovery. |
+| `--config <path>` | path | Path to `api-docs/mad.md`. Overrides the default discovery. |
 | `--no-color` | bool | Disable ANSI color in output. Also respected if `NO_COLOR` is set in the environment. |
 | `-v`, `--verbose` | bool | Enable verbose diagnostic output. |
 
@@ -18,7 +18,7 @@ Every subcommand accepts these flags. They must be placed before the subcommand 
 
 ## Exit codes
 
-Trellis returns stable exit codes you can reliably test for in CI scripts. See the [Exit codes reference](/docs/reference/exit-codes) for CI usage examples.
+MarkApiDown returns stable exit codes you can reliably test for in CI scripts. See the [Exit codes reference](/docs/reference/exit-codes) for CI usage examples.
 
 | Code | Name | Meaning |
 |---|---|---|
@@ -31,60 +31,60 @@ Trellis returns stable exit codes you can reliably test for in CI scripts. See t
 
 ---
 
-## trellis init
+## mad init
 
 Scaffold a new `api-docs/` project in the current directory.
 
 ```bash
-trellis init [--name=<name>] [--dev-url=<url>] [--yes]
+mad init [--name=<name>] [--dev-url=<url>] [--yes]
 ```
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--name` | string | interactive | Project name written into `trellis.md`. |
+| `--name` | string | interactive | Project name written into `mad.md`. |
 | `--dev-url` | string | interactive | Base URL written into `_shared/env.md` for the `dev` environment. |
 | `--yes` | bool | `false` | Accept all defaults without interactive prompts. |
 
-Without `--yes`, Trellis prompts for any missing values. `--yes` uses `my-api` and `http://localhost:8080` as defaults when no flags are provided.
+Without `--yes`, MarkApiDown prompts for any missing values. `--yes` uses `my-api` and `http://localhost:8080` as defaults when no flags are provided.
 
 <Note>
-`trellis init` does not overwrite existing files. If a file already exists, it exits with an error naming the conflicting file. It also appends `.env.local` to `.gitignore` if not already present.
+`mad init` does not overwrite existing files. If a file already exists, it exits with an error naming the conflicting file. It also appends `.env.local` to `.gitignore` if not already present.
 </Note>
 
 **Examples**
 
 ```bash
 # Interactive
-trellis init
+mad init
 
 # Non-interactive
-trellis init --name=payments-api --dev-url=http://localhost:3000
+mad init --name=payments-api --dev-url=http://localhost:3000
 
 # Accept all defaults in CI
-trellis init --yes
+mad init --yes
 ```
 
 **Exit codes**: `0` on success, `3` on filesystem error.
 
 ---
 
-## trellis validate
+## mad validate
 
 Validate one endpoint file, one pipeline file, or all markdown files under a directory.
 
 ```bash
-trellis validate <path>
+mad validate <path>
 ```
 
 | Argument | Description |
 |---|---|
 | `<path>` | File or directory to validate. |
 
-Trellis classifies each file by location and name:
+MarkApiDown classifies each file by location and name:
 
 - Files named `env.md` → validated as environment config.
 - Files under `flows/` → validated as pipeline files.
-- `trellis.md` and `README.md` → checked for frontmatter only.
+- `mad.md` and `README.md` → checked for frontmatter only.
 - All other `.md` files → validated as endpoint files.
 
 Each error message includes the file path, line number when known, and a suggested fix.
@@ -93,22 +93,22 @@ Each error message includes the file path, line number when known, and a suggest
 
 ```bash
 # Validate the entire project
-trellis validate api-docs/
+mad validate api-docs/
 
 # Validate a single endpoint file
-trellis validate api-docs/apis/users/get-user-by-id.md
+mad validate api-docs/apis/users/get-user-by-id.md
 ```
 
 **Exit codes**: `0` if all files are valid, `2` if any spec is invalid, `5` if a secret is detected.
 
 ---
 
-## trellis exec
+## mad exec
 
 Execute one endpoint file and compare the actual response against the expected response.
 
 ```bash
-trellis exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-run] [--timeout=<ms>]
+mad exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-run] [--timeout=<ms>]
 ```
 
 | Flag | Type | Default | Description |
@@ -121,40 +121,40 @@ trellis exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-
 | `--timeout` | integer | | Override request timeout in milliseconds. Takes precedence over endpoint and project defaults. |
 
 <Note>
-When `--env=prod` is used in an interactive terminal, Trellis prompts for confirmation before sending the request. Pass `--yes` (global flag) to skip the prompt in CI.
+When `--env=prod` is used in an interactive terminal, MarkApiDown prompts for confirmation before sending the request. Pass `--yes` (global flag) to skip the prompt in CI.
 </Note>
 
-If a referenced variable is not resolved from any source, Trellis exits with code `2` before making any network request, and prints a suggested fix naming the variable and where to define it.
+If a referenced variable is not resolved from any source, MarkApiDown exits with code `2` before making any network request, and prints a suggested fix naming the variable and where to define it.
 
 **Examples**
 
 ```bash
 # Basic execution against the dev environment
-trellis exec api-docs/apis/users/get-user-by-id.md
+mad exec api-docs/apis/users/get-user-by-id.md
 
 # Override environment and inject a variable
-trellis exec api-docs/apis/users/get-user-by-id.md --env=staging --var userId=42
+mad exec api-docs/apis/users/get-user-by-id.md --env=staging --var userId=42
 
 # JUnit XML output for CI test reporters
-trellis exec api-docs/apis/users/get-user-by-id.md --output=junit > results.xml
+mad exec api-docs/apis/users/get-user-by-id.md --output=junit > results.xml
 
 # Dry run inspect the resolved request without sending
-trellis exec api-docs/apis/users/create-user.md --dry-run --var email=test@example.com
+mad exec api-docs/apis/users/create-user.md --dry-run --var email=test@example.com
 
 # Override the timeout for a slow endpoint
-trellis exec api-docs/apis/users/get-user-by-id.md --timeout=10000
+mad exec api-docs/apis/users/get-user-by-id.md --timeout=10000
 ```
 
 **Exit codes**: `0` response matches, `1` assertion fails, `2` invalid spec, `3` engine error, `4` network error, `5` secret detected.
 
 ---
 
-## trellis flow
+## mad flow
 
 Execute a pipeline file. Steps run sequentially by default, with optional parallelism.
 
 ```bash
-trellis flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel] [--no-parallel] [--timeout=<ms>]
+mad flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel] [--no-parallel] [--timeout=<ms>]
 ```
 
 | Flag | Type | Default | Description |
@@ -175,55 +175,55 @@ trellis flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--para
 
 ```bash
 # Run a pipeline against staging
-trellis flow api-docs/flows/user-onboarding.md --env=staging
+mad flow api-docs/flows/user-onboarding.md --env=staging
 
 # Force sequential execution for debugging
-trellis flow api-docs/flows/user-onboarding.md --no-parallel
+mad flow api-docs/flows/user-onboarding.md --no-parallel
 
 # JSON output for programmatic consumption
-trellis flow api-docs/flows/user-onboarding.md --output=json
+mad flow api-docs/flows/user-onboarding.md --output=json
 ```
 
 **Exit codes**: `0` all steps pass (or `continue-on-error` is set), `1` any step fails, `2` pipeline spec invalid, `3` engine error, `4` network error.
 
 ---
 
-## trellis index
+## mad index
 
 Regenerate `api-docs/README.md` from the current set of markdown files under `api-docs/`.
 
 ```bash
-trellis index
+mad index
 ```
 
-No flags. The generated file contains a linked list of all markdown files grouped by resource. Do not edit `api-docs/README.md` by hand it is overwritten on every `trellis index` run.
+No flags. The generated file contains a linked list of all markdown files grouped by resource. Do not edit `api-docs/README.md` by hand it is overwritten on every `mad index` run.
 
 <Note>
-`trellis index` is run automatically by `trellis init` and by all `trellis import` subcommands. Run it manually only if you added or renamed files after an import.
+`mad index` is run automatically by `mad init` and by all `mad import` subcommands. Run it manually only if you added or renamed files after an import.
 </Note>
 
 **Example**
 
 ```bash
-trellis index
+mad index
 ```
 
 **Exit codes**: `0` on success, `3` on filesystem error.
 
 ---
 
-## trellis import
+## mad import
 
-Convert an existing API spec file into Trellis markdown endpoint files. All subcommands write endpoint files under `api-docs/`, then run `trellis index` automatically. Complex logic (pre-request scripts, dynamic variables, JavaScript assertions) is imported as `agent-task` blocks for manual review.
+Convert an existing API spec file into MarkApiDown markdown endpoint files. All subcommands write endpoint files under `api-docs/`, then run `mad index` automatically. Complex logic (pre-request scripts, dynamic variables, JavaScript assertions) is imported as `agent-task` blocks for manual review.
 
-**After any import**: run `trellis validate api-docs/` and move any secrets to `.env.local`. See the [Migration guide](/docs/guides/migration) for per-tool concept mapping and post-import checklists.
+**After any import**: run `mad validate api-docs/` and move any secrets to `.env.local`. See the [Migration guide](/docs/guides/migration) for per-tool concept mapping and post-import checklists.
 
-### trellis import postman
+### mad import postman
 
 Import a Postman Collection v2.1 JSON export.
 
 ```bash
-trellis import postman <file>
+mad import postman <file>
 ```
 
 | Argument | Description |
@@ -231,15 +231,15 @@ trellis import postman <file>
 | `<file>` | Path to a Postman Collection v2.1 JSON file. |
 
 ```bash
-trellis import postman my-collection.json
+mad import postman my-collection.json
 ```
 
-### trellis import insomnia
+### mad import insomnia
 
 Import an Insomnia v4 JSON export.
 
 ```bash
-trellis import insomnia <file>
+mad import insomnia <file>
 ```
 
 | Argument | Description |
@@ -247,15 +247,15 @@ trellis import insomnia <file>
 | `<file>` | Path to an Insomnia v4 JSON export file. |
 
 ```bash
-trellis import insomnia insomnia_export.json
+mad import insomnia insomnia_export.json
 ```
 
-### trellis import openapi
+### mad import openapi
 
 Import an OpenAPI 3.x spec in YAML or JSON format.
 
 ```bash
-trellis import openapi <file>
+mad import openapi <file>
 ```
 
 | Argument | Description |
@@ -263,16 +263,16 @@ trellis import openapi <file>
 | `<file>` | Path to an OpenAPI 3.x YAML or JSON file. |
 
 ```bash
-trellis import openapi openapi.yaml
-trellis import openapi openapi.json
+mad import openapi openapi.yaml
+mad import openapi openapi.json
 ```
 
-### trellis import curl
+### mad import curl
 
-Import a single cURL command as a Trellis endpoint file.
+Import a single cURL command as a MarkApiDown endpoint file.
 
 ```bash
-trellis import curl [--file=<path>]
+mad import curl [--file=<path>]
 ```
 
 | Flag | Description |
@@ -281,26 +281,26 @@ trellis import curl [--file=<path>]
 
 ```bash
 # From clipboard (macOS)
-pbpaste | trellis import curl
+pbpaste | mad import curl
 
 # From a file
-trellis import curl --file=request.curl
+mad import curl --file=request.curl
 ```
 
 **Exit codes (all import subcommands)**: `0` on success, `2` if the input file is not a valid spec for that tool, `3` on filesystem error.
 
 ---
 
-## trellis skills
+## mad skills
 
-Install, list, or remove Trellis skill files for AI coding agents. Skills are embedded in the binary no network access required.
+Install, list, or remove MarkApiDown skill files for AI coding agents. Skills are embedded in the binary no network access required.
 
-### trellis skills install
+### mad skills install
 
-Install Trellis skill files into detected AI agent config directories.
+Install MarkApiDown skill files into detected AI agent config directories.
 
 ```bash
-trellis skills install [--agent=<name>]
+mad skills install [--agent=<name>]
 ```
 
 | Flag | Type | Description |
@@ -309,46 +309,46 @@ trellis skills install [--agent=<name>]
 
 Supported agent names: `claude-code`, `cursor`, `copilot`, `codex-cli`, `antigravity`, `opencode`.
 
-Trellis detects agents by checking for their config directories (`.claude/`, `.cursor/`, `.github/`, etc.).
+MarkApiDown detects agents by checking for their config directories (`.claude/`, `.cursor/`, `.github/`, etc.).
 
 ```bash
 # Install for all detected agents
-trellis skills install
+mad skills install
 
 # Install only for Claude Code
-trellis skills install --agent=claude-code
+mad skills install --agent=claude-code
 
 # Install only for Cursor
-trellis skills install --agent=cursor
+mad skills install --agent=cursor
 ```
 
 <Tip>
-After upgrading Trellis, run `trellis doctor --fix` to update installed skills to the new binary version automatically.
+After upgrading MarkApiDown, run `mad doctor --fix` to update installed skills to the new binary version automatically.
 </Tip>
 
-### trellis skills list
+### mad skills list
 
-List detected AI agents and whether Trellis skills are installed and up-to-date for each.
+List detected AI agents and whether MarkApiDown skills are installed and up-to-date for each.
 
 ```bash
-trellis skills list
+mad skills list
 ```
 
 No flags.
 
 ```bash
-trellis skills list
+mad skills list
 # claude-code: detected, skills up-to-date
 # cursor: not detected
 # copilot: not detected
 ```
 
-### trellis skills uninstall
+### mad skills uninstall
 
-Remove installed Trellis skill files.
+Remove installed MarkApiDown skill files.
 
 ```bash
-trellis skills uninstall [--agent=<name>]
+mad skills uninstall [--agent=<name>]
 ```
 
 | Flag | Type | Description |
@@ -356,24 +356,24 @@ trellis skills uninstall [--agent=<name>]
 | `--agent` | string | Uninstall skills for a specific agent only. Uninstalls for all agents if omitted. |
 
 ```bash
-trellis skills uninstall --agent=claude-code
+mad skills uninstall --agent=claude-code
 ```
 
 **Exit codes (all skills subcommands)**: `0` on success, `3` on filesystem error.
 
 ---
 
-## trellis serve
+## mad serve
 
 Start the local web preview server.
 
 ```bash
-trellis serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
+mad serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
 ```
 
 | Flag / Argument | Type | Default | Description |
 |---|---|---|---|
-| `<path>` | path | `.` (current directory) | Root directory of the Trellis project. |
+| `<path>` | path | `.` (current directory) | Root directory of the MarkApiDown project. |
 | `--port` | integer | `8080` | TCP port to listen on. |
 | `--host` | string | `127.0.0.1` | Host to bind to. Use `0.0.0.0` to expose on the local network (a warning is printed). |
 | `--env` | string | `dev` | Environment used when executing endpoints from the preview UI. |
@@ -382,29 +382,29 @@ trellis serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
 The web preview reads the same markdown files as the CLI. No build step is required. The server watches for file changes and refreshes connected browsers automatically.
 
 ```bash
-trellis serve
-trellis serve --port=9000 --env=staging
-trellis serve --mock
-trellis serve /path/to/other-project
+mad serve
+mad serve --port=9000 --env=staging
+mad serve --mock
+mad serve /path/to/other-project
 ```
 
 **Exit codes**: `0` on clean shutdown (Ctrl-C), `3` on startup error.
 
 ---
 
-## trellis doctor
+## mad doctor
 
 Check the project environment for common setup problems.
 
 ```bash
-trellis doctor [--fix]
+mad doctor [--fix]
 ```
 
 | Flag | Type | Description |
 |---|---|---|
 | `--fix` | bool | Automatically apply safe fixes. |
 
-`trellis doctor` checks:
+`mad doctor` checks:
 
 - Whether `api-docs/` exists.
 - Whether `.env.local` is listed in `.gitignore`.
@@ -416,29 +416,29 @@ trellis doctor [--fix]
 `--fix` applies safe fixes automatically: adds `.env.local` to `.gitignore` if missing, and reinstalls stale skills.
 
 <Note>
-Run `trellis doctor` as the first debugging step when `trellis exec`, `trellis validate`, or an AI agent skill behaves unexpectedly.
+Run `mad doctor` as the first debugging step when `mad exec`, `mad validate`, or an AI agent skill behaves unexpectedly.
 </Note>
 
 ```bash
-trellis doctor
-trellis doctor --fix
+mad doctor
+mad doctor --fix
 ```
 
 **Exit codes**: `0` if all checks pass, `1` if any check fails.
 
 ---
 
-## trellis mock
+## mad mock
 
 Start a mock HTTP server that replays recorded expected responses.
 
 ```bash
-trellis mock [<path>] [--port=4001] [--latency=<ms>]
+mad mock [<path>] [--port=4001] [--latency=<ms>]
 ```
 
 | Flag / Argument | Type | Default | Description |
 |---|---|---|---|
-| `<path>` | path | `.` (current directory) | Root directory of the Trellis project. |
+| `<path>` | path | `.` (current directory) | Root directory of the MarkApiDown project. |
 | `--port` | integer | `4001` | TCP port to listen on. |
 | `--latency` | integer | `0` | Simulated response latency in milliseconds. |
 
@@ -446,49 +446,49 @@ The mock server reads `## Expected response` blocks from your endpoint files and
 
 ```bash
 # Start mock server on default port
-trellis mock
+mad mock
 
 # Simulate network latency
-trellis mock --port=4001 --latency=200
+mad mock --port=4001 --latency=200
 ```
 
 ---
 
-## trellis mcp
+## mad mcp
 
-Start a Model Context Protocol server that exposes Trellis tools to AI agents.
+Start a Model Context Protocol server that exposes MarkApiDown tools to AI agents.
 
 ```bash
-trellis mcp
+mad mcp
 ```
 
 No flags. The MCP server exposes the following tools to any MCP-compatible AI agent:
 
 | Tool | Description |
 |---|---|
-| `trellis_exec` | Execute an endpoint spec |
-| `trellis_flow` | Run a pipeline |
-| `trellis_validate` | Validate specs in a file or directory |
-| `trellis_list_specs` | List all endpoint specs with method and path |
-| `trellis_read_spec` | Read the full content of a spec file |
-| `trellis_author` | Create or update a spec file |
+| `mad_exec` | Execute an endpoint spec |
+| `mad_flow` | Run a pipeline |
+| `mad_validate` | Validate specs in a file or directory |
+| `mad_list_specs` | List all endpoint specs with method and path |
+| `mad_read_spec` | Read the full content of a spec file |
+| `mad_author` | Create or update a spec file |
 
 Register with Claude Code:
 
 ```bash
-claude mcp add trellis -- trellis mcp
+claude mcp add mad -- mad mcp
 ```
 
 See [AI agent integration](/docs/guides/ai-agents) for full setup and usage details.
 
 ---
 
-## trellis completion
+## mad completion
 
 Print a shell completion script to stdout.
 
 ```bash
-trellis completion <shell>
+mad completion <shell>
 ```
 
 | Argument | Description |
@@ -498,17 +498,17 @@ trellis completion <shell>
 <CodeGroup>
 
 ```bash Bash
-trellis completion bash >> ~/.bash_completion
+mad completion bash >> ~/.bash_completion
 ```
 
 ```bash Zsh
-trellis completion zsh > ~/.zfunc/_trellis
+mad completion zsh > ~/.zfunc/_mad
 echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
 autoload -Uz compinit && compinit
 ```
 
 ```bash Fish
-trellis completion fish > ~/.config/fish/completions/trellis.fish
+mad completion fish > ~/.config/fish/completions/mad.fish
 ```
 
 </CodeGroup>
@@ -517,18 +517,18 @@ trellis completion fish > ~/.config/fish/completions/trellis.fish
 
 ---
 
-## trellis version
+## mad version
 
-Print the installed version of Trellis and exit.
+Print the installed version of MarkApiDown and exit.
 
 ```bash
-trellis version
+mad version
 ```
 
 No flags.
 
 ```bash
-trellis version
+mad version
 # 1.0.0
 ```
 

@@ -5,8 +5,8 @@ default-env: dev
 ---
 # JSONPlaceholder
 
-Example Trellis project using the free [JSONPlaceholder](https://jsonplaceholder.typicode.com) REST API.
-Run `trellis exec`, `trellis flow`, or `trellis serve` from this directory.
+Example MarkApiDown project using the free [JSONPlaceholder](https://jsonplaceholder.typicode.com) REST API.
+Run `mad exec`, `mad flow`, or `mad serve` from this directory.
 
 ## Defaults
 

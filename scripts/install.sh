@@ -1,21 +1,21 @@
 #!/usr/bin/env sh
 set -eu
 
-REPO="${TRELLIS_REPO:-trellis-md/trellis}"
-BIN_NAME="trellis"
-INSTALL_DIR="${TRELLIS_INSTALL_DIR:-}"
+REPO="${MAD_REPO:-mark-api-down/mad}"
+BIN_NAME="mad"
+INSTALL_DIR="${MAD_INSTALL_DIR:-}"
 VERSION="latest"
 
 usage() {
   cat <<'EOF'
-Install Trellis.
+Install MarkApiDown.
 
 Usage:
   install.sh [--version=<tag>]
 
 Environment:
-  TRELLIS_REPO         GitHub repo, default trellis-md/trellis
-  TRELLIS_INSTALL_DIR  Install directory override
+  MAD_REPO         GitHub repo, default mark-api-down/mad
+  MAD_INSTALL_DIR  Install directory override
 EOF
 }
 
@@ -54,7 +54,7 @@ case "$arch" in
 esac
 
 target="${arch_slug}-${os_slug}"
-archive="trellis-${target}.tar.xz"
+archive="mad-${target}.tar.xz"
 
 if [ "$VERSION" = "latest" ]; then
   base_url="https://github.com/${REPO}/releases/latest/download"
@@ -70,7 +70,7 @@ if [ -z "$INSTALL_DIR" ]; then
   fi
 fi
 
-tmp="${TMPDIR:-/tmp}/trellis-install.$$"
+tmp="${TMPDIR:-/tmp}/mad-install.$$"
 mkdir -p "$tmp"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 

@@ -1,4 +1,4 @@
-//! Execution history   per-spec append-only log stored under `.trellis/history/`.
+//! Execution history   per-spec append-only log stored under `.mad/history/`.
 
 use std::path::{Path, PathBuf};
 
@@ -27,7 +27,7 @@ pub fn history_path(collection_root: &Path, spec_rel: &str) -> PathBuf {
         .trim_end_matches(".md")
         .replace(['/', '\\', ' '], "-");
     collection_root
-        .join(".trellis")
+        .join(".mad")
         .join("history")
         .join(format!("{slug}.json"))
 }
@@ -106,7 +106,7 @@ mod tests {
         let p = history_path(root, "apis/users/create-user.md");
         assert_eq!(
             p,
-            PathBuf::from("/tmp/api-docs/.trellis/history/apis-users-create-user.json")
+            PathBuf::from("/tmp/api-docs/.mad/history/apis-users-create-user.json")
         );
     }
 

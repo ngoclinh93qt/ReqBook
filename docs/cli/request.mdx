@@ -1,40 +1,40 @@
 ---
-title: "trellis request"
+title: "mad request"
 description: "Send an ad-hoc HTTP request from the terminal without creating a spec file first."
 ---
 
 ## Overview
 
-`trellis request` lets you fire off any HTTP request from the terminal no spec file needed. It feels like `curl` but with automatic variable resolution and optional spec saving.
+`mad request` lets you fire off any HTTP request from the terminal no spec file needed. It feels like `curl` but with automatic variable resolution and optional spec saving.
 
 ## Usage
 
 ```bash
-trellis request <METHOD> <URL> [options]
+mad request <METHOD> <URL> [options]
 ```
 
 ## Examples
 
 ```bash
 # Simple GET
-trellis request GET https://api.example.com/users
+mad request GET https://api.example.com/users
 
 # POST with JSON body
-trellis request POST https://api.example.com/users \
+mad request POST https://api.example.com/users \
  -H "Content-Type: application/json" \
  -d '{"name":"Ada Lovelace"}'
 
 # Use variables from env.md
-trellis request GET https://api.example.com/users/{{userId}} --var userId=42
+mad request GET https://api.example.com/users/{{userId}} --var userId=42
 
 # Dry-run (print resolved request, don't send)
-trellis request GET https://api.example.com/users --dry-run
+mad request GET https://api.example.com/users --dry-run
 
 # Save result as a spec file
-trellis request GET https://api.example.com/users --save api-docs/apis/users/get-users.md
+mad request GET https://api.example.com/users --save api-docs/apis/users/get-users.md
 
 # Auto-save to current collection
-trellis request GET https://api.example.com/users --save
+mad request GET https://api.example.com/users --save
 ```
 
 ## Default output
@@ -64,4 +64,4 @@ Add `--verbose` for the full diff view.
 ## Workspace behaviour
 
 - **Inside a git repo**: the collection is at `<repo-root>/api-docs/`. Auto-saved requests go to `<repo-root>/api-docs/apis/scratch/`.
-- **Outside a git repo**: the collection is at `~/.trellis/workspace/default/api-docs/`. Unsaved requests go to `~/.trellis/workspace/scratch/api-docs/`.
+- **Outside a git repo**: the collection is at `~/.mad/workspace/default/api-docs/`. Unsaved requests go to `~/.mad/workspace/scratch/api-docs/`.

@@ -27,7 +27,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
 
     for (path_key, path_item) in &paths {
         let raw_path = path_key.as_str().unwrap_or("/");
-        let trellis_path = convert_path_params(raw_path);
+        let mad_path = convert_path_params(raw_path);
 
         for method_str in HTTP_METHODS {
             let op = &path_item[method_str];
@@ -44,7 +44,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
                 .and_then(|t| t.as_str())
                 .map(resource_slug)
                 .unwrap_or_else(|| {
-                    trellis_path
+                    mad_path
                         .trim_start_matches('/')
                         .split('/')
                         .next()
@@ -56,7 +56,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
             let title_str = op["summary"]
                 .as_str()
                 .map(sentence_case)
-                .unwrap_or_else(|| format!("{} {}", method_upper, trellis_path));
+                .unwrap_or_else(|| format!("{} {}", method_upper, mad_path));
 
             // Description: first line only
             let description = op["description"]
@@ -66,7 +66,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
                 .to_string();
 
             // Request block
-            let request_url = format!("{{{{baseUrl}}}}{trellis_path}");
+            let request_url = format!("{{{{baseUrl}}}}{mad_path}");
             let request = build_request_block(&method_upper, &request_url, op);
 
             // Expected response
@@ -78,7 +78,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
             endpoints.push(ImportedEndpoint {
                 resource,
                 method: method_upper,
-                path: trellis_path.clone(),
+                path: mad_path.clone(),
                 title: title_str,
                 description,
                 request,

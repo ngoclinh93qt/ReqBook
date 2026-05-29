@@ -73,7 +73,7 @@ code { font-family: var(--mono); }
 .topbar { display: flex; align-items: center; gap: 16px; min-height: var(--tnav-h); padding: 0 24px; border-bottom: 1px solid var(--border); background: var(--bg-elev); position: sticky; top: 0; z-index: 30; min-width: 0; }
 .brand { display: flex; align-items: center; gap: 10px; user-select: none; }
 .brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 26px; color: var(--accent); }
-.trellis-mark { width: 30px; height: 24px; display: block; }
+.mad-mark { width: 30px; height: 24px; display: block; }
 .brand-name { font-weight: 600; font-size: 14.5px; }
 .crumbs { display: flex; align-items: center; gap: 8px; color: var(--fg-3); font-size: 13px; min-width: 0; overflow: hidden; }
 .crumbs .sep { color: var(--fg-5); }

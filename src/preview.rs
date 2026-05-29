@@ -1,4 +1,4 @@
-//! Web preview server for the Trellis API spec browser.
+//! Web preview server for the MarkApiDown API spec browser.
 //! Serves a React SPA (embedded via rust-embed) + JSON API endpoints.
 
 use std::{
@@ -1077,7 +1077,7 @@ fn collect_existing_keys(dir: &Path, keys: &mut std::collections::HashSet<(Strin
                 .unwrap_or_default();
             if matches!(
                 name,
-                "README.md" | "trellis.md" | "env.md" | "auth.md" | "variables.md"
+                "README.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
             ) {
                 continue;
             }
@@ -1202,7 +1202,7 @@ fn collect_recursive(
                 .unwrap_or_default();
             if matches!(
                 name,
-                "README.md" | "trellis.md" | "env.md" | "auth.md" | "variables.md"
+                "README.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
             ) {
                 continue;
             }
@@ -1234,7 +1234,7 @@ fn collect_recursive(
 }
 
 fn read_project_name(api_docs: &Path) -> Option<String> {
-    let source = fs::read_to_string(api_docs.join("trellis.md")).ok()?;
+    let source = fs::read_to_string(api_docs.join("mad.md")).ok()?;
     let rest = source.strip_prefix("---\n")?;
     for line in rest.lines() {
         if line == "---" {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const KEY = 'trellis_vars';
+const KEY = 'mad_vars';
 
 function load(): Record<string, string> {
   try {

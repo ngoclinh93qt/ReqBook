@@ -1,6 +1,6 @@
-# Trellis examples
+# MarkApiDown examples
 
-Ready-to-run example projects. Each example is a complete Trellis project with a full
+Ready-to-run example projects. Each example is a complete MarkApiDown project with a full
 `api-docs/` directory, environment config, and at least one pipeline.
 
 ## jsonplaceholder
@@ -18,19 +18,19 @@ REST API. No API key required. Demonstrates:
 cd examples/jsonplaceholder
 
 # Validate all specs
-trellis validate api-docs/
+mad validate api-docs/
 
 # Execute one endpoint (requires network access to jsonplaceholder.typicode.com)
-trellis exec api-docs/apis/posts/get-post-by-id.md
+mad exec api-docs/apis/posts/get-post-by-id.md
 
 # Execute the pipeline
-trellis flow api-docs/pipelines/post-with-author.md
+mad flow api-docs/pipelines/post-with-author.md
 
 # Open the web preview
-trellis serve
+mad serve
 
 # Dry-run without sending
-trellis exec api-docs/apis/posts/create-post.md --dry-run
+mad exec api-docs/apis/posts/create-post.md --dry-run
 ```
 
 ### Endpoints
@@ -49,5 +49,5 @@ Fetches post 1, captures the `userId` from the response, then fetches that
 user's full record. Run with:
 
 ```bash
-trellis flow api-docs/pipelines/post-with-author.md
+mad flow api-docs/pipelines/post-with-author.md
 ```
