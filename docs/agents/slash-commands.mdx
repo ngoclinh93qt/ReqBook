@@ -1,28 +1,22 @@
 ---
 title: "Slash commands"
-description: "Four /trellis-* commands for Claude Code and Codex CLI each one handles a complex, multi-step task that benefits from LLM reasoning rather than a fixed script."
+description: "Two /trellis commands for Claude Code and Codex CLI — each handles a complex, multi-step task that benefits from LLM reasoning rather than a fixed script."
 icon: "terminal"
 ---
 
 ## Design philosophy
 
-Simple terminal operations `trellis init`, `trellis serve`, `trellis validate`, `trellis exec` work best when run directly. They are fast, composable, and don't need an agent in the loop.
+Simple terminal operations — `trellis init`, `trellis serve`, `trellis validate`, `trellis exec` — work best when run directly. They are fast, composable, and don't need an agent in the loop.
 
-Slash commands exist for tasks that are **genuinely complex**: where the right answer depends on understanding your codebase, your domain model, or the relationships between data not just executing a formula.
+Slash commands exist for tasks that are **genuinely complex**: where the right answer depends on understanding your codebase, your domain model, or the relationships between data — not just executing a formula.
 
 ---
 
 ## Available commands
 
 <CardGroup cols={2}>
- <Card title="/trellis-scan" icon="magnifying-glass">
- Discover API routes and create complete specs with real field names, types, and examples.
- </Card>
- <Card title="/trellis-enrich" icon="star">
- Enrich expected contracts or targeted API test instructions in separate modes.
- </Card>
- <Card title="/trellis-flow" icon="diagram-project">
- Build or run a workflow pipeline with data-dependency-aware capture and inject.
+ <Card title="/trellis" icon="magnifying-glass">
+ Create specs, enrich expected responses, or build and run pipelines. Routes automatically based on what you pass.
  </Card>
  <Card title="/trellis-debug" icon="bug">
  Diagnose a failing endpoint or pipeline across validation, execution, and diff.
@@ -31,76 +25,62 @@ Slash commands exist for tasks that are **genuinely complex**: where the right a
 
 ---
 
-## /trellis-scan
+## /trellis
 
-**When to use:** You have API routes that don't have Trellis specs yet, or auto-detection failed for your framework.
+**When to use:** Creating new specs, enriching expected responses and tests, or building and running flow pipelines.
 
-**What makes it intelligent:** The agent doesn't just run `trellis import project` and stop. When automatic discovery falls back to a static scan, the agent reads your source code handler functions, request/response types, DTOs, model classes and uses that understanding to produce specs with real field names and semantically accurate example values. A `user.email` field becomes `"user@example.com"`, not `"string"`.
+The command routes based on your argument:
+
+| Argument | What happens |
+|---|---|
+| _(empty)_, `scan`, or a directory | Scan routes and create missing specs |
+| `enrich`, a `.md` file, or a directory | Enrich expected responses and tests |
+| `flow` or a flow description | Build or run a pipeline |
 
 ```
-/trellis-scan
-/trellis-scan src/routes/
+/trellis
+/trellis src/routes/
+/trellis enrich api-docs/apis/users/post-users.md
+/trellis flow checkout: login, add items, place order, verify
+/trellis api-docs/flows/checkout.md
 ```
 
-**What the agent does:**
+### Scan mode
+
+**What makes it intelligent:** The agent doesn't just run `trellis import project` and stop. When automatic discovery produces stubs, the agent reads your handler source code — request/response types, DTOs, model classes — and produces specs with real field names and semantically accurate example values. A `user.email` field becomes `"user@example.com"`, not `"string"`.
+
+What the agent does:
 1. Tries `trellis import project` first (OpenAPI or running server)
-2. If stubs are produced, reads the handler source to enrich field shapes
-3. If nothing is detected, finds route files and reads the full type definitions
+2. If stubs are produced, reads handler source to enrich field shapes
+3. If nothing is detected, finds route files and reads full type definitions
 4. Creates specs via `trellis_author` MCP tool (validates before writing, never overwrites)
-5. Runs `trellis index`
+5. Runs `trellis validate api-docs/` then `trellis index`
 
----
+### Enrich mode
 
-## /trellis-enrich
+**What makes it intelligent:** The agent uses a bounded evidence ladder — reads the spec, inspects the matching handler and referenced DTO/schema files, optionally executes the live dev endpoint, then stops and asks for an example if the shape is unknown. It never guesses.
 
-**When to use:** You have specs with stub `{}` expected responses, or you want to add meaningful tests beyond the boilerplate.
+What the agent does:
+1. Reads the spec and its route handler
+2. Runs `trellis_exec` with `infer_expected: true` if the server is up — uses the live response
+3. Writes real field values to `## Expected response`
+4. Adds `## Assertions`: at minimum `status` and one `body.<key>: exists`
+5. Adds `## Tests`: happy path + auth failure + one validation error
 
-**What makes it intelligent:** The command is intentionally split into modes so the agent does not burn time and tokens generating everything at once. By default, it enriches expected responses only. It generates tests only when you ask for tests or provide a testing goal.
+### Flow mode
 
-For expected responses, the agent uses a bounded evidence ladder: read the spec, search exact method/path/resource names, inspect the matching handler and directly referenced DTO/schema files, optionally execute the live dev endpoint, then stop and ask for an example if the shape is not defined in code. It writes the success contract to `## Expected response` and, when supported by source evidence, adds a non-executable `## Error responses` example.
+**What makes it intelligent:** Before writing a single line, the agent reasons about data dependencies — which step produces `authToken`? Which downstream steps need it? What should be asserted at each step to make the flow meaningful, not just a sequence of "status 200" checks?
 
-For tests, the agent writes a short `agent-task` block based on your requested behavior. The block includes terminal, web, and LLM/MCP execution paths so it can guide API testing from `trellis exec`, `trellis serve`, or a Trellis MCP tool.
-
-```
-/trellis-enrich expected api-docs/apis/users/post-users.md
-/trellis-enrich tests api-docs/apis/users/post-users.md duplicate email returns 409
-/trellis-enrich expected api-docs/apis/orders/
-```
-
-**What the agent does:**
-1. Chooses `expected`, `tests`, or explicit `all` mode from your arguments
-2. Reads only targeted evidence and stops when request/response shape is unknown
-3. In expected mode: updates `## Request` only when incomplete, writes success `## Expected response`, and adds evidenced `## Error responses`
-4. In tests mode: updates only `## Tests` from the requested behavior
-5. Validates each changed file and reports any skipped cases
-
-<Note>
- `## Tests` is still an agent-readable checklist, not executable code. A natural next feature is a `## Cases` YAML block plus `trellis test <file> --case <name>`, a web Cases tab, and an MCP `trellis_test` tool for LLM agents.
-</Note>
-
----
-
-## /trellis-flow
-
-**When to use:** You need to connect multiple endpoints in sequence, passing values from one response into the next request.
-
-**What makes it intelligent:** Before writing a single line, the agent reasons about data dependencies: which step produces `authToken`? Which downstream steps need it? What should be asserted at each step to make the flow meaningful, not just a sequence of "status 200" checks? The agent also identifies missing specs that the flow would need, rather than silently writing references to files that don't exist.
-
-```
-/trellis-flow checkout: create cart, add items, place order, verify
-/trellis-flow api-docs/flows/onboarding.md
-```
-
-**What the agent does when building:**
-1. Reads all existing specs to understand what data each endpoint returns
-2. Reasons about the capture/inject chain before writing
+What the agent does when building:
+1. Reads existing specs to understand what data each endpoint returns
+2. Maps the capture/inject chain before writing
 3. Identifies missing specs (offers to create them)
 4. Writes the pipeline file with meaningful assertions at each step
 5. Validates with `trellis validate`
 
-**What the agent does when running:**
-- Executes `trellis flow <file> --env=dev`
-- Reports each step's status, captured values, and first failure with diagnosis
+What the agent does when running:
+- Executes `trellis_flow` MCP tool
+- Reports each step's status, captured values (secrets masked), and first failure with diagnosis
 
 ---
 
@@ -108,24 +88,39 @@ For tests, the agent writes a short `agent-task` block based on your requested b
 
 **When to use:** An endpoint is returning an unexpected result, a spec diff is failing, or a pipeline is breaking at a specific step.
 
-**What the agent does:**
-1. Locates the spec (by path, method, or description)
-2. Validates the spec structure
-3. Dry-runs to check what's being sent (baseUrl, auth, path params)
-4. Executes and reports status, diff, and any mismatch
-5. For pipelines: identifies the first failing step and debugs it with the captured inputs from previous steps injected as variables
-
 ```
 /trellis-debug GET /users/:id is returning 404
 /trellis-debug the checkout flow fails at step 3
 /trellis-debug api-docs/apis/orders/post-orders.md
 ```
 
+### Single endpoint
+
+What the agent does:
+1. Locates the spec via `trellis_search` MCP or `rg`
+2. Validates the spec structure
+3. Dry-runs to check what's being sent (baseUrl, auth, path params)
+4. Executes and interprets the result:
+
+| Exit code | Meaning | Next action |
+|---|---|---|
+| `0` | Passed — response matched | No action needed |
+| `2` | Invalid spec | Fix frontmatter or `## Request` http block |
+| `4` | Network error | Check `baseUrl` in `_shared/env.md`, server running |
+| `5` | Secret in spec | Move value to `.env.local` or `TRELLIS_*` |
+| Response mismatch | API changed or regression | Update `## Expected response` or fix the API |
+
+### Pipeline
+
+What the agent does:
+1. Reads all step files — checks order, capture expressions, inject names, referenced specs
+2. Runs the full flow via `trellis_flow` MCP
+3. Identifies the first failing step
+4. Debugs that step in isolation with captured values from prior steps injected as `--var`
+
 ---
 
-## Terminal commands use these directly
-
-These operations don't benefit from agent involvement run them directly in your terminal:
+## Terminal commands — use these directly
 
 | What you want to do | Command |
 |---|---|
@@ -143,8 +138,8 @@ These operations don't benefit from agent involvement run them directly in your 
 
 | Agent | Slash commands |
 |---|---|
-| Claude Code | ✓ (4 commands) |
-| Codex CLI | ✓ (4 commands) |
+| Claude Code | ✓ (2 commands) |
+| Codex CLI | ✓ (2 commands) |
 | Cursor | (use skills) |
 | GitHub Copilot | (use skills) |
 | Antigravity | (use skills) |

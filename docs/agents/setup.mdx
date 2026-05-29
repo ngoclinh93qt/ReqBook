@@ -1,20 +1,20 @@
 ---
 title: "Set up agent support"
-description: "Install skills, slash commands, and the MCP server for Claude Code, Cursor, Copilot, Codex CLI, Antigravity, and OpenCode."
+description: "Install the skill, slash commands, and the MCP server for Claude Code, Cursor, Copilot, Codex CLI, Antigravity, and OpenCode."
 icon: "download"
 ---
 
-Agent support turns a coding agent into an API-capable collaborator that can scan routes, enrich specs, build flows, and debug failures all backed by reviewable markdown files in your repo.
+Agent support turns a coding agent into an API-capable collaborator that can scan routes, enrich specs, build flows, and debug failures — all backed by reviewable markdown files in your repo.
 
 <CardGroup cols={2}>
  <Card title="Skills" icon="book-open">
- Markdown playbooks that teach agents the Trellis spec format, file layout, and how to choose the right approach for each task. All agents get skills.
+ A single markdown playbook that teaches agents the Trellis spec format, file layout, and how to choose the right approach for each task. All agents get the skill.
  </Card>
  <Card title="Slash commands" icon="terminal">
- Four `/trellis-*` commands for Claude Code and Codex CLI: scan, enrich, flow, and debug each one handles a complex task that benefits from LLM reasoning.
+ Two `/trellis` commands for Claude Code and Codex CLI: `/trellis` for creating, enriching, and building flows; `/trellis-debug` for diagnosing failures.
  </Card>
  <Card title="MCP server" icon="plug">
- Three structured tools for Claude Code: exec, flow, and author. Agents get typed results without parsing shell output.
+ Structured tools for Claude Code: exec, flow, author, and more. Agents get typed results without parsing shell output.
  </Card>
  <Card title="Shared markdown source" icon="code-pull-request">
  Every agent change is a markdown file in `api-docs/`. Reviewable, diffable, committable. No hidden state.
@@ -26,14 +26,14 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 ## Install in one command
 
 <Steps>
- <Step title="Install skills and slash commands">
+ <Step title="Install skill and slash commands">
  Run the installer from the root of your project. It auto-detects which agents are present and writes the correct files for each.
 
  ```bash
  trellis skills install
  ```
 
- The command writes skills and (for Claude Code / Codex CLI) slash commands to the directories each agent reads.
+ The command writes the skill and (for Claude Code / Codex CLI) slash commands to the directories each agent reads.
  </Step>
 
  <Step title="Verify">
@@ -44,21 +44,16 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  Example output:
 
  ```
- claude-code detected .claude/skills/trellis-sync.md
- .claude/skills/trellis-debug.md
- .claude/commands/trellis-scan.md
- .claude/commands/trellis-enrich.md
- .claude/commands/trellis-flow.md
- .claude/commands/trellis-debug.md
- cursor detected .cursor/rules/trellis-sync.mdc
- .cursor/rules/trellis-debug.mdc
- copilot detected .github/instructions/trellis-sync.instructions.md
- .github/instructions/trellis-debug.instructions.md
+ claude-code detected .claude/skills/trellis/SKILL.md
+                       .claude/commands/trellis.md
+                       .claude/commands/trellis-debug.md
+ cursor     detected   .cursor/rules/trellis.mdc
+ copilot    detected   .github/instructions/trellis.instructions.md
  ```
  </Step>
 
  <Step title="Register the MCP server (Claude Code only)">
- The MCP server gives Claude Code structured access to spec execution, pipelines, and authoring no terminal output parsing.
+ The MCP server gives Claude Code structured access to spec execution, pipelines, and authoring — no terminal output parsing.
 
  ```bash
  claude mcp add trellis -- trellis mcp
@@ -80,37 +75,37 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 
 ```bash Claude Code
 trellis skills install --agent=claude-code
-# Installs: 2 skills + 4 slash commands
-# Locations: .claude/skills/, .claude/commands/
+# Installs: 1 skill + 2 slash commands
+# Locations: .claude/skills/trellis/, .claude/commands/
 ```
 
 ```bash Codex CLI
 trellis skills install --agent=codex-cli
-# Installs: 2 skills + 4 slash commands
-# Locations: ~/.codex/skills/, ~/.codex/commands/
+# Installs: 1 skill + 2 slash commands
+# Locations: ~/.codex/skills/trellis/, ~/.codex/commands/
 ```
 
 ```bash Cursor
 trellis skills install --agent=cursor
-# Installs: 2 skills as .mdc rules
+# Installs: 1 skill as .mdc rule
 # Location: .cursor/rules/
 ```
 
 ```bash GitHub Copilot
 trellis skills install --agent=copilot
-# Installs: 2 skills as .instructions.md
+# Installs: 1 skill as .instructions.md
 # Location: .github/instructions/
 ```
 
 ```bash Antigravity
 trellis skills install --agent=antigravity
-# Installs: 2 skills
+# Installs: 1 skill
 # Location: .agents/skills/
 ```
 
 ```bash OpenCode
 trellis skills install --agent=opencode
-# Installs: 2 skills
+# Installs: 1 skill
 # Location: .opencode/skills/
 ```
 
@@ -120,12 +115,12 @@ trellis skills install --agent=opencode
 
 | Agent | Skills | Slash commands | MCP |
 |---|---|---|---|
-| Claude Code | 2 skills | 4 commands | ✓ |
-| Codex CLI | 2 skills | 4 commands | |
-| Cursor | 2 skills | | |
-| GitHub Copilot | 2 skills | | |
-| Antigravity | 2 skills | | |
-| OpenCode | 2 skills | | |
+| Claude Code | 1 skill | 2 commands | ✓ |
+| Codex CLI | 1 skill | 2 commands | |
+| Cursor | 1 skill | | |
+| GitHub Copilot | 1 skill | | |
+| Antigravity | 1 skill | | |
+| OpenCode | 1 skill | | |
 
 ---
 

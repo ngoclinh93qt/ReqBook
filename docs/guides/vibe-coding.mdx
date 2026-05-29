@@ -93,10 +93,10 @@ When the skills are installed, the agent should follow this pattern:
 
 | Task | Trellis surface | Expected behavior |
 |---|---|---|
-| Add an endpoint | `trellis-author` skill or `trellis_author` MCP tool | Create `api-docs/apis/<resource>/<method>-<slug>.md`, validate it, regenerate the index. |
-| Run one endpoint | `trellis-exec` skill or `trellis_exec` MCP tool | Resolve env variables, path params, and runtime vars; report status, duration, and diff. |
-| Create a workflow | `trellis-workflow` skill | Save a markdown flow under `api-docs/flows/`. |
-| Run a workflow | `trellis-flow` skill or `trellis_flow` MCP tool | Execute steps, capture values, inject them downstream, and report the first failure. |
+| Add an endpoint | `trellis_author` MCP tool | Create `api-docs/apis/<resource>/<method>-<slug>.md`, validate it, regenerate the index. |
+| Run one endpoint | `trellis_exec` MCP tool | Resolve env variables, path params, and runtime vars; report status, duration, and diff. |
+| Create a workflow | `/trellis flow` command | Save a markdown flow under `api-docs/flows/`. |
+| Run a workflow | `trellis_flow` MCP tool | Execute steps, capture values, inject them downstream, and report the first failure. |
 | Review in browser | `trellis serve` | Use the UI for request tweaks, response inspection, and visual flow editing. |
 
 ---

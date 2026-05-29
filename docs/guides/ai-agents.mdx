@@ -6,19 +6,19 @@ icon: "robot"
 
 # Trellis makes agents API-capable.
 
-Agents are great at writing code but struggle with API work they can't reliably run requests from inside the session, produce API specs that stay in sync with the code, or review results in a structured way.
+Agents are great at writing code but struggle with API work — they can't reliably run requests from inside the session, produce API specs that stay in sync with the code, or review results in a structured way.
 
 Trellis gives agents the building blocks they need: markdown files they can read and write, tools that return structured results, and playbooks that know when to call the CLI and when to use LLM reasoning.
 
 <CardGroup cols={2}>
  <Card title="Skills" icon="book-open" href="/docs/agents/skills">
- Markdown playbooks that teach agents the spec format, file layout, and decision trees installed to the directory each agent reads from automatically.
+ A single markdown playbook that teaches agents the spec format, file layout, and decision trees — installed to the directory each agent reads from automatically.
  </Card>
  <Card title="Slash commands" icon="terminal" href="/docs/agents/slash-commands">
- Four `/trellis-*` commands for the complex, LLM-native tasks: route scanning, spec enrichment, flow building, and debugging.
+ Two `/trellis` commands for the complex, LLM-native tasks: spec creation and enrichment, flow building, and debugging.
  </Card>
  <Card title="MCP server" icon="plug" href="/docs/agents/mcp">
- Eight structured tools for Claude Code exec, flow, author, vars, search, history, session, and exec_batch. Compact output by default.
+ Eight structured tools for Claude Code — exec, flow, author, vars, search, history, session, and exec_batch. Compact output by default.
  </Card>
  <Card title="Shared source" icon="code-pull-request">
  Every agent change is a markdown file in `api-docs/`. Reviewable, diffable, committable. No hidden state.
@@ -34,64 +34,66 @@ The key design decision: not every operation needs an agent. Simple, determinist
 | Operation | Where | Why |
 |---|---|---|
 | Init, serve, validate, exec, mock | Terminal | Fast, composable, no LLM needed |
-| Scan routes and create specs | `/trellis-scan` | Needs to read source types and infer realistic field values |
-| Enrich expected responses and tests | `/trellis-enrich` | Needs to understand field semantics, volatile vs stable values, domain edge cases |
-| Build a workflow pipeline | `/trellis-flow` | Needs to reason about data dependencies between steps |
+| Scan routes and create specs | `/trellis` | Needs to read source types and infer realistic field values |
+| Enrich expected responses and tests | `/trellis enrich` | Needs to understand field semantics, volatile vs stable values, domain edge cases |
+| Build a workflow pipeline | `/trellis flow` | Needs to reason about data dependencies between steps |
 | Debug a failing endpoint or flow | `/trellis-debug` | Multi-step diagnosis with contextual interpretation |
-| Execute a spec (structured result) | `trellis_exec` MCP | Returns compact JSON pass `verbose: true` for full payloads |
+| Execute a spec (structured result) | `trellis_exec` MCP | Returns compact JSON — pass `verbose: true` for full payloads |
 | Dry-run (resolve vars, don't send) | `trellis_exec` + `dry_run: true` | Catches missing variables before hitting the network |
 | Check variable readiness | `trellis_vars` MCP | Shows what's resolved and what's missing before exec |
-| Search specs by method/tag/path | `trellis_search` MCP | Compact index no file reading required |
+| Search specs by method/tag/path | `trellis_search` MCP | Compact index — no file reading required |
 | Run a pipeline (structured result) | `trellis_flow` MCP | Returns per-step state for programmatic debugging |
 | Author a spec (with write guard) | `trellis_author` MCP | Validates before writing, refuses silent overwrites |
 | Check execution trend | `trellis_history` MCP | Stable/improving/regressing over recent runs |
 | Set session defaults | `trellis_session` MCP | Set env + vars once; all exec/flow calls inherit |
-| Run multiple specs | `trellis_exec_batch` MCP | Summary table not N full JSON objects |
+| Run multiple specs | `trellis_exec_batch` MCP | Summary table — not N full JSON objects |
 
 ---
 
-## Skills all agents
+## Skills — all agents
 
 Skills are the "always-on" layer: installed to each agent's config directory, they activate automatically when API-related topics come up in the conversation. No explicit command needed.
 
-Two skills are available:
+One skill covers the full workflow:
 
-- **trellis-sync** Decision tree for creating and maintaining `api-docs/`. Covers first-time init, route scanning, spec enrichment, and flow creation.
-- **trellis-debug** Diagnose a failing endpoint or pipeline. Covers single-endpoint debugging, pipeline tracing, and spec validation.
+- **trellis** — Project layout, endpoint spec format, Assertions operators, pipeline capture patterns, MCP tool reference, and routing rules for when to use each slash command.
 
-Skills are installed via `trellis skills install` to agent-specific locations (`.claude/skills/`, `.cursor/rules/`, `.github/instructions/`, etc.).
+Installed via `trellis skills install` to agent-specific locations (`.claude/skills/`, `.cursor/rules/`, `.github/instructions/`, etc.).
 
 ---
 
-## Slash commands Claude Code and Codex CLI
+## Slash commands — Claude Code and Codex CLI
 
-Four commands covering the tasks where LLM reasoning produces better results than a fixed script:
+Two commands covering the tasks where LLM reasoning produces better results than a fixed script:
 
 | Command | What it does |
 |---|---|
-| `/trellis-scan` | Reads your source code to produce specs with real field names and realistic examples not stubs |
-| `/trellis-enrich` | Executes real endpoints or reads source types to fill `## Expected response` and write meaningful tests |
-| `/trellis-flow` | Reasons about data dependencies to build a pipeline that actually captures and injects the right values |
+| `/trellis` | Creates specs, enriches expected responses, and builds/runs pipelines — routes based on your argument |
 | `/trellis-debug` | Diagnoses failing endpoints and pipelines with contextual interpretation of each error |
 
 ---
 
-## MCP server Claude Code
+## MCP server — Claude Code
 
-Three tools that return structured JSON for the agent to act on programmatically:
+Eight tools that return structured JSON for the agent to act on programmatically:
 
 | Tool | When to use |
 |---|---|
 | `trellis_exec` | Execute a spec and get a structured result with diff |
 | `trellis_flow` | Run a pipeline and get per-step state |
 | `trellis_author` | Write a spec with validation guard and overwrite protection |
+| `trellis_vars` | Check variable resolution before exec |
+| `trellis_search` | Find specs by method, path, or tag |
+| `trellis_history` | Check execution trend over recent runs |
+| `trellis_session` | Set env and vars once for all subsequent calls |
+| `trellis_exec_batch` | Run multiple specs and get a summary table |
 
 ---
 
 ## Recommended Claude Code setup
 
 <Steps>
- <Step title="Install skills and slash commands">
+ <Step title="Install skill and slash commands">
  ```bash
  trellis skills install --agent=claude-code
  ```
@@ -106,12 +108,12 @@ Three tools that return structured JSON for the agent to act on programmatically
  trellis serve
  ```
 
- Keep the preview open while the agent edits specs review and run changed files immediately in the browser.
+ Keep the preview open while the agent edits specs — review and run changed files immediately in the browser.
  </Step>
 </Steps>
 
 With all three active:
-- The agent knows Trellis conventions and makes good decisions without prompting (skills)
+- The agent knows Trellis conventions and makes good decisions without prompting (skill)
 - You can trigger complex workflows precisely without writing long prompts (slash commands)
 - The agent gets structured results without parsing terminal output (MCP)
 
@@ -121,8 +123,8 @@ With all three active:
 
 | Agent | Skills | Slash commands | MCP |
 |---|---|---|---|
-| Claude Code | ✓ | ✓ (4 commands) | ✓ |
-| Codex CLI | ✓ | ✓ (4 commands) | |
+| Claude Code | ✓ | ✓ (2 commands) | ✓ |
+| Codex CLI | ✓ | ✓ (2 commands) | |
 | Cursor | ✓ | | |
 | GitHub Copilot | ✓ | | |
 | Antigravity | ✓ | | |
@@ -134,12 +136,12 @@ With all three active:
 
 <CardGroup cols={3}>
  <Card title="Set up agent support" icon="download" href="/docs/agents/setup">
- Install skills, slash commands, and MCP in one command.
+ Install the skill, slash commands, and MCP in one command.
  </Card>
  <Card title="Slash commands reference" icon="terminal" href="/docs/agents/slash-commands">
- Full details on scan, enrich, flow, and debug.
+ Full details on /trellis and /trellis-debug.
  </Card>
  <Card title="MCP server reference" icon="plug" href="/docs/agents/mcp">
- All 3 tools with input/output schemas and examples.
+ All 8 tools with input/output schemas and examples.
  </Card>
 </CardGroup>

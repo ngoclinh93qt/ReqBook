@@ -1,184 +1,94 @@
 ---
 title: "Skills reference"
-description: "Two SKILL.md playbooks that teach agents the Trellis spec format, file layout, and when to use each command."
+description: "A single SKILL.md playbook installed for every supported agent — teaches the Trellis spec format, file layout, MCP tools, and when to use each command."
 icon: "book-open"
 ---
 
-Skills are markdown playbooks embedded in the Trellis binary. When installed, agents read them from their config directories and apply them automatically when a user prompt matches a known phrase. You do not need to mention Trellis explicitly the skills fire based on intent.
+Skills are markdown playbooks embedded in the Trellis binary. When installed, agents read them from their config directories and apply them automatically when a user prompt matches a known intent — you do not need to mention Trellis explicitly.
 
-<CardGroup cols={2}>
- <Card title="trellis-sync" icon="arrows-rotate">
- Teaches agents how to set up a new Trellis project, import all routes, and enrich partial specs with real request and response shapes from handler source code.
- </Card>
- <Card title="trellis-debug" icon="bug">
- Teaches agents how to diagnose a failing endpoint or pipeline using a structured decision tree: validate, dry-run, execute, and diff.
- </Card>
-</CardGroup>
+<Card title="trellis" icon="book-open">
+Covers the full Trellis workflow: project layout, endpoint spec format, Assertions operators, pipeline capture patterns, MCP tool reference, and routing rules for when to use each slash command.
+</Card>
 
 ---
 
-## trellis-sync skill
+## Install
 
-The sync skill handles everything from first-time project setup to keeping specs current as routes change. It covers init, import, enrichment, and validation in a single guided sequence.
+```bash
+trellis skills install
+```
 
-**Trigger phrases**
+This writes the skill to every supported agent's config directory. To target one agent:
 
-The agent activates this skill when it sees phrases like:
+```bash
+trellis skills install --agent=cursor
+trellis skills install --agent=copilot
+trellis skills install --agent=claude-code
+```
 
-- "sync trellis"
-- "set up trellis"
-- "document my routes"
-- "import this project"
-- "enrich my specs"
-- "add missing API specs"
-- "scan this project for routes"
+---
 
-<Steps>
- <Step title="Init">
- If `api-docs/` does not exist, the agent detects the project name and base URL from the codebase, then runs:
+## What the skill teaches
 
- ```bash
- trellis init --name=<project> --dev-url=<url> --yes
- ```
+### Project layout
 
- This creates `api-docs/`, an example endpoint file, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
- </Step>
+```
+api-docs/
+├── trellis.md              # project config (name, default-env, timeouts)
+├── _shared/env.md          # base URLs and variables per environment
+├── apis/<resource>/<method>-<slug>.md   # one file per endpoint
+└── flows/<name>.md         # multi-step pipelines
+```
 
- <Step title="Import">
- The agent runs the project importer and reads the output to choose the right strategy:
+### Endpoint format
 
- ```bash
- trellis import project
- ```
+Required frontmatter: `resource`, `protocol: http`, `method`, `path` (`:param` for path params), `version: 1`.
 
- | Import result | Strategy |
- |---|---|
- | OpenAPI spec found | Full type extraction skip to validation |
- | No OpenAPI, routes found | Static scan → stub files → enrich in Step 3 |
- | No routes found | Manual scan with `rg` to locate route definitions |
+Sections in order: `## Request` → `## Expected response` → `## Error responses` (optional) → `## Assertions` (optional) → `## Tests` (optional) → `## Notes` (optional).
 
- For static scans, the agent writes stub specs with placeholder request/response blocks, then enriches them in the next step.
- </Step>
+### Assertions
 
- <Step title="Enrich">
- For each stub spec, the agent enriches expected contracts first. It does not generate tests unless you explicitly ask for tests or provide a scenario.
+Structured rules that run after each execution:
 
- The agent looks for:
- - FastAPI `response_model=` and `responses={...}` annotations
- - NestJS `@Body() dto: CreateDto` declarations reads the DTO class
- - Spring Boot `@RequestBody CreateRequest` annotations reads the class fields
- - Express Zod/Joi schemas defined near the route handler
- - Gin `c.ShouldBindJSON(&req)` bindings reads the struct JSON tags
-
- The extracted fields are written into the `## Request` body and `## Expected response` block of each spec file. If error behavior is defined in the source, the agent can also add a reference-only `## Error responses` section. If the source does not define the shape, the agent stops and asks for an example instead of guessing.
-
- <Note>
- The enrich step is what populates `## Expected response` blocks with real field names. This is the same data that `trellis mock` uses when serving mock responses. Specs that skip enrichment will have empty or partial mock responses.
- </Note>
- </Step>
-
- <Step title="Validate">
- After all specs are written or updated, the agent validates the full spec tree:
-
- ```bash
- trellis validate api-docs/
- ```
-
- Any structural errors, unresolved variables, or secret patterns are reported with file path and line number before the agent considers the task complete.
- </Step>
-</Steps>
-
-### Framework patterns the skill knows
-
-| Framework | Where the agent looks |
+| Operator | Example |
 |---|---|
-| FastAPI | `response_model=`, `responses={404: ...}` on route decorators |
-| NestJS | `@Body() dto: CreateDto` reads the DTO class definition |
-| Spring Boot | `@RequestBody CreateRequest` reads class fields and JSON annotations |
-| Express | Zod/Joi schema defined near the route handler |
-| Gin | `c.ShouldBindJSON(&req)` reads struct JSON tags |
+| _(equals)_ | `status: 200` · `body.name: Ada Lovelace` |
+| `exists` | `body.id: exists` |
+| `in [...]` | `body.role: in [admin, user]` |
+| `contains` | `headers.content-type: contains json` |
+| `matches` | `body.slug: matches ^[a-z]+$` |
+
+### Pipeline capture patterns
+
+| Pattern | When to use |
+|---|---|
+| `response.body.<field>` | Top-level JSON field |
+| `response.body.<a>.<b>` | Nested JSON field |
+| `response.body[<n>].<field>` | Field from nth array item |
+| `response.headers.<name>` | Response header value |
+
+### Routing table
+
+The skill routes the agent to the right tool or command based on the situation:
+
+| Situation | Action |
+|---|---|
+| Create or update specs | `/trellis` |
+| Debug a failing endpoint or pipeline | `/trellis-debug` |
+| Execute a spec | `trellis_exec` MCP tool |
+| Run a pipeline | `trellis_flow` MCP tool |
 
 ---
 
-## trellis-debug skill
+## Supported agents
 
-The debug skill teaches agents to diagnose API failures systematically. It covers single endpoint failures, pipeline step failures, and spec validation errors.
+| Agent | Skill format | Path |
+|---|---|---|
+| Claude Code | `SKILL.md` | `.claude/skills/trellis/SKILL.md` |
+| Cursor | `.mdc` | `.cursor/rules/trellis.mdc` |
+| GitHub Copilot | `.instructions.md` | `.github/instructions/trellis.instructions.md` |
+| Codex CLI | `SKILL.md` | `.codex/skills/trellis/SKILL.md` |
+| Antigravity | `SKILL.md` | `.antigravity/skills/trellis/SKILL.md` |
+| OpenCode | `SKILL.md` | `.opencode/skills/trellis/SKILL.md` |
 
-**Trigger phrases**
-
-The agent activates this skill when it sees phrases like:
-
-- "test this endpoint"
-- "why is GET /users returning 404"
-- "debug the flow"
-- "response doesn't match"
-- "this endpoint is failing"
-- "pipeline step is broken"
-
-**Decision tree**
-
-```
-Single endpoint failure? → exec path (Steps 1–5)
-Pipeline step failure? → flow trace path
-Spec won't validate? → validate path (Step 3)
-```
-
-### Single endpoint debug
-
-<Steps>
- <Step title="Locate the spec">
- Use `trellis_list_specs` (MCP) or `rg` to find the correct spec file by method + path.
- </Step>
-
- <Step title="Validate before running">
- ```bash
- trellis validate api-docs/apis/<resource>/<method>-<slug>.md
- ```
-
- A spec that fails validation will always fail execution. Fix structural issues first.
- </Step>
-
- <Step title="Dry-run to inspect the resolved request">
- ```bash
- trellis exec <spec> --dry-run
- ```
-
- Inspect the resolved URL, headers, and body without sending a network request. Catches variable resolution failures and path param mismatches.
- </Step>
-
- <Step title="Execute with vars">
- ```bash
- trellis exec <spec> --env=dev --var id=usr_123
- ```
-
- Run the live request and capture the full response.
- </Step>
-
- <Step title="Interpret the result">
- Read the exit code and diff output to determine the failure category:
-
- | Exit code | Meaning | Next action |
- |---|---|---|
- | `0` | Passed response matched the spec | No action needed |
- | `1` | Response mismatch request succeeded but diff failed | Compare actual vs expected; update spec or report API regression |
- | `2` | Invalid spec frontmatter error, unresolved variable, env mismatch | Fix the spec; re-run validate |
- | `3` | Engine error request could not be built | Check `--verbose` output for internal failure detail |
- | `4` | Network error DNS, connection refused, or timeout | Check service health, VPN, or `BASE_URL` value |
- | `5` | Secret detected in spec file | Move the value to `.env.local` or a `TRELLIS_*` env variable |
- </Step>
-</Steps>
-
-### Pipeline debug
-
-When a flow pipeline fails, the agent uses a step-by-step trace approach:
-
-1. Locate the pipeline file under `api-docs/flows/`
-2. Run the full flow: `trellis flow <pipeline> --env=dev`
-3. Read the per-step output to identify the first failing step
-4. Extract the captured variables from previous steps
-5. Debug the failing step in isolation with those captured values injected via `--var`
-
-**Operating rules**
-
-- The agent never prints raw secret tokens in output, even for debugging.
-- The agent confirms before executing against a production environment.
+All agents receive the same skill content — only the file format differs.
