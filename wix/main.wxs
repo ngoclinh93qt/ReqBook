@@ -173,7 +173,7 @@
         <!--<Icon Id='ProductICO' SourceFile='wix\Product.ico'/>-->
         <!--<Property Id='ARPPRODUCTICON' Value='ProductICO' />-->
 
-        <Property Id='ARPHELPLINK' Value='https://markApiDown.dev'/>
+        <Property Id='ARPHELPLINK' Value='https://markapidown.net'/>
         
         <UI>
             <UIRef Id='WixUI_FeatureTree'/>

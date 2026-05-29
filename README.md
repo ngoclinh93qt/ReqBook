@@ -92,7 +92,7 @@ mad import project .
 cargo install mark-api-down
 
 # Shell installer (macOS / Linux)
-curl -fsSL https://markApiDown.dev/install.sh | sh
+curl -fsSL https://markapidown.net/install.sh | sh
 
 # npm wrapper
 npm install -g mark-api-down
@@ -120,9 +120,9 @@ mad doctor
 
 ## Documentation
 
-- [Getting started](https://markApiDown.dev/docs/quickstart)
-- [CLI reference](https://markApiDown.dev/docs/cli/overview)
-- [Configuration reference](https://markApiDown.dev/docs/reference/config)
+- [Getting started](https://markapidown.net/docs/quickstart)
+- [CLI reference](https://markapidown.net/docs/cli/overview)
+- [Configuration reference](https://markapidown.net/docs/reference/config)
 - [Spec convention](docs/spec/convention.md)
 - [Benchmarks](BENCHMARKS.md)
 - [Contributing](CONTRIBUTING.md)

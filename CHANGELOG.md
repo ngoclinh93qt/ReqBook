@@ -47,7 +47,7 @@ Initial release of MarkApiDown — markdown-native API specs with execution, pip
 ### Distribution
 
 - `cargo install mark-api-down`
-- Shell installer: `curl -fsSL https://markApiDown.dev/install.sh | sh`
+- Shell installer: `curl -fsSL https://markapidown.net/install.sh | sh`
 - PowerShell installer for Windows
 - npm: `npm install -g mark-api-down`
 - Homebrew tap: `brew install mark-api-down/tap/mad`

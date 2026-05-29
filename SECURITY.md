@@ -11,7 +11,7 @@ Please do not open public issues for vulnerabilities.
 Report security issues by emailing:
 
 ```text
-security@markApiDown.dev
+security@markapidown.net
 ```
 
 Include:

@@ -29,7 +29,7 @@ Examples of unacceptable behavior:
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to:
 
 ```text
-security@markApiDown.dev
+security@markapidown.net
 ```
 
 Maintainers are responsible for clarifying and enforcing standards of acceptable behavior and may remove, edit, or reject comments, commits, code, issues, and other contributions that are not aligned with this Code of Conduct.

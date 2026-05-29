@@ -20,7 +20,7 @@ See the [Exit codes reference](/docs/reference/exit-codes) for a full list of co
 
  ```yaml
  - name: Install MarkApiDown
- run: curl -fsSL https://markApiDown.dev/install.sh | sh
+ run: curl -fsSL https://markapidown.net/install.sh | sh
  ```
  </Step>
  <Step title="Validate specs">
@@ -75,7 +75,7 @@ jobs:
  - uses: actions/checkout@v4
 
  - name: Install MarkApiDown
- run: curl -fsSL https://markApiDown.dev/install.sh | sh
+ run: curl -fsSL https://markapidown.net/install.sh | sh
 
  - name: Validate specs
  run: mad validate api-docs/
@@ -178,7 +178,7 @@ stages:
 validate-specs:
  stage: validate
  script:
- - curl -fsSL https://markApiDown.dev/install.sh | sh
+ - curl -fsSL https://markapidown.net/install.sh | sh
  - mad validate api-docs/
 
 api-tests:
@@ -202,7 +202,7 @@ For reproducible CI builds, pin the MarkApiDown version explicitly rather than a
 
 ```bash
 # Install a specific version
-curl -fsSL https://markApiDown.dev/install.sh | sh -s -- --version=1.2.0
+curl -fsSL https://markapidown.net/install.sh | sh -s -- --version=1.2.0
 ```
 
 Alternatively, check the binary into your repository under `bin/mad` and reference it directly. The binary is statically linked and has no runtime dependencies.
