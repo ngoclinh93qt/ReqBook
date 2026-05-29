@@ -120,25 +120,13 @@ trellis doctor
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md)
-- [CLI reference](docs/cli.md)
-- [Configuration reference](docs/configuration.md)
+- [Getting started](https://trellis.dev/docs/quickstart)
+- [CLI reference](https://trellis.dev/docs/cli/overview)
+- [Configuration reference](https://trellis.dev/docs/reference/config)
 - [Spec convention](docs/spec/convention.md)
-- [Migration guide](docs/guides/migration.md)
 - [Benchmarks](BENCHMARKS.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
-
-## Release status
-
-Trellis is preparing its first public release. The recommended first public tag is `v0.1.0` or `v1.0.0-rc1`, followed by a short dogfood period before a stable `v1.0.0`.
-
-Before cutting a release:
-
-```bash
-make release-check
-cargo dist build
-```
 
 ## License
 

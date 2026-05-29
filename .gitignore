@@ -1,8 +1,12 @@
 /target/
 /.env.local
 *.profraw
+*.DS_Store
 /web/node_modules/
+# web/dist is committed intentionally — rust-embed bundles it into the binary at build time
 /web/dist/
 !/web/dist/
 !/web/dist/**
-./plan.md
+plan.md
+marketing-research.md
+research.md

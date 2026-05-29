@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0
+## 0.1.0
 
 Initial release of Trellis — markdown-native API specs with execution, pipelines, and cross-agent workflows.
 
