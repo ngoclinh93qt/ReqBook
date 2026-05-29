@@ -331,7 +331,7 @@ fn tools_list_result() -> Value {
             },
             {
                 "name": "trellis_author",
-                "description": "Create a new Trellis endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.",
+                "description": "Create a new Trellis endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.\n\nRequired frontmatter fields: resource, protocol (http), method (GET/POST/PUT/PATCH/DELETE), path (/res/:param), version (1).\nRequired sections in order: ## Request (```http block), ## Expected response (```http block).\nOptional sections: ## Error responses (reference only, not executed), ## Assertions (structured rules), ## Tests (```agent-task block), ## Notes.\nVariables use {{name}} syntax in http blocks. Path params use :param in the path field and URL.\nSee api-docs/_shared/env.md for available environments and variable names.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {

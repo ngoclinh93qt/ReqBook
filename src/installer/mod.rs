@@ -8,8 +8,7 @@ use std::{
 use serde::Deserialize;
 use thiserror::Error;
 
-const SYNC: &str = include_str!("../../skills/trellis-sync/SKILL.md");
-const DEBUG: &str = include_str!("../../skills/trellis-debug/SKILL.md");
+const TRELLIS: &str = include_str!("../../skills/trellis/SKILL.md");
 
 // ─── Slash-command definitions ────────────────────────────────────────────────
 
@@ -23,16 +22,8 @@ struct CommandDef {
 /// All Trellis slash commands, in order.
 const COMMANDS: &[CommandDef] = &[
     CommandDef {
-        slug: "trellis-scan",
-        content: include_str!("../../.claude/commands/trellis-scan.md"),
-    },
-    CommandDef {
-        slug: "trellis-enrich",
-        content: include_str!("../../.claude/commands/trellis-enrich.md"),
-    },
-    CommandDef {
-        slug: "trellis-flow",
-        content: include_str!("../../.claude/commands/trellis-flow.md"),
+        slug: "trellis",
+        content: include_str!("../../.claude/commands/trellis.md"),
     },
     CommandDef {
         slug: "trellis-debug",
@@ -142,13 +133,13 @@ pub enum InstallError {
         source: serde_yaml::Error,
     },
     /// Unknown skill name.
-    #[error("unknown skill \"{name}\". Available skills: trellis-sync, trellis-debug")]
+    #[error("unknown skill \"{name}\". Available skills: trellis")]
     UnknownSkill {
         /// Name provided by the user.
         name: String,
     },
     /// Unknown slash command slug.
-    #[error("unknown command \"{name}\". Available commands: trellis-scan, trellis-enrich, trellis-flow, trellis-debug")]
+    #[error("unknown command \"{name}\". Available commands: trellis, trellis-debug")]
     UnknownCommand {
         /// Slug provided by the user.
         name: String,
@@ -389,7 +380,7 @@ fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, Instal
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
-    [SYNC, DEBUG]
+    [TRELLIS]
         .into_iter()
         .map(parse_skill)
         .collect()
@@ -492,24 +483,16 @@ mod tests {
         fs::create_dir(dir.path().join(".github")).unwrap();
         let mut installed = install(dir.path(), Some("cursor")).unwrap();
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
-        assert_eq!(installed.len(), 4); // 2 skills each
+        assert_eq!(installed.len(), 2); // 1 skill each
         let cursor =
-            fs::read_to_string(dir.path().join(".cursor/rules/trellis-sync.mdc")).unwrap();
+            fs::read_to_string(dir.path().join(".cursor/rules/trellis.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
-        assert!(dir
-            .path()
-            .join(".cursor/rules/trellis-debug.mdc")
-            .exists());
         let copilot = fs::read_to_string(
             dir.path()
-                .join(".github/instructions/trellis-sync.instructions.md"),
+                .join(".github/instructions/trellis.instructions.md"),
         )
         .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
-        assert!(dir
-            .path()
-            .join(".github/instructions/trellis-debug.instructions.md")
-            .exists());
     }
 
     #[test]
@@ -518,18 +501,18 @@ mod tests {
         fs::create_dir(dir.path().join(".claude")).unwrap();
         let installed = install(dir.path(), Some("claude-code")).unwrap();
 
-        // 2 skills + 4 commands = 6
-        assert_eq!(installed.len(), 6);
+        // 1 skill + 2 commands = 3
+        assert_eq!(installed.len(), 3);
 
-        for slug in &["trellis-scan", "trellis-enrich", "trellis-flow", "trellis-debug"] {
+        for slug in &["trellis", "trellis-debug"] {
             let path = dir.path().join(format!(".claude/commands/{slug}.md"));
             assert!(path.exists(), "{slug} command not created");
             let content = fs::read_to_string(&path).unwrap();
             assert!(content.contains("description:"), "{slug}: missing description");
         }
 
-        let sync_skill = dir.path().join(".claude/skills/trellis-sync/SKILL.md");
-        assert!(sync_skill.exists(), "trellis-sync skill not created");
+        let skill = dir.path().join(".claude/skills/trellis/SKILL.md");
+        assert!(skill.exists(), "trellis skill not created");
     }
 
     #[test]
@@ -537,7 +520,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
         let installed = install_skills(dir.path(), Some("claude-code")).unwrap();
-        assert_eq!(installed.len(), 2); // only skills
+        assert_eq!(installed.len(), 1); // only skills
         assert!(!dir.path().join(".claude/commands").exists());
     }
 
@@ -554,10 +537,10 @@ mod tests {
     fn install_single_command_by_slug() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
-        let installed = install_command(dir.path(), Some("claude-code"), "trellis-scan").unwrap();
+        let installed = install_command(dir.path(), Some("claude-code"), "trellis").unwrap();
         assert_eq!(installed.len(), 1);
-        assert!(dir.path().join(".claude/commands/trellis-scan.md").exists());
-        assert!(!dir.path().join(".claude/commands/trellis-enrich.md").exists());
+        assert!(dir.path().join(".claude/commands/trellis.md").exists());
+        assert!(!dir.path().join(".claude/commands/trellis-debug.md").exists());
     }
 
     #[test]
@@ -574,11 +557,11 @@ mod tests {
         fs::create_dir(dir.path().join(".claude")).unwrap();
         install(dir.path(), Some("claude-code")).unwrap();
 
-        let scan_cmd = dir.path().join(".claude/commands/trellis-scan.md");
-        assert!(scan_cmd.exists());
+        let cmd = dir.path().join(".claude/commands/trellis.md");
+        assert!(cmd.exists());
 
         uninstall(dir.path(), Some("claude-code")).unwrap();
-        assert!(!scan_cmd.exists(), "command file should be removed");
+        assert!(!cmd.exists(), "command file should be removed");
     }
 
     #[test]
@@ -586,8 +569,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".cursor")).unwrap();
         let installed = install(dir.path(), Some("cursor")).unwrap();
-        // Only 2 skills, no commands
-        assert_eq!(installed.len(), 2);
+        // Only 1 skill, no commands
+        assert_eq!(installed.len(), 1);
         assert!(!dir.path().join(".cursor/commands").exists());
     }
 

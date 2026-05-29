@@ -191,8 +191,9 @@ Endpoint body sections must appear in this order:
 3. `## Request` with exactly one `http` code block
 4. `## Expected response` with exactly one `http` code block
 5. `## Error responses` with one or more `http` code blocks, optional reference examples
-6. `## Tests` with exactly one `agent-task` code block, optional but encouraged
-7. `## Notes`, optional
+6. `## Assertions` with structured assertion rules, optional
+7. `## Tests` with exactly one `agent-task` code block, optional but encouraged
+8. `## Notes`, optional
 
 Example:
 
@@ -314,6 +315,42 @@ Content-Type: application/json
 ```
 
 Trellis v1.0.0 does not execute `## Error responses`; only `## Expected response` is compared during `trellis exec`. Error responses are reference examples for humans, web source view, and AI agents.
+
+### Assertions block
+
+The optional `## Assertions` section contains structured rules evaluated after each execution. Results appear in CLI output and `trellis_exec` MCP responses as `assertion_results`.
+
+Each rule is a list item in the form `- <path>: <op> [value]`:
+
+```markdown
+## Assertions
+- status: 201
+- body.id: exists
+- body.email: equals "ada@example.com"
+- body.role: in [admin, user]
+- headers.content-type: contains application/json
+- body.slug: matches ^[a-z-]+$
+```
+
+Supported operators:
+
+| Operator | Example | Description |
+| --- | --- | --- |
+| `exists` | `body.id: exists` | Field is present and non-null. No value operand. |
+| `equals` | `status: 201` or `body.name: equals "Ada"` | Exact match. Bare value (no keyword) also means equals. |
+| `contains` | `headers.content-type: contains application/json` | Substring match. |
+| `in` | `body.role: in [admin, user]` | Value is one of a comma-separated list in brackets. |
+| `matches` | `body.slug: matches ^[a-z-]+$` | Regex match. |
+
+Path prefixes:
+
+| Prefix | Example | What it checks |
+| --- | --- | --- |
+| `status` | `status: 200` | HTTP status code (numeric) |
+| `body.<field>` | `body.id: exists` | JSON response body field, dot-separated |
+| `headers.<name>` | `headers.content-type: contains json` | Response header, lowercase name |
+
+A failing assertion is reported but does not change the exit code in v1.0.0. Use structured assertions for machine-readable checks and `## Tests` for agent-executed validation.
 
 ### Tests block
 

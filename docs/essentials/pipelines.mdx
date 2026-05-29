@@ -71,9 +71,21 @@ Steps are a numbered ordered list under `## Steps`. Each item names the step and
  - Capture: `response.body.id` as `userId`
  - Capture: `response.body.token` as `authToken`
  - Capture: `response.headers.x-request-id` as `requestId`
+ - Capture: `response.body[0].id` as `firstItemId`
+ - Capture: `response.body.items[2].sku` as `thirdSku`
  ```
 
- Use JSONPath-style dot notation for JSON responses (`response.body.<field>`). Captured values have the highest variable priority and override all other sources for all later steps in the pipeline.
+ Supported capture expression patterns:
+
+ | Pattern | Example | When to use |
+ |---|---|---|
+ | `response.body.<field>` | `response.body.id` | Simple top-level JSON field |
+ | `response.body.<a>.<b>` | `response.body.data.token` | Nested JSON field |
+ | `response.body[<n>].<field>` | `response.body[0].id` | Field from the nth item in a JSON array |
+ | `response.body.<a>[<n>].<field>` | `response.body.items[0].sku` | Nested array item field |
+ | `response.headers.<name>` | `response.headers.Location` | Response header value |
+
+ Use JSONPath-style dot notation for JSON responses. Captured values have the highest variable priority and override all other sources for all later steps in the pipeline.
  </Tab>
  <Tab title="Inject">
  Declare which captured variables from previous steps this step requires.

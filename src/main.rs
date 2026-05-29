@@ -1040,8 +1040,7 @@ fn check_skills_freshness(fix: bool) {
 
     // Skill slugs embedded in this binary (must stay in sync with installer).
     let embedded: &[(&str, &str)] = &[
-        ("trellis-sync",  include_str!("../skills/trellis-sync/SKILL.md")),
-        ("trellis-debug", include_str!("../skills/trellis-debug/SKILL.md")),
+        ("trellis", include_str!("../skills/trellis/SKILL.md")),
     ];
 
     let mut stale: Vec<&str> = Vec::new();
