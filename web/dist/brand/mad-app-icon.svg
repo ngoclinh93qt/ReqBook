@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="MarkApiDown app icon">
+  <rect width="64" height="64" rx="14" fill="#0c0d10"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" stroke="url(#g)" stroke-opacity=".55" stroke-width="2"/>
+  <g stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 18 L14 18 L14 46 L23 46"/>
+    <path d="M41 18 L50 18 L50 46 L41 46"/>
+  </g>
+  <circle cx="26" cy="32" r="2.43" fill="#fff"/>
+  <circle cx="32" cy="32" r="4.59" fill="#fff"/>
+  <circle cx="38" cy="32" r="2.43" fill="#fff"/>
+  <defs>
+    <linearGradient id="g" x1="8" x2="58" y1="6" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5b6cff"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+  </defs>
+</svg>

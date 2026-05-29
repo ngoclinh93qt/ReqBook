@@ -1085,6 +1085,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
+name = "mark-api-down"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "clap",
+ "clap_complete",
+ "criterion",
+ "dialoguer",
+ "dirs",
+ "http",
+ "mime_guess",
+ "owo-colors",
+ "pretty_assertions",
+ "pulldown-cmark",
+ "regex",
+ "reqwest",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "serde_json_path",
+ "serde_yaml",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+ "wiremock",
+]
+
+[[package]]
 name = "matchers"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2139,39 +2172,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "trellis"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "clap",
- "clap_complete",
- "criterion",
- "dialoguer",
- "dirs",
- "http",
- "mime_guess",
- "owo-colors",
- "pretty_assertions",
- "pulldown-cmark",
- "regex",
- "reqwest",
- "rust-embed",
- "serde",
- "serde_json",
- "serde_json_path",
- "serde_yaml",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-subscriber",
- "walkdir",
- "wiremock",
 ]
 
 [[package]]
