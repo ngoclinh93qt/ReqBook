@@ -14,7 +14,7 @@
   },
   "navbar": {
     "links": [
-      { "label": "GitHub", "href": "https://github.com/mark-api-down/mad" }
+      { "label": "GitHub", "href": "https://github.com/ngoclinh93qt/MarkApiDown" }
     ],
     "primary": {
       "type": "button",
@@ -129,23 +129,23 @@
       {
         "anchor": "GitHub",
         "icon": "github",
-        "href": "https://github.com/mark-api-down/mad"
+        "href": "https://github.com/ngoclinh93qt/MarkApiDown"
       },
       {
         "anchor": "Changelog",
         "icon": "list",
-        "href": "https://github.com/mark-api-down/mad/releases"
+        "href": "https://github.com/ngoclinh93qt/MarkApiDown/releases"
       },
       {
         "anchor": "Community",
         "icon": "discord",
-        "href": "https://github.com/mark-api-down/mad/discussions"
+        "href": "https://github.com/ngoclinh93qt/MarkApiDown/discussions"
       }
     ]
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/mark-api-down/mad"
+      "github": "https://github.com/ngoclinh93qt/MarkApiDown"
     }
   }
 }

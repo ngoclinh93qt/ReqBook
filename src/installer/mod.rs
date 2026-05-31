@@ -23,11 +23,11 @@ struct CommandDef {
 const COMMANDS: &[CommandDef] = &[
     CommandDef {
         slug: "mad",
-        content: include_str!("../../.claude/commands/mad.md"),
+        content: include_str!("../../commands/mad.md"),
     },
     CommandDef {
         slug: "mad-debug",
-        content: include_str!("../../.claude/commands/mad-debug.md"),
+        content: include_str!("../../commands/mad-debug.md"),
     },
 ];
 

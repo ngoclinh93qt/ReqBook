@@ -1,5 +1,5 @@
-[![build](https://img.shields.io/github/actions/workflow/status/mark-api-down/mad/ci.yml?branch=main)](https://github.com/mark-api-down/mad/actions)
-[![scorecard](https://api.scorecard.dev/projects/github.com/mark-api-down/mad/badge)](https://scorecard.dev/viewer/?uri=github.com/mark-api-down/mad)
+[![build](https://img.shields.io/github/actions/workflow/status/ngoclinh93qt/MarkApiDown/ci.yml?branch=main)](https://github.com/ngoclinh93qt/MarkApiDown/actions)
+[![scorecard](https://api.scorecard.dev/projects/github.com/ngoclinh93qt/MarkApiDown/badge)](https://scorecard.dev/viewer/?uri=github.com/ngoclinh93qt/MarkApiDown)
 [![crates.io](https://img.shields.io/crates/v/mark-api-down)](https://crates.io/crates/mark-api-down)
 [![npm](https://img.shields.io/npm/v/mark-api-down)](https://www.npmjs.com/package/mark-api-down)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -101,7 +101,7 @@ npm install -g mark-api-down
 brew install mark-api-down/tap/mad
 
 # Docker
-docker run --rm -v "$(pwd)":/work -w /work ghcr.io/mark-api-down/mad:latest validate api-docs/
+docker run --rm -v "$(pwd)":/work -w /work ghcr.io/ngoclinh93qt/markapidown:latest validate api-docs/
 ```
 
 ## CLI
@@ -120,9 +120,9 @@ mad doctor
 
 ## Documentation
 
-- [Getting started](https://markapidown.net/docs/quickstart)
-- [CLI reference](https://markapidown.net/docs/cli/overview)
-- [Configuration reference](https://markapidown.net/docs/reference/config)
+- [Getting started](https://docs.markapidown.net/quickstart)
+- [CLI reference](https://docs.markapidown.net/cli/overview)
+- [Configuration reference](https://docs.markapidown.net/reference/config)
 - [Spec convention](docs/spec/convention.md)
 - [Benchmarks](BENCHMARKS.md)
 - [Contributing](CONTRIBUTING.md)

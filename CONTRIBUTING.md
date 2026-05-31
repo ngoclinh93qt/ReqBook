@@ -11,7 +11,7 @@ Requirements:
 - npm
 
 ```bash
-git clone https://github.com/mark-api-down/mad.git
+git clone https://github.com/ngoclinh93qt/MarkApiDown.git
 cd mad
 cargo build
 cd web && npm ci && npm run build

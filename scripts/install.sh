@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-REPO="${MAD_REPO:-mark-api-down/mad}"
+REPO="${MAD_REPO:-ngoclinh93qt/MarkApiDown}"
 BIN_NAME="mad"
 INSTALL_DIR="${MAD_INSTALL_DIR:-}"
 VERSION="latest"
@@ -14,7 +14,7 @@ Usage:
   install.sh [--version=<tag>]
 
 Environment:
-  MAD_REPO         GitHub repo, default mark-api-down/mad
+  MAD_REPO         GitHub repo, default ngoclinh93qt/MarkApiDown
   MAD_INSTALL_DIR  Install directory override
 EOF
 }

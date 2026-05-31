@@ -51,7 +51,7 @@ Initial release of MarkApiDown — markdown-native API specs with execution, pip
 - PowerShell installer for Windows
 - npm: `npm install -g mark-api-down`
 - Homebrew tap: `brew install mark-api-down/tap/mad`
-- Docker: `ghcr.io/mark-api-down/mad:latest`
+- Docker: `ghcr.io/ngoclinh93qt/markapidown:latest`
 - Targets: `x86_64`/`aarch64` Linux (musl), macOS, and Windows (MSVC)
 
 ### Spec convention

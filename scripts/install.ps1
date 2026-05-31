@@ -1,6 +1,6 @@
 param(
     [string]$Version = "latest",
-    [string]$Repo = "mark-api-down/mad",
+    [string]$Repo = "ngoclinh93qt/MarkApiDown",
     [string]$InstallDir = "$HOME\.local\bin"
 )
 
