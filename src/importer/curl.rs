@@ -212,11 +212,8 @@ fn parse_curl(input: &str) -> Result<CurlRequest> {
             | "-v"
             | "--verbose" => {}
 
-            t if !t.starts_with('-') => {
-                // First non-flag token after "curl" is the URL.
-                if url.is_none() {
-                    url = Some(t.to_string());
-                }
+            t if !t.starts_with('-') && url.is_none() => {
+                url = Some(t.to_string());
             }
 
             // Unknown flags with optional single-token argument: skip the flag only.
