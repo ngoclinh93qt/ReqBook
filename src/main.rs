@@ -61,6 +61,11 @@ enum Command {
         #[command(subcommand)]
         command: InstallCommand,
     },
+    /// Install, list, or remove AI agent skills.
+    Skills {
+        #[command(subcommand)]
+        command: SkillsCommand,
+    },
     /// Launch web preview.
     Serve(ServeArgs),
     /// Start mock HTTP server from recorded spec responses.
@@ -285,6 +290,33 @@ enum InstallCommand {
     List,
 }
 
+#[derive(Debug, Subcommand)]
+enum SkillsCommand {
+    /// Install AI agent skills (all or by name).
+    ///
+    /// Examples:
+    ///   mad skills install
+    ///   mad skills install mad
+    ///   mad skills install --agent=cursor
+    Install {
+        /// Install only one specific skill by name (e.g. mad).
+        name: Option<String>,
+        /// Agent name (e.g. claude-code, cursor, copilot).
+        #[arg(long)]
+        agent: Option<String>,
+    },
+    /// List detected agents and installation status.
+    List,
+    /// Remove installed MarkApiDown skill and slash-command files.
+    Uninstall {
+        /// Uninstall only one specific skill by name (e.g. mad).
+        name: Option<String>,
+        /// Agent name (e.g. claude-code, cursor, copilot).
+        #[arg(long)]
+        agent: Option<String>,
+    },
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum OutputFormat {
     Console,
@@ -321,6 +353,7 @@ async fn main() -> Result<()> {
         Command::Index => regenerate_index(&collection)?,
         Command::Import { command } => import(command, &collection).await?,
         Command::Install { command } => install(command).await?,
+        Command::Skills { command } => skills(command).await?,
         Command::Serve(args) => serve(args, &collection).await?,
         Command::Mock(args) => mock(args).await?,
         Command::Request(args) => request(args, &collection).await?,
@@ -1315,6 +1348,66 @@ async fn install(command: InstallCommand) -> Result<()> {
                     }
                 );
             }
+            Ok(())
+        }
+    }
+}
+
+async fn skills(command: SkillsCommand) -> Result<()> {
+    #[cfg(not(feature = "install"))]
+    {
+        let _ = command;
+        bail!(
+            "install support is not compiled into this binary\nFix: install MarkApiDown with default features."
+        );
+    }
+
+    #[cfg(feature = "install")]
+    match command {
+        SkillsCommand::Install { name, agent } => {
+            let installed = if let Some(skill_name) = name {
+                mark_api_down::installer::install_skill(
+                    Path::new("."),
+                    agent.as_deref(),
+                    &skill_name,
+                )?
+            } else {
+                mark_api_down::installer::install_skills(Path::new("."), agent.as_deref())?
+            };
+            for file in &installed {
+                println!("installed {}: {}", file.agent.name(), file.path.display());
+            }
+            println!("{} skill(s) installed", installed.len());
+            Ok(())
+        }
+        SkillsCommand::List => {
+            for status in mark_api_down::installer::detect_agents(Path::new(".")) {
+                println!(
+                    "{}: {}",
+                    status.agent.name(),
+                    if status.detected {
+                        "detected"
+                    } else {
+                        "not detected"
+                    }
+                );
+            }
+            Ok(())
+        }
+        SkillsCommand::Uninstall { name, agent } => {
+            let removed = if let Some(skill_name) = name {
+                mark_api_down::installer::uninstall_skill(
+                    Path::new("."),
+                    agent.as_deref(),
+                    &skill_name,
+                )?
+            } else {
+                mark_api_down::installer::uninstall(Path::new("."), agent.as_deref())?
+            };
+            for path in &removed {
+                println!("removed {}", path.display());
+            }
+            println!("{} file(s) removed", removed.len());
             Ok(())
         }
     }

@@ -6,7 +6,13 @@
 //!   2. Git repo root: `git rev-parse --show-toplevel` → `<root>/api-docs/`.
 //!   3. Global default: `~/.mad/workspace/default/api-docs/`.
 
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 /// Returns the `api-docs/` directory for the current context.
 ///
@@ -61,4 +67,215 @@ fn git_root() -> Option<PathBuf> {
 
 fn home_dir() -> PathBuf {
     dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"))
+}
+
+// ─── Workspace management (used by the web preview server and Tauri app) ─────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceEntry {
+    pub path: String,
+    pub name: String,
+    pub last_opened: Option<String>,
+}
+
+/// All named workspaces under `~/.mad/workspace/*/api-docs/`.
+pub fn list_all_workspaces() -> Vec<WorkspaceEntry> {
+    let base = home_dir().join(".mad/workspace");
+    let mut entries = Vec::new();
+    let Ok(dir) = fs::read_dir(&base) else {
+        return entries;
+    };
+    for entry in dir.flatten() {
+        let api_docs = entry.path().join("api-docs");
+        if !api_docs.is_dir() {
+            continue;
+        }
+        let name = workspace_name_from_dir(&api_docs)
+            .unwrap_or_else(|| entry.file_name().to_string_lossy().into_owned());
+        entries.push(WorkspaceEntry {
+            path: entry.path().to_string_lossy().into_owned(),
+            name,
+            last_opened: None,
+        });
+    }
+    entries
+}
+
+/// Load recent workspaces from `~/.mad/workspaces-history.json`.
+pub fn load_history() -> Vec<WorkspaceEntry> {
+    let path = home_dir().join(".mad/workspaces-history.json");
+    let Ok(data) = fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    serde_json::from_str::<Vec<WorkspaceEntry>>(&data).unwrap_or_default()
+}
+
+/// Prepend `path` to the history file (max 10 entries, deduplicated by path).
+pub fn save_to_history(path: &Path, name: &str) {
+    let mut entries = load_history();
+    entries.retain(|e| e.path != path.to_string_lossy());
+    entries.insert(
+        0,
+        WorkspaceEntry {
+            path: path.to_string_lossy().into_owned(),
+            name: name.to_owned(),
+            last_opened: Some(chrono_now()),
+        },
+    );
+    entries.truncate(10);
+    let hist = home_dir().join(".mad/workspaces-history.json");
+    if let Some(parent) = hist.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(json) = serde_json::to_string_pretty(&entries) {
+        let _ = fs::write(&hist, json);
+    }
+}
+
+/// Non-interactive workspace scaffold — equivalent to `mad init --yes`.
+///
+/// `dir` is the project root (parent of `api-docs/`). Creates the standard
+/// directory structure without interactive prompts.
+pub fn init_workspace_dir(dir: &Path, name: &str) -> Result<()> {
+    let collection = dir.join("api-docs");
+    fs::create_dir_all(collection.join("_shared"))?;
+    fs::create_dir_all(collection.join("apis/posts"))?;
+    fs::create_dir_all(collection.join("flows"))?;
+    write_if_new(&collection.join("mad.md"), &project_config(name))?;
+    write_if_new(
+        &collection.join("_shared/env.md"),
+        "# Environments\n\n## dev\n\n```yaml\nbaseUrl: http://localhost:8080\npostId: 1\n```\n",
+    )?;
+    write_if_new(
+        &collection.join("apis/posts/get-posts.md"),
+        EXAMPLE_ENDPOINT,
+    )?;
+    Ok(())
+}
+
+fn write_if_new(path: &Path, contents: &str) -> Result<()> {
+    if !path.exists() {
+        fs::write(path, contents)?;
+    }
+    Ok(())
+}
+
+fn project_config(name: &str) -> String {
+    format!(
+        "---\nname: {name}\nversion: 1\ndefault-env: dev\n---\n# {name}\n\nAPI specs for {name}.\n\n## Defaults\n\n```yaml\ntimeout: 5000\nretry:\n  attempts: 0\n  backoff: fixed\nauth: none\n```\n"
+    )
+}
+
+const EXAMPLE_ENDPOINT: &str = r#"---
+resource: posts
+protocol: http
+method: GET
+path: /posts/:postId
+tags: [posts, read]
+version: 1
+env: [dev]
+auth: none
+timeout: 5000
+retry:
+  attempts: 0
+  backoff: fixed
+---
+# Get posts
+
+Fetches one post from the configured development API.
+
+## Request
+
+```http
+GET {{baseUrl}}/posts/{{postId}}
+Accept: application/json
+```
+
+## Expected response
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": 1,
+  "title": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
+  "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto"
+}
+```
+"#;
+
+/// Read the workspace name from `<root>/api-docs/mad.md`.
+pub fn workspace_name(root: &Path) -> Option<String> {
+    workspace_name_from_dir(&root.join("api-docs"))
+}
+
+fn workspace_name_from_dir(api_docs: &Path) -> Option<String> {
+    let mad_md = api_docs.join("mad.md");
+    let content = fs::read_to_string(mad_md).ok()?;
+    // Extract `name:` from YAML frontmatter
+    for line in content.lines() {
+        if let Some(rest) = line.strip_prefix("name:") {
+            let n = rest.trim().trim_matches('"').trim_matches('\'').to_owned();
+            if !n.is_empty() {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
+fn chrono_now() -> String {
+    // RFC 3339 timestamp without external chrono dep — use std only.
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // Format as YYYY-MM-DDTHH:MM:SSZ (approximate, UTC only)
+    let s = secs;
+    let sec = s % 60;
+    let min = (s / 60) % 60;
+    let hour = (s / 3600) % 24;
+    let days = s / 86400; // days since epoch
+    let (year, month, day) = days_to_ymd(days);
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z")
+}
+
+fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
+    // Gregorian calendar approximation from Unix epoch (1970-01-01)
+    let mut year = 1970u64;
+    loop {
+        let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+        let days_in_year = if leap { 366 } else { 365 };
+        if days < days_in_year {
+            break;
+        }
+        days -= days_in_year;
+        year += 1;
+    }
+    let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    let month_days = [
+        31u64,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    let mut month = 1u64;
+    for &md in &month_days {
+        if days < md {
+            break;
+        }
+        days -= md;
+        month += 1;
+    }
+    (year, month, days + 1)
 }

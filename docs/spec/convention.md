@@ -2,7 +2,7 @@
 
 MarkApiDown is a markdown-native API spec system. A MarkApiDown project stores API documentation, executable requests, expected responses, pipelines, environment variables, and project configuration as markdown files. The same files are read by humans, the Rust engine, the web preview, CI, and AI coding agents.
 
-This document is the canonical specification for MarkApiDown v1.0.0. A developer who has never used MarkApiDown should be able to create a valid project from this document alone.
+This document is the canonical specification for the current MarkApiDown release. A developer who has never used MarkApiDown should be able to create a valid project from this document alone.
 
 ## Design goals
 
@@ -65,7 +65,7 @@ Fields:
 | Field | Required | Type | Meaning |
 | --- | --- | --- | --- |
 | `name` | yes | string | Project name shown in CLI, web preview, reports, and generated indexes. |
-| `version` | yes | integer | MarkApiDown spec format version. For v1.0.0 this must be `1`. |
+| `version` | yes | integer | MarkApiDown spec format version. For this spec format this must be `1`. |
 | `default-env` | yes | string | Environment used when a command does not receive `--env`. |
 
 Unknown frontmatter keys are warnings, not errors.
@@ -109,9 +109,9 @@ plugins: []
 Free-form team notes, conventions, and gotchas. The parser ignores this section.
 ````
 
-Sections are optional in v1.0.0. If a section is missing, MarkApiDown uses built-in defaults. If a YAML code block contains an unknown key, MarkApiDown emits a warning and continues. This forward-compatible behavior allows future versions to add settings without breaking older clients.
+Sections are optional in the current release. If a section is missing, MarkApiDown uses built-in defaults. If a YAML code block contains an unknown key, MarkApiDown emits a warning and continues. This forward-compatible behavior allows future versions to add settings without breaking older clients.
 
-`## Plugins` may contain an empty `plugins: []` block. MarkApiDown v1.0.0 does not execute plugins.
+`## Plugins` may contain an empty `plugins: []` block. the current MarkApiDown release does not execute plugins.
 
 ### Built-in defaults
 
@@ -170,7 +170,7 @@ Fields:
 | Field | Required | Type | Meaning |
 | --- | --- | --- | --- |
 | `resource` | yes | string | Resource folder and grouping name, for example `users` or `orders`. |
-| `protocol` | yes | enum | `http`, `ws`, or `sse`. MarkApiDown v1.0.0 executes only `http`. |
+| `protocol` | yes | enum | `http`, `ws`, or `sse`. the current MarkApiDown release executes only `http`. |
 | `method` | yes | enum | HTTP method such as `GET`, `POST`, `PUT`, `PATCH`, or `DELETE`. |
 | `path` | yes | string | Request path. Path params use `:param`, for example `/users/:id`. |
 | `tags` | no | string array | Searchable labels used by web preview and reports. |
@@ -314,7 +314,7 @@ Content-Type: application/json
 }
 ```
 
-MarkApiDown v1.0.0 does not execute `## Error responses`; only `## Expected response` is compared during `mad exec`. Error responses are reference examples for humans, web source view, and AI agents.
+the current MarkApiDown release does not execute `## Error responses`; only `## Expected response` is compared during `mad exec`. Error responses are reference examples for humans, web source view, and AI agents.
 
 ### Assertions block
 
@@ -350,7 +350,7 @@ Path prefixes:
 | `body.<field>` | `body.id: exists` | JSON response body field, dot-separated |
 | `headers.<name>` | `headers.content-type: contains json` | Response header, lowercase name |
 
-A failing assertion is reported but does not change the exit code in v1.0.0. Use structured assertions for machine-readable checks and `## Tests` for agent-executed validation.
+A failing assertion is reported but does not change the exit code in the current release. Use structured assertions for machine-readable checks and `## Tests` for agent-executed validation.
 
 ### Tests block
 
@@ -362,7 +362,7 @@ The optional `## Tests` section contains one `agent-task` block. It gives AI age
 - Do not log Authorization headers.
 ```
 
-MarkApiDown v1.0.0 does not execute arbitrary code from `agent-task` blocks. Agents may use the tasks as instructions.
+the current MarkApiDown release does not execute arbitrary code from `agent-task` blocks. Agents may use the tasks as instructions.
 
 ## Shared environment config
 
@@ -461,7 +461,7 @@ Fix: define authToken in .env.local, pass --var authToken=..., or set MAD_AUTH_T
 
 ### Nested variables
 
-Nested variables are not resolved recursively in v1.0.0.
+Nested variables are not resolved recursively in the current release.
 
 Invalid:
 
@@ -589,7 +589,7 @@ The request block must contain a valid request line. Headers must use `Name: val
 
 ### Unsupported protocol
 
-`protocol: ws` and `protocol: sse` are reserved for future versions. In v1.0.0, validation may accept them for documentation, but execution returns an unsupported protocol error.
+`protocol: ws` and `protocol: sse` are reserved for future versions. In the current release, validation may accept them for documentation, but execution returns an unsupported protocol error.
 
 ### Environment mismatch
 

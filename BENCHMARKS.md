@@ -1,36 +1,56 @@
 # Benchmarks
 
-Benchmarks must be captured before every release candidate.
+Benchmarks are captured before release candidates and after performance-sensitive changes. The local harness measures the release binary because that is what users install.
 
-Current status: release benchmark numbers have not been captured on clean release hardware yet. The table below is the release gate; fill the "Measured" column during the release candidate pass.
+## Current Local Results
 
-| Metric | Target | Measured | Command |
+Captured: 2026-06-01  
+Machine: Darwin 25.3.0 arm64  
+Binary: `target/release/mad`  
+Command: `cargo build --release --locked && node scripts/benchmark.mjs`
+
+| Metric | Target | Measured | Notes |
 | --- | ---: | ---: | --- |
-| Default binary size, stripped | < 10 MB | TBD | `make bench-size` |
-| Minimal binary size, stripped | < 4 MB | TBD | `make bench-size-minimal` |
-| Cold start, `mad --help` | < 20 ms | TBD | `make bench-cold-start` |
-| `mad validate <file>` parser time | < 10 ms | TBD | `cargo bench --bench parse_endpoint` |
-| Engine overhead excluding network | < 5 ms | TBD | targeted engine benchmark |
-| Web first response | < 100 ms | TBD | `make bench-web` |
-| File watcher to web refresh | < 100 ms | TBD | manual browser timing |
-| Install via shell script | < 30 s | TBD | fresh macOS/Linux VM |
+| Default binary size | < 10 MiB | 3.83 MiB | release binary |
+| Cold start, `mad --help` mean | < 20 ms | 2.43 ms | 30 runs; p95 2.73 ms |
+| `mad validate <file>` mean | < 25 ms | 12.9 ms | 30 runs; p95 14.0 ms |
+| `mad validate <collection>` mean | < 100 ms | 15.0 ms | 9 markdown files; p95 16.3 ms |
+| Parser benchmark, 50-line endpoint | < 100 us | 15.301 us | `cargo bench --bench parse_endpoint -- --sample-size 10` |
+| Web first response | < 100 ms | 36.2 ms | localhost server, first HTTP response |
 
-## Local benchmark commands
+## Test Status
+
+| Check | Status | Notes |
+| --- | --- | --- |
+| `cargo check --locked` | Pass | Full feature set |
+| `cargo test --locked --lib --bins` | Pass | 130 unit tests |
+| `cargo test --locked --no-default-features --features minimal --lib --bins` | Pass | 103 unit tests |
+| `cd web && npm run build` | Pass | Vite app build |
+| `cd ../landingpage && npm run build` | Pass | Requires Node >= 22.12; Cloudflare adapter binds a local inspection port |
+| `cargo test --locked` | Blocked by external service | `tests/httpbin.rs` timed out against `https://httpbin.org/get` from this environment |
+
+## Commands
 
 ```bash
-make release-check
-cargo bench --bench parse_endpoint
-cargo build --release --locked
-ls -lh target/release/mad
+# Build the web UI and release binary, then run local timing benchmarks.
+make bench
+
+# Parser micro-benchmark.
+cargo bench --bench parse_endpoint -- --sample-size 10
+
+# Non-network tests.
+cargo test --locked --lib --bins
+cargo test --locked --no-default-features --features minimal --lib --bins
 ```
 
-## Release notes
+## Release Notes Checklist
 
-Record:
+Record these with every release benchmark pass:
 
-- Machine model and OS
-- Rust version
-- Node version
-- Git commit
-- Build features
-- Any variance or known bottlenecks
+- machine model and OS,
+- Rust version,
+- Node version,
+- Git commit,
+- build features,
+- benchmark command,
+- any external-service failures or variance.

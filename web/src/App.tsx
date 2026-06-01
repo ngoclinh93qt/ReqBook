@@ -6,6 +6,7 @@ import { SpecPage } from './pages/SpecPage';
 import { FlowsPage } from './pages/FlowsPage';
 import { FlowCanvasPage } from './pages/FlowCanvasPage';
 import { RequestPage } from './pages/RequestPage';
+import { WorkspacePage } from './pages/WorkspacePage';
 import { Icon } from './ui';
 import type { IndexData, VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
@@ -91,6 +92,7 @@ function MadShell() {
         onHome={() => navigate('/')}
         onFlows={() => navigate('/flows')}
         onNewRequest={() => navigate('/request')}
+        onWorkspaces={() => navigate('/workspaces')}
         theme={theme}
         setTheme={setTheme}
         env={env}
@@ -110,6 +112,7 @@ function MadShell() {
           <Route path="/flows/*" element={<FlowCanvasPage />} />
           <Route path="/spec/*" element={<SpecPage env={env} varsData={varsData} browserVars={browserVars} mockMode={mockMode} />} />
           <Route path="/request" element={<RequestPage env={env} varsData={varsData} />} />
+          <Route path="/workspaces" element={<WorkspacePage />} />
         </Routes>
       </main>
       <VariablesDrawer
@@ -137,12 +140,13 @@ function MadShell() {
   );
 }
 
-function TopBar({ projectName, relPath, onHome, onFlows, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, onScanProject, scanning, scanMsg, mockMode }: {
+function TopBar({ projectName, relPath, onHome, onFlows, onNewRequest, onWorkspaces, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, onScanProject, scanning, scanMsg, mockMode }: {
   projectName: string;
   relPath: string;
   onHome: () => void;
   onFlows: () => void;
   onNewRequest: () => void;
+  onWorkspaces: () => void;
   theme: string;
   setTheme: (theme: string) => void;
   env: string;
@@ -167,6 +171,7 @@ function TopBar({ projectName, relPath, onHome, onFlows, onNewRequest, theme, se
         {relPath && <><span className="sep">/</span><span className="cur">{relPath}</span></>}
       </div>
       <div className="tnav-r">
+        <button className="tnav-item" onClick={onWorkspaces}><span className="ic"><Icon.folder /></span>Workspace</button>
         <button className="tnav-item" onClick={onFlows}><span className="ic"><Icon.arr /></span>Flows</button>
         <button className="tnav-item" onClick={onNewRequest}><span className="ic"><Icon.play /></span>New Request</button>
         <button className="tnav-item" onClick={onOpenVars}><span className="ic"><Icon.vars /></span>Variables</button>

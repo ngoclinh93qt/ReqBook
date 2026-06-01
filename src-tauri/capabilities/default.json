@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/schema/capability/2.json",
+  "identifier": "default",
+  "description": "Default capability for MarkApiDown desktop",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open"
+  ]
+}

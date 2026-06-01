@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/schema/capability/2.json",
+  "identifier": "remote-localhost",
+  "description": "IPC access for the embedded axum server (localhost)",
+  "remote": {
+    "urls": ["http://localhost:*", "http://127.0.0.1:*"]
+  },
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open"
+  ]
+}

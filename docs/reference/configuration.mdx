@@ -13,7 +13,7 @@ icon: "gear"
 | Field | Required | Type | Description |
 |---|---|---|---|
 | `name` | yes | string | Project name shown in the CLI, web preview, reports, and generated index. |
-| `version` | yes | integer | MarkApiDown spec format version. Must be `1` for v1.0.0. |
+| `version` | yes | integer | MarkApiDown spec format version. Must be `1` for the current spec format. |
 | `default-env` | yes | string | Environment used when a command is run without `--env`. |
 
 Unknown frontmatter keys produce a warning and are ignored, allowing future versions to add fields without breaking older clients.
@@ -85,7 +85,7 @@ The `## Web preview` code block controls `mad serve`. CLI flags (`--port`, `--ho
 plugins: []
 ```
 
-MarkApiDown v1.0.0 does not execute plugins. The `## Plugins` section is reserved for future use. Keep it as an empty list or omit the section entirely.
+the current MarkApiDown release does not execute plugins. The `## Plugins` section is reserved for future use. Keep it as an empty list or omit the section entirely.
 
 ### ## Notes section
 

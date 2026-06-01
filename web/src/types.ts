@@ -155,3 +155,9 @@ export interface AdHocRequest {
 export interface AdHocResponse extends ExecResult {
   saved_path?: string | null;
 }
+
+export interface WorkspaceEntry {
+  path: string;
+  name: string;
+  last_opened?: string | null;
+}

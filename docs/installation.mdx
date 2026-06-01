@@ -6,7 +6,7 @@ icon: "download"
 
 ## Requirements
 
-MarkApiDown 1.0.0 ships as a single static binary with no runtime dependencies no Node, no Python, no JVM required.
+MarkApiDown ships as a single static binary with no runtime dependencies: no Node, no Python, no JVM required.
 
 | Install method | Requirement |
 |---|---|
@@ -32,7 +32,7 @@ MarkApiDown 1.0.0 ships as a single static binary with no runtime dependencies n
  If `~/.local/bin` is not on your `PATH`, the installer prints the exact line to add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
 
  <Note>
- The shell installer script is open-source and auditable at [github.com/mark-api-down/mad](https://github.com/mark-api-down/mad/blob/main/install.sh).
+ The shell installer script is open-source and auditable at [github.com/ngoclinh93qt/MarkApiDown](https://github.com/ngoclinh93qt/MarkApiDown/blob/main/scripts/install.sh).
  </Note>
  </Tab>
 
@@ -53,11 +53,11 @@ MarkApiDown 1.0.0 ships as a single static binary with no runtime dependencies n
  brew install mark-api-down/tap/mad
  ```
 
- Homebrew manages upgrades via `brew upgrade mad`. No separate tap add step is required the formula URL handles it.
+ Homebrew manages upgrades via `brew upgrade mad`. No separate tap add step is required; the formula URL handles it.
  </Tab>
 
  <Tab title="npm">
- Install via npm for Node.js projects. This bundles a prebuilt binary for macOS, Linux, and Windows no Rust toolchain needed.
+ Install via npm for Node.js projects. This bundles a prebuilt binary for macOS, Linux, and Windows; no Rust toolchain needed.
 
  ```bash
  npm install -g mark-api-down
@@ -75,23 +75,23 @@ MarkApiDown 1.0.0 ships as a single static binary with no runtime dependencies n
  Use the official image from GitHub Container Registry. Mount your project directory at `/work`:
 
  ```bash
- docker pull ghcr.io/mark-api-down/mad:latest
+ docker pull ghcr.io/ngoclinh93qt/mad:latest
  docker run --rm -v "$(pwd)":/work -w /work \
- ghcr.io/mark-api-down/mad:latest validate api-docs/
+ ghcr.io/ngoclinh93qt/mad:latest validate api-docs/
  ```
 
  Replace `validate api-docs/` with any `mad` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
 
  <Tip>
- Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/mark-api-down/mad:1.0.0`.
+ Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/ngoclinh93qt/mad:0.1.0`.
  </Tip>
  </Tab>
 
  <Tab title="Windows (MSI)">
- Download the `.msi` installer from the [releases page](https://github.com/mark-api-down/mad/releases). Run the installer and `mad` is added to your system PATH automatically no manual PATH edits needed.
+ Download the `.msi` installer from the [releases page](https://github.com/ngoclinh93qt/MarkApiDown/releases). Run the installer and `mad` is added to your system PATH automatically; no manual PATH edits needed.
 
  <Note>
- Windows support is available from MarkApiDown 1.0.0. The MSI installer targets Windows 10 and Windows Server 2019 or later.
+ Windows support is available from the current MarkApiDown release. The MSI installer targets Windows 10 and Windows Server 2019 or later.
  </Note>
  </Tab>
 </Tabs>
@@ -104,7 +104,7 @@ After installing, confirm the binary is on your PATH and run the built-in diagno
 
 ```bash
 mad version
-# 1.0.0
+# 0.1.0
 
 mad doctor
 ```

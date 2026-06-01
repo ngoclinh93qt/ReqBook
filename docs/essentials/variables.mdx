@@ -143,7 +143,7 @@ Fix: define authToken in .env.local, pass --var authToken=..., or set MAD_AUTH_T
 
 ## Nested variables
 
-MarkApiDown v1.0.0 does not resolve variables recursively. If resolving `{{baseUrl}}` produces a string that contains another `{{variable}}`, MarkApiDown returns an error rather than performing a second resolution pass.
+the current MarkApiDown release does not resolve variables recursively. If resolving `{{baseUrl}}` produces a string that contains another `{{variable}}`, MarkApiDown returns an error rather than performing a second resolution pass.
 
 ```yaml
 # Invalid nested variable reference

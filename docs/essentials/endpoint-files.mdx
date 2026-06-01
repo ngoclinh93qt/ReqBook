@@ -59,7 +59,7 @@ retry:
 | Field | Required | Type | Description | Default |
 |---|---|---|---|---|
 | `resource` | yes | string | Resource group and folder name | |
-| `protocol` | yes | enum | `http`, `ws`, or `sse`. Only `http` executes in v1.0.0 | |
+| `protocol` | yes | enum | `http`, `ws`, or `sse`. Only `http` executes in the current release | |
 | `method` | yes | enum | `GET` `POST` `PUT` `PATCH` `DELETE` `HEAD` `OPTIONS` | |
 | `path` | yes | string | Path with `:param` for path params | |
 | `tags` | no | string[] | Searchable labels shown in web preview and reports | `[]` |
@@ -153,7 +153,7 @@ Content-Type: application/json
 ````
 
 <Note>
- MarkApiDown v1.0.0 executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
+ the current MarkApiDown release executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
 </Note>
 
 ---

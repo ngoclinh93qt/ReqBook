@@ -30,6 +30,7 @@ use crate::{
     parser::{parse_endpoint, parse_env_config, parse_pipeline, EnvConfig},
     pipeline::{self, PipelineOpts},
     resolver::{Context, SourceKind},
+    workspace::{self, WorkspaceEntry},
 };
 
 const API_DOCS_DIR: &str = "api-docs";
@@ -78,12 +79,16 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 
 #[derive(Clone)]
 struct AppState {
-    root: PathBuf,
+    root: Arc<std::sync::RwLock<PathBuf>>,
     env: String,
     mock_entries: Option<Vec<MockEntry>>,
 }
 
 impl AppState {
+    fn current_root(&self) -> PathBuf {
+        self.root.read().unwrap().clone()
+    }
+
     fn mock_mode(&self) -> bool {
         self.mock_entries.is_some()
     }
@@ -251,7 +256,7 @@ struct AdHocReqResponse {
 // ─── API Handlers ─────────────────────────────────────────────────────────────
 
 async fn api_index_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let (project_name, groups) = collect_specs(&state.root);
+    let (project_name, groups) = collect_specs(&state.current_root());
     let spec_count: usize = groups.iter().map(|g| g.specs.len()).sum();
     Json(IndexResponse {
         project_name,
@@ -266,7 +271,7 @@ async fn api_spec_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> Response {
-    let file_path = spec_path(&state.root, &rel_path);
+    let file_path = spec_path(&state.current_root(), &rel_path);
     let source = match fs::read_to_string(&file_path) {
         Ok(s) => s,
         Err(_) => {
@@ -302,7 +307,7 @@ async fn api_spec_handler(
 
 async fn flows_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(FlowsResponse {
-        flows: collect_flows(&state.root),
+        flows: collect_flows(&state.current_root()),
     })
 }
 
@@ -310,7 +315,7 @@ async fn validate_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> impl IntoResponse {
-    let file_path = doc_path(&state.root, &rel_path);
+    let file_path = doc_path(&state.current_root(), &rel_path);
     let source = match fs::read_to_string(&file_path) {
         Ok(source) => source,
         Err(e) => {
@@ -356,7 +361,7 @@ async fn flow_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> Response {
-    let file_path = doc_path(&state.root, &rel_path);
+    let file_path = doc_path(&state.current_root(), &rel_path);
     let source = match fs::read_to_string(&file_path) {
         Ok(source) => source,
         Err(_) => {
@@ -392,7 +397,7 @@ async fn save_flow_handler(
                 .into_response()
         }
     };
-    let file_path = doc_path(&state.root, &rel_path);
+    let file_path = doc_path(&state.current_root(), &rel_path);
     if !is_flow_rel_path(&rel_path) || !rel_path.ends_with(".md") {
         return (
             StatusCode::BAD_REQUEST,
@@ -430,7 +435,7 @@ async fn run_flow_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> impl IntoResponse {
-    let file_path = doc_path(&state.root, &rel_path);
+    let file_path = doc_path(&state.current_root(), &rel_path);
     let source = match fs::read_to_string(&file_path) {
         Ok(source) => source,
         Err(e) => {
@@ -455,9 +460,9 @@ async fn run_flow_handler(
         &flow,
         &state.env,
         PipelineOpts {
-            root: state.root.join(API_DOCS_DIR),
+            root: state.current_root().join(API_DOCS_DIR),
             exec: ExecOpts {
-                context: load_env_context(&state.root, &state.env),
+                context: load_env_context(&state.current_root(), &state.env),
                 ..ExecOpts::default()
             },
         },
@@ -478,7 +483,7 @@ async fn exec_handler(
     AxumPath(rel_path): AxumPath<String>,
     body: Bytes,
 ) -> impl IntoResponse {
-    let file_path = spec_path(&state.root, &rel_path);
+    let file_path = spec_path(&state.current_root(), &rel_path);
 
     // Mock mode: return mock response directly from spec's expected response block.
     if let Some(ref entries) = state.mock_entries {
@@ -497,7 +502,7 @@ async fn exec_handler(
             })
             .unwrap_or_default()
     };
-    match run_exec(&file_path, &state.root, &state.env, overrides).await {
+    match run_exec(&file_path, &state.current_root(), &state.env, overrides).await {
         Ok(execution) => Json(execution).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -584,7 +589,7 @@ async fn save_spec_handler(
                 .into_response()
         }
     };
-    let file_path = spec_path(&state.root, &rel_path);
+    let file_path = spec_path(&state.current_root(), &rel_path);
     if !file_path.exists() {
         return (
             StatusCode::NOT_FOUND,
@@ -610,7 +615,7 @@ async fn save_spec_handler(
 }
 
 async fn get_variables_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let env_path = state.root.join("api-docs/_shared/env.md");
+    let env_path = state.current_root().join("api-docs/_shared/env.md");
     let (vars, all_envs) = if let Ok(source) = fs::read_to_string(&env_path) {
         if let Ok(config) = parse_env_config(&source, &env_path) {
             let vars = config.envs.get(&state.env).cloned().unwrap_or_default();
@@ -644,7 +649,7 @@ async fn save_variables_handler(
         }
     };
     let env_name = body.env.unwrap_or_else(|| state.env.clone());
-    let env_path = state.root.join("api-docs/_shared/env.md");
+    let env_path = state.current_root().join("api-docs/_shared/env.md");
     let mut config = if let Ok(source) = fs::read_to_string(&env_path) {
         parse_env_config(&source, &env_path).unwrap_or_default()
     } else {
@@ -698,7 +703,7 @@ async fn import_curl_handler(State(state): State<Arc<AppState>>, body: Bytes) ->
                 .into_response()
         }
     };
-    match importer::write_endpoints(&state.root, &endpoints) {
+    match importer::write_endpoints(&state.current_root(), &endpoints) {
         Ok(written) => {
             if written.is_empty() {
                 let ep = &endpoints[0];
@@ -707,7 +712,7 @@ async fn import_curl_handler(State(state): State<Arc<AppState>>, body: Bytes) ->
             } else {
                 let path = &written[0];
                 let rel_path = path
-                    .strip_prefix(state.root.join(API_DOCS_DIR))
+                    .strip_prefix(state.current_root().join(API_DOCS_DIR))
                     .unwrap_or(path)
                     .to_string_lossy()
                     .into_owned();
@@ -751,7 +756,7 @@ async fn parse_curl_fields_handler(body: Bytes) -> impl IntoResponse {
 }
 
 async fn scan_project_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    match scan_project(&state.root, false) {
+    match scan_project(&state.current_root(), false) {
         Ok(response) => Json(response).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -762,7 +767,7 @@ async fn scan_project_handler(State(state): State<Arc<AppState>>) -> impl IntoRe
 }
 
 async fn import_project_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    match scan_project(&state.root, true) {
+    match scan_project(&state.current_root(), true) {
         Ok(response) => Json(response).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -795,7 +800,7 @@ async fn adhoc_request_handler(
         }
     };
 
-    let mut context = load_env_context(&state.root, &body.env);
+    let mut context = load_env_context(&state.current_root(), &body.env);
     for (k, v) in &body.vars {
         context.insert(SourceKind::Cli, k, v);
     }
@@ -821,7 +826,7 @@ async fn adhoc_request_handler(
     };
 
     let saved_path = if let Some(rel) = &body.save_as {
-        let dest = state.root.join(API_DOCS_DIR).join(rel);
+        let dest = state.current_root().join(API_DOCS_DIR).join(rel);
         let response_block = execution
             .response
             .as_ref()
@@ -1281,32 +1286,90 @@ fn render_env_config(config: &EnvConfig) -> String {
     out
 }
 
+// ─── Workspace management routes ─────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct OpenWorkspaceBody {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CreateWorkspaceBody {
+    path: String,
+    name: Option<String>,
+}
+
+async fn workspace_current_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let root = state.current_root();
+    let name = workspace::workspace_name(&root).unwrap_or_else(|| {
+        root.file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| root.to_string_lossy().into_owned())
+    });
+    Json(WorkspaceEntry {
+        path: root.to_string_lossy().into_owned(),
+        name,
+        last_opened: None,
+    })
+}
+
+async fn workspace_recent_handler() -> impl IntoResponse {
+    Json(workspace::load_history())
+}
+
+async fn workspace_all_handler() -> impl IntoResponse {
+    Json(workspace::list_all_workspaces())
+}
+
+async fn workspace_open_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<OpenWorkspaceBody>,
+) -> impl IntoResponse {
+    let new_root = PathBuf::from(&body.path);
+    if !new_root.exists() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "path does not exist"})),
+        )
+            .into_response();
+    }
+    let name = workspace::workspace_name(&new_root).unwrap_or_else(|| {
+        new_root
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| body.path.clone())
+    });
+    *state.root.write().unwrap() = new_root.clone();
+    workspace::save_to_history(&new_root, &name);
+    Json(serde_json::json!({"status": "ok", "name": name})).into_response()
+}
+
+async fn workspace_create_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<CreateWorkspaceBody>,
+) -> impl IntoResponse {
+    let dir = PathBuf::from(&body.path);
+    let name = body.name.unwrap_or_else(|| {
+        dir.file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "my-api".to_string())
+    });
+    if let Err(e) = workspace::init_workspace_dir(&dir, &name) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response();
+    }
+    *state.root.write().unwrap() = dir.clone();
+    workspace::save_to_history(&dir, &name);
+    Json(serde_json::json!({"status": "ok", "name": name})).into_response()
+}
+
 // ─── Server entry point ───────────────────────────────────────────────────────
 
-pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) -> Result<()> {
-    let mock_entries = if mock {
-        let api_docs = root.join("api-docs");
-        let dir = if api_docs.exists() {
-            api_docs
-        } else {
-            root.clone()
-        };
-        let entries = collect_entries(&dir)?;
-        println!(
-            "{} Mock mode   {} route(s) loaded",
-            "→".cyan(),
-            entries.len()
-        );
-        Some(entries)
-    } else {
-        None
-    };
-    let state = Arc::new(AppState {
-        root,
-        env: env.to_string(),
-        mock_entries,
-    });
-    let app = Router::new()
+fn build_router(state: Arc<AppState>) -> Router {
+    Router::new()
         // JSON API
         .route("/api/index", get(api_index_handler))
         .route(
@@ -1337,33 +1400,92 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) ->
             "/api/sync/project",
             get(scan_project_handler).post(import_project_handler),
         )
+        // Workspace management
+        .route("/api/workspace/current", get(workspace_current_handler))
+        .route("/api/workspace/recent", get(workspace_recent_handler))
+        .route("/api/workspace/all", get(workspace_all_handler))
+        .route("/api/workspace/open", post(workspace_open_handler))
+        .route("/api/workspace/create", post(workspace_create_handler))
         // SPA static files (catch-all)
         .fallback(static_handler)
-        .with_state(state);
+        .with_state(state)
+}
 
-    let listener = {
-        let mut candidate = port;
-        loop {
-            let addr = format!("{host}:{candidate}");
-            match tokio::net::TcpListener::bind(&addr).await {
-                Ok(l) => {
-                    if candidate != port {
-                        println!("{} Port {} in use, using {}", "!".yellow(), port, candidate);
-                    }
-                    break l;
+async fn bind_listener(host: &str, port: u16) -> Result<tokio::net::TcpListener> {
+    let mut candidate = port;
+    loop {
+        let addr = format!("{host}:{candidate}");
+        match tokio::net::TcpListener::bind(&addr).await {
+            Ok(l) => {
+                if candidate != port {
+                    println!("{} Port {} in use, using {}", "!".yellow(), port, candidate);
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse && candidate < port + 10 => {
-                    candidate += 1;
-                }
-                Err(e) => {
-                    return Err(anyhow::anyhow!("cannot bind to {host}:{port}: {e}"));
-                }
+                return Ok(l);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AddrInUse && candidate < port + 10 => {
+                candidate += 1;
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("cannot bind to {host}:{port}: {e}"));
             }
         }
+    }
+}
+
+/// CLI entry point: starts the server and blocks until Ctrl-C.
+pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) -> Result<()> {
+    run_with_ready(
+        Arc::new(std::sync::RwLock::new(root)),
+        host,
+        port,
+        env,
+        mock,
+        |_| {},
+    )
+    .await
+}
+
+/// Start the axum server with a pre-created shared workspace root.
+///
+/// Fires `on_ready(actual_port)` once the TCP listener is bound — the Tauri
+/// app uses this to navigate the webview to the correct URL before the server
+/// has processed a single request.
+pub async fn run_with_ready<F>(
+    root: Arc<std::sync::RwLock<PathBuf>>,
+    host: &str,
+    port: u16,
+    env: &str,
+    mock: bool,
+    on_ready: F,
+) -> Result<()>
+where
+    F: FnOnce(u16) + Send + 'static,
+{
+    let mock_entries = if mock {
+        let r = root.read().unwrap().clone();
+        let api_docs = r.join("api-docs");
+        let dir = if api_docs.exists() { api_docs } else { r };
+        let entries = collect_entries(&dir)?;
+        println!(
+            "{} Mock mode   {} route(s) loaded",
+            "→".cyan(),
+            entries.len()
+        );
+        Some(entries)
+    } else {
+        None
     };
+    let state = Arc::new(AppState {
+        root,
+        env: env.to_string(),
+        mock_entries,
+    });
+    let app = build_router(state);
+    let listener = bind_listener(host, port).await?;
     let local_addr = listener.local_addr()?;
     println!("{} Preview:  http://{local_addr}", "✓".green());
     println!("    Press Ctrl-C to stop.");
+    on_ready(local_addr.port());
     axum::serve(listener, app).await?;
     Ok(())
 }

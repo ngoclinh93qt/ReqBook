@@ -231,7 +231,7 @@ mad import openapi openapi.json
  | Item | Reason |
  |---|---|
  | Multiple response codes | Only the first documented response is imported. Add others manually in `## Notes`. |
- | JSON Schema validation | Schema constraints are not executable in MarkApiDown v1.0.0. Added as `agent-task` assertions for manual review. |
+ | JSON Schema validation | Schema constraints are not executable in the current MarkApiDown release. Added as `agent-task` assertions for manual review. |
  | OAuth 2.0 / OpenID Connect | Model as a MarkApiDown pipeline that captures the token and injects it into subsequent steps. |
  | Multiple servers | Only the first server is imported as `dev`. Add remaining servers as additional `env.md` sections. |
  | Callbacks and webhooks | Must be documented manually. `protocol: ws` and `protocol: sse` are reserved for future use. |

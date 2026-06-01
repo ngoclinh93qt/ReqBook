@@ -1,4 +1,4 @@
-import type { AdHocRequest, AdHocResponse, ExecResult, FlowData, FlowEntry, FlowRunResult, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData } from './types';
+import type { AdHocRequest, AdHocResponse, ExecResult, FlowData, FlowEntry, FlowRunResult, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData, WorkspaceEntry } from './types';
 
 const BASE = '/api';
 
@@ -82,4 +82,27 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
     }).then(r => json<AdHocResponse>(r)),
+
+  getWorkspaceCurrent: () =>
+    fetch(`${BASE}/workspace/current`).then(r => json<WorkspaceEntry>(r)),
+
+  getWorkspaceRecent: () =>
+    fetch(`${BASE}/workspace/recent`).then(r => json<WorkspaceEntry[]>(r)),
+
+  getWorkspaceAll: () =>
+    fetch(`${BASE}/workspace/all`).then(r => json<WorkspaceEntry[]>(r)),
+
+  openWorkspace: (path: string) =>
+    fetch(`${BASE}/workspace/open`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    }).then(r => json<{ status: string; name: string }>(r)),
+
+  createWorkspace: (path: string, name?: string) =>
+    fetch(`${BASE}/workspace/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path, name }),
+    }).then(r => json<{ status: string; name: string }>(r)),
 };

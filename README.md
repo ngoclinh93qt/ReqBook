@@ -6,9 +6,9 @@
 
 # MarkApiDown
 
-**API workspace** — design specs, send requests, validate contracts, from CLI and browser.
+**Runnable API contracts for coding agents** — design specs, send requests, validate contracts, from CLI and browser.
 
-MarkApiDown is a local-first, markdown-native API workspace. Endpoint specs, environments, and flows are ordinary markdown files. The Rust engine validates and executes them. The browser lets you edit, run, and design APIs visually. Agent skills make the same files usable from Claude Code, Cursor, GitHub Copilot, and others.
+MarkApiDown is a local-first, markdown-native API workspace. Endpoint specs, environments, and flows are ordinary markdown files in your repo. The Rust engine validates and executes them. The browser lets you edit, run, and design APIs visually. Agent skills make the same files usable from Claude Code, Cursor, GitHub Copilot, and others.
 
 ```bash
 cargo install mark-api-down
@@ -34,7 +34,7 @@ mad request GET https://httpbin.org/get  # ad-hoc request (mad-cli)
 | Markdown-native | Specs live in reviewable `.md` files alongside your code. |
 | Local Rust binary | Fast CLI and browser preview without a hosted workspace. |
 | Flow canvas | Connect endpoints, capture values, inject downstream — save as markdown. |
-| Agent-native | Install skills and MCP tools for Claude Code, Cursor, Copilot, and others. |
+| Agent-native | Give Claude Code, Cursor, Copilot, and others runnable API contracts they can read, write, and validate. |
 | Import and scan | Import cURL/Postman/OpenAPI or scan a project for missing specs. |
 
 ## Project layout
@@ -101,7 +101,7 @@ npm install -g mark-api-down
 brew install mark-api-down/tap/mad
 
 # Docker
-docker run --rm -v "$(pwd)":/work -w /work ghcr.io/ngoclinh93qt/markapidown:latest validate api-docs/
+docker run --rm -v "$(pwd)":/work -w /work ghcr.io/ngoclinh93qt/mad:latest validate api-docs/
 ```
 
 ## CLI
