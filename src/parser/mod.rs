@@ -651,12 +651,21 @@ fn parse_assertions(source: &str) -> Vec<Assertion> {
         // Determine op and value from the rhs.
         let (op, value) = if rest.eq_ignore_ascii_case("exists") {
             (AssertionOp::Exists, None)
-        } else if let Some(v) = rest.strip_prefix("equals ").or(rest.strip_prefix("equals\t")) {
+        } else if let Some(v) = rest
+            .strip_prefix("equals ")
+            .or(rest.strip_prefix("equals\t"))
+        {
             let v = strip_surrounding_quotes(v.trim());
             (AssertionOp::Equals, Some(v.to_string()))
-        } else if let Some(v) = rest.strip_prefix("contains ").or(rest.strip_prefix("contains\t")) {
+        } else if let Some(v) = rest
+            .strip_prefix("contains ")
+            .or(rest.strip_prefix("contains\t"))
+        {
             (AssertionOp::Contains, Some(v.trim().to_string()))
-        } else if let Some(v) = rest.strip_prefix("matches ").or(rest.strip_prefix("matches\t")) {
+        } else if let Some(v) = rest
+            .strip_prefix("matches ")
+            .or(rest.strip_prefix("matches\t"))
+        {
             (AssertionOp::Matches, Some(v.trim().to_string()))
         } else if let Some(v) = rest.strip_prefix("in ").or(rest.strip_prefix("in\t")) {
             // Strip surrounding brackets if present: `[admin, user]` → `admin, user`

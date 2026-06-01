@@ -71,7 +71,7 @@ impl Context {
             SourceKind::Env => &self.env,
             SourceKind::DotEnvLocal => &self.dotenv,
             SourceKind::OsEnv => &self.os,
-        };  
+        };
         map.iter()
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect()

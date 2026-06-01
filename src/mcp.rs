@@ -22,7 +22,7 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::{
-    engine::{self, ExecOpts, EngineError},
+    engine::{self, EngineError, ExecOpts},
     history::{self, HistoryEntry},
     parser::{parse_endpoint, parse_env_config, parse_pipeline},
     pipeline::{self, PipelineOpts},
@@ -105,17 +105,17 @@ fn classify_engine_error(err: &EngineError) -> (&'static str, Option<&'static st
 
 fn hint_for_error_type(error_type: &str) -> Option<&'static str> {
     match error_type {
-        "VAR_MISSING" => Some(
-            "Define missing variables in _shared/env.md [<env>] or pass via vars: {...}",
-        ),
+        "VAR_MISSING" => {
+            Some("Define missing variables in _shared/env.md [<env>] or pass via vars: {...}")
+        }
         "AUTH_FAILED" => Some("Check bearer token or credentials in _shared/env.md"),
         "NETWORK_ERROR" => Some("Check baseUrl in env.md and ensure the server is running"),
-        "CONTRACT_MISMATCH" => Some(
-            "Update ## Expected response in the spec to match actual, or fix the API",
-        ),
-        "SPEC_PARSE_ERROR" => Some(
-            "Fix YAML frontmatter or markdown section structure in the spec file",
-        ),
+        "CONTRACT_MISMATCH" => {
+            Some("Update ## Expected response in the spec to match actual, or fix the API")
+        }
+        "SPEC_PARSE_ERROR" => {
+            Some("Fix YAML frontmatter or markdown section structure in the spec file")
+        }
         _ => None,
     }
 }
@@ -156,7 +156,18 @@ fn days_to_ymd(days: u64) -> (u64, u64, u64) {
     }
     let leap = is_leap(y);
     let months = [
-        31u64, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+        31u64,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
     ];
     let mut mo = 1u64;
     for days_in_month in months {
@@ -476,8 +487,14 @@ async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
 
     let session = read_session();
     let env = resolve_env(args, &session);
-    let verbose = args.get("verbose").and_then(|v| v.as_bool()).unwrap_or(false);
-    let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
+    let verbose = args
+        .get("verbose")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let dry_run = args
+        .get("dry_run")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let infer_expected = args
         .get("infer_expected")
         .and_then(|v| v.as_bool())
@@ -598,11 +615,8 @@ async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
             // Tier 3: infer_expected.
             if infer_expected {
                 if let Some(resp) = &execution.response {
-                    let mut inferred = format!(
-                        "HTTP/1.1 {} {}\n",
-                        resp.status,
-                        http_reason(resp.status)
-                    );
+                    let mut inferred =
+                        format!("HTTP/1.1 {} {}\n", resp.status, http_reason(resp.status));
                     if let Some(ct) = resp.headers.get("content-type") {
                         inferred.push_str(&format!("Content-Type: {ct}\n"));
                     }
@@ -653,7 +667,10 @@ async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
 
     let session = read_session();
     let env = resolve_env(args, &session);
-    let verbose = args.get("verbose").and_then(|v| v.as_bool()).unwrap_or(false);
+    let verbose = args
+        .get("verbose")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let source = match std::fs::read_to_string(pipeline_path) {
         Ok(s) => s,
@@ -725,8 +742,17 @@ async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
             .steps
             .iter()
             .map(|step| {
-                let status = step.execution.as_ref().and_then(|e| e.response.as_ref()).map(|r| r.status);
-                let passed = step.execution.as_ref().map(|e| e.diff.passed).unwrap_or(false) && step.error.is_none();
+                let status = step
+                    .execution
+                    .as_ref()
+                    .and_then(|e| e.response.as_ref())
+                    .map(|r| r.status);
+                let passed = step
+                    .execution
+                    .as_ref()
+                    .map(|e| e.diff.passed)
+                    .unwrap_or(false)
+                    && step.error.is_none();
                 let error_type: Option<&str> = if step.error.is_some() {
                     Some("NETWORK_ERROR")
                 } else if matches!(status, Some(401) | Some(403)) {
@@ -821,17 +847,17 @@ async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
 
     let source =
         std::fs::read_to_string(spec_path).map_err(|e| (-32000, format!("{spec_path}: {e}")))?;
-    let endpoint = parse_endpoint(&source, Path::new(spec_path))
-        .map_err(|e| (-32000, e.to_string()))?;
+    let endpoint =
+        parse_endpoint(&source, Path::new(spec_path)).map_err(|e| (-32000, e.to_string()))?;
 
     // Extract template vars {{varName}} from request block.
     let template_re =
         regex::Regex::new(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}").expect("valid var regex");
     // Extract path params :paramName from first line of request block.
-    let path_re =
-        regex::Regex::new(r":([A-Za-z_][A-Za-z0-9_]*)").expect("valid path param regex");
+    let path_re = regex::Regex::new(r":([A-Za-z_][A-Za-z0-9_]*)").expect("valid path param regex");
 
-    let mut vars: std::collections::BTreeMap<String, &'static str> = std::collections::BTreeMap::new();
+    let mut vars: std::collections::BTreeMap<String, &'static str> =
+        std::collections::BTreeMap::new();
 
     for caps in template_re.captures_iter(&endpoint.request) {
         vars.insert(caps[1].to_string(), "template");
@@ -890,7 +916,11 @@ async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
                 all_resolved = false;
             }
             let source_label = if resolved {
-                Some(if context.get(name).is_some() { "env.md" } else { "vars" })
+                Some(if context.get(name).is_some() {
+                    "env.md"
+                } else {
+                    "vars"
+                })
             } else {
                 None
             };
@@ -928,7 +958,11 @@ async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
 
 /// Search specs in the collection.
 async fn handle_search(args: &Value) -> Result<Value, (i32, String)> {
-    let q = args.get("q").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
+    let q = args
+        .get("q")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_lowercase();
     let method_filter = args
         .get("method")
         .and_then(|v| v.as_str())
@@ -1004,11 +1038,7 @@ async fn handle_search(args: &Value) -> Result<Value, (i32, String)> {
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
-fn walk_specs(
-    root: &Path,
-    dir: &Path,
-    mut cb: impl FnMut(&Path, String),
-) {
+fn walk_specs(root: &Path, dir: &Path, mut cb: impl FnMut(&Path, String)) {
     walk_specs_inner(root, dir, &mut cb);
 }
 
@@ -1046,10 +1076,7 @@ async fn handle_history(args: &Value) -> Result<Value, (i32, String)> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| (-32602, "Invalid params: spec_path is required".to_string()))?;
 
-    let last = args
-        .get("last")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(10) as usize;
+    let last = args.get("last").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
     let root = collection_root_for(spec_path);
     let rel = spec_rel(spec_path, &root);
@@ -1110,7 +1137,10 @@ fn handle_session(args: &Value) -> Result<Value, (i32, String)> {
             .map_err(|e| (-32000, e.to_string()))?;
             Ok(json!({ "content": [{ "type": "text", "text": text }] }))
         }
-        other => Err((-32602, format!("Invalid params: unknown action \"{other}\""))),
+        other => Err((
+            -32602,
+            format!("Invalid params: unknown action \"{other}\""),
+        )),
     }
 }
 
@@ -1119,7 +1149,12 @@ async fn handle_exec_batch(args: &Value) -> Result<Value, (i32, String)> {
     let specs = args
         .get("specs")
         .and_then(|v| v.as_array())
-        .ok_or_else(|| (-32602, "Invalid params: specs array is required".to_string()))?
+        .ok_or_else(|| {
+            (
+                -32602,
+                "Invalid params: specs array is required".to_string(),
+            )
+        })?
         .iter()
         .filter_map(|v| v.as_str().map(str::to_string))
         .collect::<Vec<_>>();
@@ -1550,7 +1585,11 @@ mod tests {
     fn tools_list_has_at_least_eight_tools() {
         let list = tools_list_result();
         let tools = list["tools"].as_array().unwrap();
-        assert!(tools.len() >= 8, "expected at least 8 tools, got {}", tools.len());
+        assert!(
+            tools.len() >= 8,
+            "expected at least 8 tools, got {}",
+            tools.len()
+        );
     }
 
     #[test]

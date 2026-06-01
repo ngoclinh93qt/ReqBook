@@ -10,7 +10,9 @@ use std::{
 
 use anyhow::{bail, Result};
 
-use crate::parser::{AuthMode, Backoff, Endpoint, EndpointSchema, HttpMethod, Protocol, RetryPolicy};
+use crate::parser::{
+    AuthMode, Backoff, Endpoint, EndpointSchema, HttpMethod, Protocol, RetryPolicy,
+};
 
 /// Parameters for an ad-hoc request (shared between CLI and REST).
 #[derive(Debug, Clone)]
@@ -143,13 +145,14 @@ fn parse_method(s: &str) -> Result<HttpMethod> {
 
 fn url_path(url: &str) -> String {
     // Strip scheme + host to get just the path portion.
-    let without_scheme = url
-        .find("://")
-        .map(|i| &url[i + 3..])
-        .unwrap_or(url);
+    let without_scheme = url.find("://").map(|i| &url[i + 3..]).unwrap_or(url);
     let path_start = without_scheme.find('/').unwrap_or(without_scheme.len());
     let path = &without_scheme[path_start..];
-    if path.is_empty() { "/".to_string() } else { path.to_string() }
+    if path.is_empty() {
+        "/".to_string()
+    } else {
+        path.to_string()
+    }
 }
 
 fn slug_from_url(url: &str) -> String {
@@ -160,7 +163,11 @@ fn slug_from_url(url: &str) -> String {
         .collect::<String>()
         .trim_matches('-')
         .to_string();
-    if slug.is_empty() { "request".to_string() } else { slug }
+    if slug.is_empty() {
+        "request".to_string()
+    } else {
+        slug
+    }
 }
 
 fn chrono_timestamp() -> String {
@@ -186,15 +193,32 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
     loop {
         let leap = is_leap(year);
         let dy = if leap { 366 } else { 365 };
-        if days < dy { break; }
+        if days < dy {
+            break;
+        }
         days -= dy;
         year += 1;
     }
     let leap = is_leap(year);
-    let months = [31u64, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let months = [
+        31u64,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
     let mut month = 1u64;
     for dm in months {
-        if days < dm { break; }
+        if days < dm {
+            break;
+        }
         days -= dm;
         month += 1;
     }

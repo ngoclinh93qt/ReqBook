@@ -215,7 +215,10 @@ pub fn install(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, I
 }
 
 /// Install only skills (no slash commands) for one explicit agent or all detected agents.
-pub fn install_skills(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, InstallError> {
+pub fn install_skills(
+    root: &Path,
+    agent: Option<&str>,
+) -> Result<Vec<InstalledFile>, InstallError> {
     let agents = resolve_agents(root, agent)?;
     let skills = canonical_skills()?;
     let mut installed = Vec::new();
@@ -231,13 +234,19 @@ pub fn install_skills(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledF
 }
 
 /// Install one specific skill by name.
-pub fn install_skill(root: &Path, agent: Option<&str>, skill_name: &str) -> Result<Vec<InstalledFile>, InstallError> {
+pub fn install_skill(
+    root: &Path,
+    agent: Option<&str>,
+    skill_name: &str,
+) -> Result<Vec<InstalledFile>, InstallError> {
     let agents = resolve_agents(root, agent)?;
     let all_skills = canonical_skills()?;
     let skill = all_skills
         .into_iter()
         .find(|s| s.meta.name == skill_name)
-        .ok_or_else(|| InstallError::UnknownSkill { name: skill_name.to_string() })?;
+        .ok_or_else(|| InstallError::UnknownSkill {
+            name: skill_name.to_string(),
+        })?;
     let mut installed = Vec::new();
     for agent in agents {
         let path = skill_target_path(root, agent, &skill.meta.name);
@@ -250,7 +259,10 @@ pub fn install_skill(root: &Path, agent: Option<&str>, skill_name: &str) -> Resu
 
 /// Install all slash commands for one explicit agent or all detected agents.
 /// Only agents that support commands (Claude Code, Codex CLI) will receive files.
-pub fn install_commands(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, InstallError> {
+pub fn install_commands(
+    root: &Path,
+    agent: Option<&str>,
+) -> Result<Vec<InstalledFile>, InstallError> {
     let agents = resolve_agents(root, agent)?;
     let mut installed = Vec::new();
     for agent in agents {
@@ -267,12 +279,19 @@ pub fn install_commands(root: &Path, agent: Option<&str>) -> Result<Vec<Installe
 }
 
 /// Install one specific slash command by slug.
-pub fn install_command(root: &Path, agent: Option<&str>, slug: &str) -> Result<Vec<InstalledFile>, InstallError> {
+pub fn install_command(
+    root: &Path,
+    agent: Option<&str>,
+    slug: &str,
+) -> Result<Vec<InstalledFile>, InstallError> {
     let agents = resolve_agents(root, agent)?;
-    let cmd = COMMANDS
-        .iter()
-        .find(|c| c.slug == slug)
-        .ok_or_else(|| InstallError::UnknownCommand { name: slug.to_string() })?;
+    let cmd =
+        COMMANDS
+            .iter()
+            .find(|c| c.slug == slug)
+            .ok_or_else(|| InstallError::UnknownCommand {
+                name: slug.to_string(),
+            })?;
     let mut installed = Vec::new();
     for agent in agents {
         if !agent.supports_commands() {
@@ -336,22 +355,42 @@ pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, Insta
 }
 
 /// Remove one specific skill by name.
-pub fn uninstall_skill(root: &Path, agent: Option<&str>, skill_name: &str) -> Result<Vec<PathBuf>, InstallError> {
+pub fn uninstall_skill(
+    root: &Path,
+    agent: Option<&str>,
+    skill_name: &str,
+) -> Result<Vec<PathBuf>, InstallError> {
     let agents = if let Some(agent) = agent {
-        vec![Agent::parse(agent).ok_or_else(|| InstallError::UnknownAgent { name: agent.to_string() })?]
+        vec![
+            Agent::parse(agent).ok_or_else(|| InstallError::UnknownAgent {
+                name: agent.to_string(),
+            })?,
+        ]
     } else {
-        vec![Agent::ClaudeCode, Agent::CodexCli, Agent::Antigravity, Agent::OpenCode, Agent::Cursor, Agent::Copilot]
+        vec![
+            Agent::ClaudeCode,
+            Agent::CodexCli,
+            Agent::Antigravity,
+            Agent::OpenCode,
+            Agent::Cursor,
+            Agent::Copilot,
+        ]
     };
     let all_skills = canonical_skills()?;
     let skill = all_skills
         .into_iter()
         .find(|s| s.meta.name == skill_name)
-        .ok_or_else(|| InstallError::UnknownSkill { name: skill_name.to_string() })?;
+        .ok_or_else(|| InstallError::UnknownSkill {
+            name: skill_name.to_string(),
+        })?;
     let mut removed = Vec::new();
     for agent in agents {
         let path = skill_target_path(root, agent, &skill.meta.name);
         if path.exists() {
-            fs::remove_file(&path).map_err(|source| InstallError::Io { path: path.clone(), source })?;
+            fs::remove_file(&path).map_err(|source| InstallError::Io {
+                path: path.clone(),
+                source,
+            })?;
             removed.push(path);
         }
     }
@@ -380,10 +419,7 @@ fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, Instal
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
-    [MAD]
-        .into_iter()
-        .map(parse_skill)
-        .collect()
+    [MAD].into_iter().map(parse_skill).collect()
 }
 
 fn parse_skill(source: &'static str) -> Result<SkillSource, InstallError> {
@@ -484,14 +520,11 @@ mod tests {
         let mut installed = install(dir.path(), Some("cursor")).unwrap();
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
         assert_eq!(installed.len(), 2); // 1 skill each
-        let cursor =
-            fs::read_to_string(dir.path().join(".cursor/rules/mad.mdc")).unwrap();
+        let cursor = fs::read_to_string(dir.path().join(".cursor/rules/mad.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
-        let copilot = fs::read_to_string(
-            dir.path()
-                .join(".github/instructions/mad.instructions.md"),
-        )
-        .unwrap();
+        let copilot =
+            fs::read_to_string(dir.path().join(".github/instructions/mad.instructions.md"))
+                .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
     }
 
@@ -508,7 +541,10 @@ mod tests {
             let path = dir.path().join(format!(".claude/commands/{slug}.md"));
             assert!(path.exists(), "{slug} command not created");
             let content = fs::read_to_string(&path).unwrap();
-            assert!(content.contains("description:"), "{slug}: missing description");
+            assert!(
+                content.contains("description:"),
+                "{slug}: missing description"
+            );
         }
 
         let skill = dir.path().join(".claude/skills/mad/SKILL.md");

@@ -52,7 +52,7 @@ const STATIC_SPEC_CANDIDATES: &[&str] = &[
     "openapi.json",
     "swagger.yaml",
     "swagger.json",
-    "docs/swagger.json",              // Gin + swaggo
+    "docs/swagger.json", // Gin + swaggo
     "docs/openapi.yaml",
     "docs/openapi.json",
     "api/openapi.yaml",
@@ -67,17 +67,17 @@ const STATIC_SPEC_CANDIDATES: &[&str] = &[
 
 /// OpenAPI/Swagger endpoint paths to probe on a running server.
 const LIVE_SPEC_PATHS: &[&str] = &[
-    "/openapi.json",              // FastAPI, Hono, generic
+    "/openapi.json", // FastAPI, Hono, generic
     "/openapi.yaml",
-    "/v3/api-docs",               // Spring Boot (springdoc)
-    "/v2/api-docs",               // Spring Boot (springfox)
-    "/api-json",                  // NestJS
+    "/v3/api-docs", // Spring Boot (springdoc)
+    "/v2/api-docs", // Spring Boot (springfox)
+    "/api-json",    // NestJS
     "/api/json",
-    "/swagger/v1/swagger.json",   // ASP.NET Core (Swashbuckle)
-    "/api/schema/",               // Django REST (drf-spectacular)
+    "/swagger/v1/swagger.json", // ASP.NET Core (Swashbuckle)
+    "/api/schema/",             // Django REST (drf-spectacular)
     "/schema/",
-    "/documentation/json",        // Fastify
-    "/api/documentation/json",    // Laravel
+    "/documentation/json",     // Fastify
+    "/api/documentation/json", // Laravel
     "/swagger.json",
 ];
 
@@ -570,8 +570,7 @@ pub fn detect_framework(root: &Path) -> Option<FrameworkInfo> {
     if let Ok(raw) = fs::read_to_string(root.join("package.json")) {
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
             let has_dep = |name: &str| -> bool {
-                val["dependencies"][name].is_string()
-                    || val["devDependencies"][name].is_string()
+                val["dependencies"][name].is_string() || val["devDependencies"][name].is_string()
             };
             if has_dep("@nestjs/core") {
                 return Some(FrameworkInfo {
@@ -630,7 +629,9 @@ pub fn detect_framework(root: &Path) -> Option<FrameworkInfo> {
                 openapi_paths: vec!["/openapi.json"],
             });
         }
-        if py_content.contains("djangorestframework") || py_content.contains("django-rest-framework") {
+        if py_content.contains("djangorestframework")
+            || py_content.contains("django-rest-framework")
+        {
             return Some(FrameworkInfo {
                 name: "Django REST Framework",
                 export_cmd: "python manage.py spectacular --file openapi.yaml",
@@ -641,7 +642,8 @@ pub fn detect_framework(root: &Path) -> Option<FrameworkInfo> {
         if py_content.contains("django") {
             return Some(FrameworkInfo {
                 name: "Django",
-                export_cmd: "python manage.py spectacular --file openapi.yaml  # requires drf-spectacular",
+                export_cmd:
+                    "python manage.py spectacular --file openapi.yaml  # requires drf-spectacular",
                 default_ports: vec![8000],
                 openapi_paths: vec!["/api/schema/", "/openapi.json"],
             });
@@ -866,7 +868,11 @@ pub async fn smart_import(
             .with_context(|| format!("reading response from {url}"))?;
         let (name, endpoints) = crate::importer::openapi::import(&text)
             .with_context(|| format!("parsing OpenAPI spec from {url}"))?;
-        return Ok((name, endpoints, ImportSource::RunningServer(url.to_string())));
+        return Ok((
+            name,
+            endpoints,
+            ImportSource::RunningServer(url.to_string()),
+        ));
     }
 
     // ── 2. Static spec file ───────────────────────────────────────────────

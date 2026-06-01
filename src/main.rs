@@ -8,7 +8,6 @@ use std::{
 use anyhow::{bail, Context as AnyhowContext, Result};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{generate, Shell};
-use owo_colors::OwoColorize;
 use mark_api_down::{
     adhoc::{self, AdHocParams},
     engine::{self, ExecOpts},
@@ -18,9 +17,14 @@ use mark_api_down::{
     resolver::{Context, SourceKind},
     workspace,
 };
+use owo_colors::OwoColorize;
 
 #[derive(Debug, Parser)]
-#[command(name = "mad", version, about = "API workspace   design specs, send requests, validate contracts")]
+#[command(
+    name = "mad",
+    version,
+    about = "API workspace   design specs, send requests, validate contracts"
+)]
 struct Cli {
     /// Path to api-docs/mad.md.
     #[arg(long, global = true)]
@@ -300,7 +304,15 @@ async fn main() -> Result<()> {
         Command::Init(args) => {
             init(args, &collection)?;
             println!("\nScanning for existing API routes...");
-            import(ImportCommand::Project { path: None, port: None, url: None }, &collection).await?;
+            import(
+                ImportCommand::Project {
+                    path: None,
+                    port: None,
+                    url: None,
+                },
+                &collection,
+            )
+            .await?;
             println!("\nRun `mad serve` to open the web preview.");
         }
         Command::Validate { path } => validate_path(path)?,
@@ -465,7 +477,10 @@ fn init(args: InitArgs, collection: &Path) -> Result<()> {
     fs::create_dir_all(collection.join("flows"))?;
     write_new(&collection.join("mad.md"), &project_config(&name))?;
     write_new(&collection.join("_shared/env.md"), &env_config(&dev_url))?;
-    write_new(&collection.join("apis/posts/get-posts.md"), example_endpoint())?;
+    write_new(
+        &collection.join("apis/posts/get-posts.md"),
+        example_endpoint(),
+    )?;
     ensure_gitignore_has_env_local()?;
     regenerate_index(collection)?;
 
@@ -987,11 +1002,7 @@ fn regenerate_index(root: &Path) -> Result<()> {
 
 fn doctor(args: DoctorArgs, collection: &Path) -> Result<()> {
     let sha = env!("MAD_BUILD_SHA");
-    println!(
-        "MarkApiDown {} ({})",
-        env!("CARGO_PKG_VERSION"),
-        sha
-    );
+    println!("MarkApiDown {} ({})", env!("CARGO_PKG_VERSION"), sha);
     println!();
     println!("Project");
     println!("  Collection: {}", collection.display());
@@ -1039,9 +1050,7 @@ fn check_skills_freshness(fix: bool) {
     }
 
     // Skill slugs embedded in this binary (must stay in sync with installer).
-    let embedded: &[(&str, &str)] = &[
-        ("mad", include_str!("../skills/mad/SKILL.md")),
-    ];
+    let embedded: &[(&str, &str)] = &[("mad", include_str!("../skills/mad/SKILL.md"))];
 
     let mut stale: Vec<&str> = Vec::new();
     for (name, expected) in embedded {
@@ -1055,14 +1064,11 @@ fn check_skills_freshness(fix: bool) {
     if stale.is_empty() {
         println!("  {} Skills up-to-date", "✓".green());
     } else {
-        println!(
-            "  {} Skills out-of-date: {}",
-            "✗".red(),
-            stale.join(", ")
-        );
+        println!("  {} Skills out-of-date: {}", "✗".red(), stale.join(", "));
         println!("  Fix: run `mad install skills` to update installed skills.");
         if fix {
-            match mark_api_down::installer::install(Path::new("."), Some(Agent::ClaudeCode.name())) {
+            match mark_api_down::installer::install(Path::new("."), Some(Agent::ClaudeCode.name()))
+            {
                 Ok(files) => {
                     for f in &files {
                         println!("  reinstalled: {}", f.path.display());
@@ -1142,17 +1148,16 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
             Ok(())
         }
         ImportCommand::Project { path, port, url } => {
-            use mark_api_down::importer::project::{ImportSource, smart_import};
+            use mark_api_down::importer::project::{smart_import, ImportSource};
 
             let root = path.unwrap_or_else(|| Path::new(".").to_path_buf());
             let started = std::time::Instant::now();
 
             println!("Importing from {} …", root.display());
 
-            let (name, endpoints, source) =
-                smart_import(&root, port, url.as_deref())
-                    .await
-                    .with_context(|| format!("importing from {}", root.display()))?;
+            let (name, endpoints, source) = smart_import(&root, port, url.as_deref())
+                .await
+                .with_context(|| format!("importing from {}", root.display()))?;
 
             // ── Source banner ──────────────────────────────────────────────
             match &source {
@@ -1179,22 +1184,14 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
                         println!("  Detected framework: {}", fw.name);
                         if !fw.export_cmd.is_empty() {
                             println!();
-                            println!(
-                                "  Tip: export a full spec without starting a server:"
-                            );
+                            println!("  Tip: export a full spec without starting a server:");
                             println!("    {}", fw.export_cmd);
-                            println!(
-                                "  Then: mad import openapi openapi.json"
-                            );
+                            println!("  Then: mad import openapi openapi.json");
                             println!();
                         } else {
                             println!();
-                            println!(
-                                "  Tip: start your dev server and re-run:"
-                            );
-                            println!(
-                                "    mad import project --port <PORT>"
-                            );
+                            println!("  Tip: start your dev server and re-run:");
+                            println!("    mad import project --port <PORT>");
                             println!();
                         }
                     }
@@ -1202,10 +1199,7 @@ async fn import(command: ImportCommand, collection: &Path) -> Result<()> {
             }
 
             if endpoints.is_empty() {
-                println!(
-                    "no routes found ({}ms)",
-                    started.elapsed().as_millis()
-                );
+                println!("no routes found ({}ms)", started.elapsed().as_millis());
                 println!("Tip: run from a directory containing source code, or use --url.");
                 return Ok(());
             }
@@ -1280,7 +1274,11 @@ async fn install(command: InstallCommand) -> Result<()> {
     match command {
         InstallCommand::Skills { name, agent } => {
             let installed = if let Some(skill_name) = name {
-                mark_api_down::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
+                mark_api_down::installer::install_skill(
+                    Path::new("."),
+                    agent.as_deref(),
+                    &skill_name,
+                )?
             } else {
                 mark_api_down::installer::install_skills(Path::new("."), agent.as_deref())?
             };
@@ -1308,7 +1306,11 @@ async fn install(command: InstallCommand) -> Result<()> {
                 println!(
                     "{}: {}",
                     status.agent.name(),
-                    if status.detected { "detected" } else { "not detected" }
+                    if status.detected {
+                        "detected"
+                    } else {
+                        "not detected"
+                    }
                 );
             }
             Ok(())
@@ -1345,10 +1347,11 @@ async fn serve(args: ServeArgs, collection: &Path) -> Result<()> {
     #[cfg(feature = "web")]
     {
         // Explicit path arg takes precedence; otherwise use workspace-detected collection parent.
-        let root = args.path.unwrap_or_else(|| {
-            collection.parent().unwrap_or(Path::new(".")).to_path_buf()
-        });
-        return mark_api_down::preview::run(root, &args.host, args.port, &args.env, args.mock).await;
+        let root = args
+            .path
+            .unwrap_or_else(|| collection.parent().unwrap_or(Path::new(".")).to_path_buf());
+        return mark_api_down::preview::run(root, &args.host, args.port, &args.env, args.mock)
+            .await;
     }
     #[cfg(not(feature = "web"))]
     bail!(

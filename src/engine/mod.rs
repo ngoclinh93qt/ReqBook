@@ -538,19 +538,29 @@ fn evaluate_one(
     let rule = format!(
         "{}: {} {}",
         assertion.path,
-        serde_json::to_string(&assertion.op).unwrap_or_default().trim_matches('"'),
+        serde_json::to_string(&assertion.op)
+            .unwrap_or_default()
+            .trim_matches('"'),
         assertion.value.as_deref().unwrap_or(""),
     )
     .trim()
     .to_string();
 
     // Resolve the actual value for the path.
-    let actual: Option<String> = resolve_assertion_path(&assertion.path, status, headers, body, body_json);
+    let actual: Option<String> =
+        resolve_assertion_path(&assertion.path, status, headers, body, body_json);
 
     let (passed, message) = match &assertion.op {
         AssertionOp::Exists => {
             let ok = actual.as_deref().map(|v| v != "null").unwrap_or(false);
-            (ok, if ok { "exists".to_string() } else { "expected to exist but was absent or null".to_string() })
+            (
+                ok,
+                if ok {
+                    "exists".to_string()
+                } else {
+                    "expected to exist but was absent or null".to_string()
+                },
+            )
         }
         AssertionOp::Equals => {
             let expected = assertion.value.as_deref().unwrap_or("");
@@ -564,8 +574,14 @@ fn evaluate_one(
             let expected = assertion.value.as_deref().unwrap_or("");
             match &actual {
                 Some(v) if v.contains(expected) => (true, format!("contains `{expected}`")),
-                Some(v) => (false, format!("expected to contain `{expected}`, got `{v}`")),
-                None => (false, format!("expected to contain `{expected}`, but path was absent")),
+                Some(v) => (
+                    false,
+                    format!("expected to contain `{expected}`, got `{v}`"),
+                ),
+                None => (
+                    false,
+                    format!("expected to contain `{expected}`, but path was absent"),
+                ),
             }
         }
         AssertionOp::Matches => {
@@ -574,7 +590,10 @@ fn evaluate_one(
                 Ok(re) => match &actual {
                     Some(v) if re.is_match(v) => (true, format!("matches `{pattern}`")),
                     Some(v) => (false, format!("expected to match `{pattern}`, got `{v}`")),
-                    None => (false, format!("expected to match `{pattern}`, but path was absent")),
+                    None => (
+                        false,
+                        format!("expected to match `{pattern}`, but path was absent"),
+                    ),
                 },
                 Err(e) => (false, format!("invalid regex `{pattern}`: {e}")),
             }
@@ -588,14 +607,26 @@ fn evaluate_one(
                 .map(str::trim)
                 .collect();
             match &actual {
-                Some(v) if list.contains(&v.as_str()) => (true, format!("in [{}]", list.join(", "))),
-                Some(v) => (false, format!("expected one of [{}], got `{v}`", list.join(", "))),
-                None => (false, format!("expected one of [{}], but path was absent", list.join(", "))),
+                Some(v) if list.contains(&v.as_str()) => {
+                    (true, format!("in [{}]", list.join(", ")))
+                }
+                Some(v) => (
+                    false,
+                    format!("expected one of [{}], got `{v}`", list.join(", ")),
+                ),
+                None => (
+                    false,
+                    format!("expected one of [{}], but path was absent", list.join(", ")),
+                ),
             }
         }
     };
 
-    AssertionResult { rule, passed, message }
+    AssertionResult {
+        rule,
+        passed,
+        message,
+    }
 }
 
 fn resolve_assertion_path(

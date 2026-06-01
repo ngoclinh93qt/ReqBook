@@ -531,7 +531,10 @@ fn mock_exec_response(file_path: &std::path::Path, entries: &[MockEntry]) -> Res
     let method = endpoint.schema.method.as_str().to_string();
     let pattern = &endpoint.schema.path;
 
-    match entries.iter().find(|e| e.method == method && path_matches(&e.pattern, pattern)) {
+    match entries
+        .iter()
+        .find(|e| e.method == method && path_matches(&e.pattern, pattern))
+    {
         Some(entry) => {
             let body_str = String::from_utf8_lossy(&entry.body).to_string();
             let size = entry.body.len();
@@ -819,40 +822,52 @@ async fn adhoc_request_handler(
 
     let saved_path = if let Some(rel) = &body.save_as {
         let dest = state.root.join(API_DOCS_DIR).join(rel);
-        let response_block = execution.response.as_ref().map(|r| {
-            let mut block = format!("HTTP/1.1 {}\n", r.status);
-            for (k, v) in &r.headers {
-                block.push_str(&format!("{k}: {v}\n"));
-            }
-            if !r.body.is_empty() {
-                block.push('\n');
-                block.push_str(&r.body);
-            }
-            block
-        }).unwrap_or_default();
+        let response_block = execution
+            .response
+            .as_ref()
+            .map(|r| {
+                let mut block = format!("HTTP/1.1 {}\n", r.status);
+                for (k, v) in &r.headers {
+                    block.push_str(&format!("{k}: {v}\n"));
+                }
+                if !r.body.is_empty() {
+                    block.push('\n');
+                    block.push_str(&r.body);
+                }
+                block
+            })
+            .unwrap_or_default();
         match adhoc::save_to_path(&dest, &params, &response_block) {
             Ok(()) => Some(rel.clone()),
             Err(_) => None,
         }
     } else {
         // Auto-save to scratch.
-        let response_block = execution.response.as_ref().map(|r| {
-            let mut block = format!("HTTP/1.1 {}\n", r.status);
-            for (k, v) in &r.headers {
-                block.push_str(&format!("{k}: {v}\n"));
-            }
-            if !r.body.is_empty() {
-                block.push('\n');
-                block.push_str(&r.body);
-            }
-            block
-        }).unwrap_or_default();
+        let response_block = execution
+            .response
+            .as_ref()
+            .map(|r| {
+                let mut block = format!("HTTP/1.1 {}\n", r.status);
+                for (k, v) in &r.headers {
+                    block.push_str(&format!("{k}: {v}\n"));
+                }
+                if !r.body.is_empty() {
+                    block.push('\n');
+                    block.push_str(&r.body);
+                }
+                block
+            })
+            .unwrap_or_default();
         adhoc::save_to_scratch(&params, &response_block)
             .ok()
             .map(|p| p.to_string_lossy().into_owned())
     };
 
-    Json(AdHocReqResponse { execution, saved_path }).into_response()
+    Json(AdHocReqResponse {
+        execution,
+        saved_path,
+    })
+    .into_response()
 }
 
 // ─── Business logic ───────────────────────────────────────────────────────────
@@ -1271,7 +1286,11 @@ fn render_env_config(config: &EnvConfig) -> String {
 pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) -> Result<()> {
     let mock_entries = if mock {
         let api_docs = root.join("api-docs");
-        let dir = if api_docs.exists() { api_docs } else { root.clone() };
+        let dir = if api_docs.exists() {
+            api_docs
+        } else {
+            root.clone()
+        };
         let entries = collect_entries(&dir)?;
         println!(
             "{} Mock mode   {} route(s) loaded",
@@ -1329,12 +1348,7 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) ->
             match tokio::net::TcpListener::bind(&addr).await {
                 Ok(l) => {
                     if candidate != port {
-                        println!(
-                            "{} Port {} in use, using {}",
-                            "!".yellow(),
-                            port,
-                            candidate
-                        );
+                        println!("{} Port {} in use, using {}", "!".yellow(), port, candidate);
                     }
                     break l;
                 }
