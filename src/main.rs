@@ -1031,6 +1031,7 @@ fn doctor(args: DoctorArgs, collection: &Path) -> Result<()> {
     check("Claude Code (.claude/)", Path::new(".claude").exists());
     check("Cursor (.cursor/)", Path::new(".cursor").exists());
     check("GitHub Copilot (.github/)", Path::new(".github").exists());
+    #[cfg(feature = "install")]
     check_skills_freshness(args.fix);
     println!();
     println!("Network");
@@ -1040,6 +1041,7 @@ fn doctor(args: DoctorArgs, collection: &Path) -> Result<()> {
 
 /// Compare installed skill files against what this binary embeds.
 /// Prints a warning and reinstalls when `--fix` is passed.
+#[cfg(feature = "install")]
 fn check_skills_freshness(fix: bool) {
     use mark_api_down::installer::Agent;
 
@@ -1318,6 +1320,7 @@ async fn install(command: InstallCommand) -> Result<()> {
     }
 }
 
+#[cfg(feature = "install")]
 fn install_mcp() -> Result<()> {
     println!("Registering MarkApiDown MCP server with Claude Code...");
     let status = std::process::Command::new("claude")
@@ -1340,6 +1343,7 @@ fn install_mcp() -> Result<()> {
     }
 }
 
+#[allow(unused_variables)]
 async fn serve(args: ServeArgs, collection: &Path) -> Result<()> {
     if args.host == "0.0.0.0" {
         eprintln!("Warning: binding to 0.0.0.0 exposes the local preview on your network.");
