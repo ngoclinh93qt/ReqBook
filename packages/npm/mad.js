@@ -8,7 +8,7 @@ const { spawnSync } = require("child_process");
 const https = require("https");
 
 const version = process.env.MAD_VERSION || require("./package.json").version;
-const repo = process.env.MAD_REPO || "mark-api-down/mad";
+const repo = process.env.MAD_REPO || "ngoclinh93qt/MarkApiDown";
 const cacheRoot = process.env.MAD_CACHE_DIR || path.join(os.homedir(), ".cache", "mark-api-down");
 
 function target() {

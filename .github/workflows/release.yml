@@ -30,14 +30,80 @@ jobs:
       - run: cargo test --locked
       - run: cargo run -- validate api-docs
 
-  cargo-dist:
+  build-binaries:
     needs: checks
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+          - target: x86_64-apple-darwin
+            os: macos-13
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - name: Build web UI
+        run: cd web && npm ci && npm run build
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Build (cargo)
+        if: "!matrix.use_cross"
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Build (cross)
+        if: matrix.use_cross
+        run: cross build --release --locked --target ${{ matrix.target }}
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir staging
+          cp target/${{ matrix.target }}/release/mad staging/
+          tar -cJf mad-${{ matrix.target }}.tar.xz -C staging mad
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory staging
+          Copy-Item target/${{ matrix.target }}/release/mad.exe staging/
+          Compress-Archive -Path staging/mad.exe -DestinationPath mad-${{ matrix.target }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mad-${{ matrix.target }}
+          path: mad-${{ matrix.target }}.*
+
+  github-release:
+    needs: build-binaries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: axodotdev/cargo-dist@v0.31.0
+      - uses: actions/download-artifact@v4
         with:
-          command: build
+          merge-multiple: true
+          path: dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
 
   cargo-publish:
     needs: checks
@@ -52,7 +118,7 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   npm-publish:
-    needs: checks
+    needs: github-release
     runs-on: ubuntu-latest
     if: ${{ vars.PUBLISH_NPM == 'true' }}
     permissions:
@@ -66,6 +132,8 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: npm publish --provenance --access public
         working-directory: packages/npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   docker:
     needs: checks
@@ -83,5 +151,4 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name == 'push' }}
-          tags: ghcr.io/mark-api-down/mad:${{ github.ref_name }},ghcr.io/mark-api-down/mad:latest
-
+          tags: ghcr.io/${{ github.repository_owner }}/mad:${{ github.ref_name }},ghcr.io/${{ github.repository_owner }}/mad:latest

@@ -1322,10 +1322,31 @@ pub async fn run(root: PathBuf, host: &str, port: u16, env: &str, mock: bool) ->
         .fallback(static_handler)
         .with_state(state);
 
-    let addr = format!("{host}:{port}");
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .map_err(|e| anyhow::anyhow!("cannot bind to {addr}: {e}"))?;
+    let listener = {
+        let mut candidate = port;
+        loop {
+            let addr = format!("{host}:{candidate}");
+            match tokio::net::TcpListener::bind(&addr).await {
+                Ok(l) => {
+                    if candidate != port {
+                        println!(
+                            "{} Port {} in use, using {}",
+                            "!".yellow(),
+                            port,
+                            candidate
+                        );
+                    }
+                    break l;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse && candidate < port + 10 => {
+                    candidate += 1;
+                }
+                Err(e) => {
+                    return Err(anyhow::anyhow!("cannot bind to {host}:{port}: {e}"));
+                }
+            }
+        }
+    };
     let local_addr = listener.local_addr()?;
     println!("{} Preview:  http://{local_addr}", "✓".green());
     println!("    Press Ctrl-C to stop.");
