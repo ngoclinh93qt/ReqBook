@@ -48,6 +48,8 @@ pub enum Agent {
     Cursor,
     /// GitHub Copilot instructions.
     Copilot,
+    /// Windsurf (Codeium) workspace rules.
+    Windsurf,
 }
 
 impl Agent {
@@ -60,6 +62,7 @@ impl Agent {
             "opencode" => Some(Self::OpenCode),
             "cursor" => Some(Self::Cursor),
             "copilot" | "github-copilot" => Some(Self::Copilot),
+            "windsurf" | "droid" => Some(Self::Windsurf),
             _ => None,
         }
     }
@@ -73,6 +76,7 @@ impl Agent {
             Self::OpenCode => "opencode",
             Self::Cursor => "cursor",
             Self::Copilot => "copilot",
+            Self::Windsurf => "windsurf",
         }
     }
 
@@ -106,7 +110,7 @@ pub struct AgentStatus {
 #[derive(Debug, Error)]
 pub enum InstallError {
     /// Unknown agent name.
-    #[error("unknown agent `{name}`\nFix: use one of claude-code, codex-cli, antigravity, opencode, cursor, copilot.")]
+    #[error("unknown agent `{name}`\nFix: use one of claude-code, codex-cli, antigravity, opencode, cursor, copilot, windsurf.")]
     UnknownAgent {
         /// Name provided by the user.
         name: String,
@@ -182,6 +186,10 @@ pub fn detect_agents(root: &Path) -> Vec<AgentStatus> {
         (Agent::OpenCode, root.join(".opencode").exists()),
         (Agent::Cursor, root.join(".cursor").exists()),
         (Agent::Copilot, root.join(".github").exists()),
+        (
+            Agent::Windsurf,
+            root.join(".windsurf").exists() || root.join(".windsurfrules").exists(),
+        ),
     ]
     .into_iter()
     .map(|(agent, detected)| AgentStatus { agent, detected })
@@ -320,6 +328,7 @@ pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, Insta
             Agent::OpenCode,
             Agent::Cursor,
             Agent::Copilot,
+            Agent::Windsurf,
         ]
     };
 
@@ -374,6 +383,7 @@ pub fn uninstall_skill(
             Agent::OpenCode,
             Agent::Cursor,
             Agent::Copilot,
+            Agent::Windsurf,
         ]
     };
     let all_skills = canonical_skills()?;
@@ -463,6 +473,7 @@ fn skill_target_path(root: &Path, agent: Agent, name: &str) -> PathBuf {
         Agent::OpenCode => root.join(format!(".opencode/skills/{name}/SKILL.md")),
         Agent::Cursor => root.join(format!(".cursor/rules/{name}.mdc")),
         Agent::Copilot => root.join(format!(".github/instructions/{name}.instructions.md")),
+        Agent::Windsurf => root.join(format!(".windsurf/rules/{name}.md")),
     }
 }
 
@@ -485,6 +496,10 @@ fn render_skill(agent: Agent, skill: &SkillSource) -> String {
         ),
         Agent::Copilot => format!(
             "---\napplyTo: \"api-docs/**/*.md\"\n---\n\n{}\n\n{}",
+            skill.meta.description, skill.body
+        ),
+        Agent::Windsurf => format!(
+            "---\ntrigger: agent_requested\ndescription: {}\n---\n\n{}",
             skill.meta.description, skill.body
         ),
         Agent::ClaudeCode | Agent::CodexCli | Agent::Antigravity | Agent::OpenCode => {

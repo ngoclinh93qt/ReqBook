@@ -13,6 +13,8 @@ mad serve
 # Preview: http://127.0.0.1:8080
 ```
 
+<img src="/images/ui-home.png" alt="mad-ui endpoint browser" />
+
 <Note>
  MarkApiDown binds to `127.0.0.1` by default. Use `--host=0.0.0.0` only when you intentionally want to share the preview on your local network.
 </Note>
@@ -46,6 +48,12 @@ The CLI is great for CI and automation. The UI is better when you are actively d
 
 ---
 
+<img src="/images/ui-endpoint.png" alt="Endpoint runner — request builder and response viewer" />
+
+After clicking **Send**, the response panel shows status, duration, diff against the expected response, body, and headers.
+
+<img src="/images/ui-endpoint-response.png" alt="Endpoint response — Passed 200 with diff view" />
+
 ## Request tweaks do not rewrite markdown
 
 The request builder is intentionally temporary:
@@ -63,6 +71,8 @@ This lets you try an ID, token, header, or body shape without accidentally modif
 ---
 
 ## Flow canvas
+
+<img src="/images/ui-flow-canvas.png" alt="Flow canvas with connected endpoint blocks" />
 
 The flow canvas is the UI surface for `api-docs/flows/`.
 
