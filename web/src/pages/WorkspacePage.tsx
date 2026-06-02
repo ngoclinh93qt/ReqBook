@@ -4,14 +4,6 @@ import { api } from '../api';
 import type { WorkspaceEntry } from '../types';
 import { Icon } from '../ui';
 
-const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-
-async function pickDirectory(): Promise<string | null> {
-  if (!isTauri) return null;
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke<string | null>('pick_directory');
-}
-
 export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () => void }) {
   const navigate = useNavigate();
   const [current, setCurrent] = useState<WorkspaceEntry | null>(null);
@@ -27,7 +19,6 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
   const [createPath, setCreatePath] = useState('');
   const [dropOpen, setDropOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
-  const dirInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -35,10 +26,6 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  useEffect(() => {
-    dirInputRef.current?.setAttribute('webkitdirectory', '');
   }, []);
 
   useEffect(() => {
@@ -60,10 +47,6 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
     setBusy(true);
     setError('');
     try {
-      if (isTauri) {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('open_workspace', { path });
-      }
       await api.openWorkspace(path);
       onWorkspaceChanged?.();
       navigate('/');
@@ -74,68 +57,46 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
     }
   }
 
-  async function handleOpenFolder() {
-    setError('');
-    if (!isTauri) {
+  async function pickFolder(): Promise<string | null> {
+    const path = await api.pickFolder();
+    if (path === null) {
+      // Native picker not available — fall back to text input
       setShowOpenByPath(true);
       setCreating(false);
-      return;
     }
+    return path;
+  }
+
+  async function handleOpenFolder() {
+    setError('');
     try {
-      const path = await pickDirectory();
+      const path = await pickFolder();
       if (path) await openPath(path);
     } catch (e) {
       setError(String(e));
     }
   }
 
-  function handleDirInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const f = files[0] as File & { webkitRelativePath?: string };
-      const rel = f.webkitRelativePath ?? '';
-      const folderName = rel.split('/')[0] || '';
-      if (folderName) setOpenByPath(folderName);
-      setShowOpenByPath(true);
-      setCreating(false);
-    }
-    if (dirInputRef.current) dirInputRef.current.value = '';
-  }
-
-  function browseFolder() {
-    if (isTauri) {
-      handleOpenFolder();
-    } else {
-      dirInputRef.current?.click();
-    }
-  }
-
   async function handleCreate() {
     setError('');
-    if (!isTauri) {
-      const path = createPath.trim();
-      if (!path) { setError('Enter a folder path.'); return; }
-      setBusy(true);
-      try {
-        await api.createWorkspace(path, newName.trim() || undefined);
-        await api.openWorkspace(path);
-        onWorkspaceChanged?.();
-        navigate('/');
-      } catch (e) {
-        setError(String(e));
-      } finally {
-        setBusy(false);
-        setCreating(false);
-      }
+    // If native picker is available, use it; otherwise fall back to typed path
+    const pickedPath = await api.pickFolder().catch(() => null);
+    const path = pickedPath ?? createPath.trim();
+
+    if (!path) {
+      // Native picker not available and no typed path yet — show path input
+      setShowOpenByPath(false);
       return;
     }
+    if (!pickedPath && !createPath.trim()) {
+      setError('Enter a folder path.');
+      return;
+    }
+
+    setBusy(true);
     try {
-      const path = await pickDirectory();
-      if (!path) return;
-      setBusy(true);
-      const { invoke } = await import('@tauri-apps/api/core');
       await api.createWorkspace(path, newName.trim() || undefined);
-      await invoke('open_workspace', { path });
+      await api.openWorkspace(path);
       onWorkspaceChanged?.();
       navigate('/');
     } catch (e) {
@@ -152,14 +113,6 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
 
   return (
     <div className="workspace-page">
-      {/* Hidden directory picker for browser fallback */}
-      <input
-        ref={dirInputRef}
-        type="file"
-        style={{ display: 'none' }}
-        onChange={handleDirInputChange}
-      />
-
       <div className="workspace-header">
         <h1>Workspaces</h1>
       </div>
@@ -214,7 +167,7 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
               <div className="ws-menu-empty">No workspaces yet</div>
             )}
             <div className="ws-menu-divider" />
-            <button className="ws-menu-action" onClick={() => { browseFolder(); setDropOpen(false); }}>
+            <button className="ws-menu-action" onClick={() => { handleOpenFolder(); setDropOpen(false); }}>
               <Icon.folder /> Open folder…
             </button>
             <button className="ws-menu-action" onClick={() => { setCreating(true); setShowOpenByPath(false); setDropOpen(false); }}>
@@ -226,7 +179,7 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
 
       {/* Quick actions */}
       <div className="workspace-actions">
-        <button className="btn" onClick={() => { browseFolder(); setCreating(false); }} disabled={busy}>
+        <button className="btn" onClick={() => { handleOpenFolder(); setCreating(false); }} disabled={busy}>
           <Icon.folder /> Open Folder
         </button>
         <button className="btn" onClick={() => { setCreating(v => !v); setShowOpenByPath(false); }} disabled={busy}>
@@ -234,7 +187,7 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
         </button>
       </div>
 
-      {/* Open by path form */}
+      {/* Open by path form (fallback when native picker unavailable) */}
       {showOpenByPath && !creating && (
         <div className="workspace-path-form">
           <label className="workspace-path-label">Open by path</label>
@@ -248,11 +201,6 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
               onKeyDown={e => e.key === 'Enter' && openPath(openByPath)}
               autoFocus
             />
-            {!isTauri && (
-              <button className="btn" onClick={() => dirInputRef.current?.click()} title="Browse for a folder">
-                Browse…
-              </button>
-            )}
             <button
               className="btn-primary btn-sm-primary"
               onClick={() => openPath(openByPath)}
@@ -263,7 +211,6 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
           </div>
           <p className="workspace-path-hint">
             Point to a folder containing an <code>api-docs/</code> directory.
-            {!isTauri && ' Use Browse to select a folder — then verify the full absolute path before opening.'}
           </p>
         </div>
       )}
@@ -271,17 +218,15 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
       {/* Create form */}
       {creating && (
         <div className="workspace-create-form">
-          {!isTauri && (
-            <input
-              className="input mono"
-              type="text"
-              placeholder="/Users/me/new-project"
-              value={createPath}
-              onChange={e => setCreatePath(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              autoFocus
-            />
-          )}
+          <input
+            className="input mono"
+            type="text"
+            placeholder="/Users/me/new-project (or click 'Pick folder')"
+            value={createPath}
+            onChange={e => setCreatePath(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            autoFocus
+          />
           <input
             className="input"
             type="text"
@@ -291,7 +236,7 @@ export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () 
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
           />
           <button className="btn-primary btn-sm-primary" onClick={handleCreate} disabled={busy}>
-            {isTauri ? 'Pick folder and create' : 'Create'}
+            Pick folder and create
           </button>
         </div>
       )}

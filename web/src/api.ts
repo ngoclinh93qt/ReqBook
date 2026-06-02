@@ -106,6 +106,13 @@ export const api = {
       body: JSON.stringify({ path, name }),
     }).then(r => json<{ status: string; name: string }>(r)),
 
+  pickFolder: async (): Promise<string | null> => {
+    const res = await fetch(`${BASE}/pick-folder`);
+    if (res.status === 404) return null;
+    const data = await json<{ path: string | null }>(res);
+    return data.path ?? null;
+  },
+
   getGitBranches: () =>
     fetch(`${BASE}/git/branches`).then(r => json<GitBranchesData>(r)),
 

@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::{
     engine::{execute, EngineError, ExecOpts, Execution},
-    parser::{parse_endpoint, ParseError, Pipeline},
+    parser::{parse_endpoint, ParseError, Pipeline, PipelineStep},
     resolver::SourceKind,
 };
 
@@ -80,63 +80,36 @@ pub async fn run(
     env: &str,
     opts: PipelineOpts,
 ) -> Result<PipelineResult, PipelineError> {
+    if pipeline.schema.parallel {
+        run_parallel(pipeline, env, opts).await
+    } else {
+        run_sequential(pipeline, env, opts).await
+    }
+}
+
+async fn run_sequential(
+    pipeline: &Pipeline,
+    env: &str,
+    opts: PipelineOpts,
+) -> Result<PipelineResult, PipelineError> {
     let mut captures: BTreeMap<String, String> = BTreeMap::new();
     let mut steps = Vec::new();
     let mut passed = true;
 
     for step in &pipeline.steps {
-        let path = opts.root.join(&step.endpoint);
-        let path_display = path.display().to_string();
-        let source = fs::read_to_string(&path).map_err(|source| PipelineError::ReadEndpoint {
-            path: path_display.clone(),
-            source,
-        })?;
-        let endpoint = parse_endpoint(&source, &path)?;
-        let mut exec_opts = opts.exec.clone();
-        for (key, value) in &captures {
-            exec_opts
-                .context
-                .insert(SourceKind::Pipeline, key.clone(), value.clone());
+        let (step_captures, step_result) =
+            execute_step(step, env, &opts.root, opts.exec.clone(), captures.clone()).await?;
+        let step_passed = step_result
+            .execution
+            .as_ref()
+            .map_or(step_result.error.is_none(), |e| e.diff.passed);
+        if !step_passed {
+            passed = false;
         }
-
-        match execute(&endpoint, env, exec_opts).await {
-            Ok(execution) => {
-                for capture in &step.capture {
-                    let value = capture_value(&execution, &capture.source).ok_or_else(|| {
-                        PipelineError::Capture {
-                            step: step.name.clone(),
-                            capture: capture.source.clone(),
-                        }
-                    })?;
-                    captures.insert(capture.name.clone(), value);
-                }
-                let step_passed = execution.diff.passed;
-                if !step_passed {
-                    passed = false;
-                }
-                steps.push(StepResult {
-                    name: step.name.clone(),
-                    endpoint: step.endpoint.clone(),
-                    execution: Some(execution),
-                    error: None,
-                });
-                if !step_passed && !pipeline.schema.continue_on_error {
-                    break;
-                }
-            }
-            Err(error) => {
-                passed = false;
-                let error_string = error.to_string();
-                steps.push(StepResult {
-                    name: step.name.clone(),
-                    endpoint: step.endpoint.clone(),
-                    execution: None,
-                    error: Some(error_string),
-                });
-                if !pipeline.schema.continue_on_error {
-                    break;
-                }
-            }
+        captures.extend(step_captures);
+        steps.push(step_result);
+        if !step_passed && !pipeline.schema.continue_on_error {
+            break;
         }
     }
 
@@ -145,6 +118,103 @@ pub async fn run(
         captures,
         passed,
     })
+}
+
+async fn run_parallel(
+    pipeline: &Pipeline,
+    env: &str,
+    opts: PipelineOpts,
+) -> Result<PipelineResult, PipelineError> {
+    let handles: Vec<_> = pipeline
+        .steps
+        .iter()
+        .map(|step| {
+            let root = opts.root.clone();
+            let exec_opts = opts.exec.clone();
+            let env = env.to_string();
+            let step = step.clone();
+            tokio::task::spawn(async move {
+                execute_step(&step, &env, &root, exec_opts, BTreeMap::new()).await
+            })
+        })
+        .collect();
+
+    let mut steps = Vec::with_capacity(handles.len());
+    let mut captures = BTreeMap::new();
+    let mut passed = true;
+
+    for handle in handles {
+        let (step_captures, step_result) = handle.await.expect("pipeline step task panicked")?;
+        let step_passed = step_result
+            .execution
+            .as_ref()
+            .map_or(step_result.error.is_none(), |e| e.diff.passed);
+        if !step_passed {
+            passed = false;
+        }
+        captures.extend(step_captures);
+        steps.push(step_result);
+    }
+
+    Ok(PipelineResult {
+        steps,
+        captures,
+        passed,
+    })
+}
+
+async fn execute_step(
+    step: &PipelineStep,
+    env: &str,
+    root: &PathBuf,
+    exec_opts: ExecOpts,
+    initial_captures: BTreeMap<String, String>,
+) -> Result<(BTreeMap<String, String>, StepResult), PipelineError> {
+    let path = root.join(&step.endpoint);
+    let path_display = path.display().to_string();
+    let source = fs::read_to_string(&path).map_err(|source| PipelineError::ReadEndpoint {
+        path: path_display.clone(),
+        source,
+    })?;
+    let endpoint = parse_endpoint(&source, &path)?;
+    let mut opts = exec_opts;
+    for (key, value) in &initial_captures {
+        opts.context
+            .insert(SourceKind::Pipeline, key.clone(), value.clone());
+    }
+
+    match execute(&endpoint, env, opts).await {
+        Ok(execution) => {
+            let mut new_captures = BTreeMap::new();
+            for capture in &step.capture {
+                let value = capture_value(&execution, &capture.source).ok_or_else(|| {
+                    PipelineError::Capture {
+                        step: step.name.clone(),
+                        capture: capture.source.clone(),
+                    }
+                })?;
+                new_captures.insert(capture.name.clone(), value);
+            }
+            Ok((
+                new_captures,
+                StepResult {
+                    name: step.name.clone(),
+                    endpoint: step.endpoint.clone(),
+                    execution: Some(execution),
+                    error: None,
+                },
+            ))
+        }
+        Err(error) => Ok((
+            BTreeMap::new(),
+            StepResult {
+                name: step.name.clone(),
+                endpoint: step.endpoint.clone(),
+                execution: None,
+                error: Some(error.to_string()),
+            },
+        )),
+    }
 }
 
 fn capture_value(execution: &Execution, source: &str) -> Option<String> {

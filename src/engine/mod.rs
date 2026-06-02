@@ -10,7 +10,7 @@ use thiserror::Error;
 use tokio::time::{sleep, Duration};
 
 use crate::{
-    parser::{Assertion, AssertionOp, Endpoint, HttpMethod, Protocol},
+    parser::{Assertion, AssertionOp, Backoff, Endpoint, HttpMethod, Protocol},
     resolver::{mask, resolve, Context, ResolveError},
 };
 
@@ -218,11 +218,9 @@ pub async fn execute_with_client(
         .timeout_ms
         .or(endpoint.schema.timeout)
         .map(Duration::from_millis);
-    let attempts = endpoint
-        .schema
-        .retry
-        .as_ref()
-        .map_or(0, |retry| retry.attempts);
+    let retry = endpoint.schema.retry.as_ref();
+    let attempts = retry.map_or(0, |r| r.attempts);
+    let backoff = retry.map_or(Backoff::Fixed, |r| r.backoff.clone());
     let started = Instant::now();
     let mut last_error = None;
 
@@ -249,7 +247,7 @@ pub async fn execute_with_client(
                     })?;
                 let body = String::from_utf8_lossy(&bytes).to_string();
                 if status.is_server_error() && attempt < attempts {
-                    sleep(Duration::from_millis(25 * u64::from(attempt + 1))).await;
+                    sleep(backoff_delay(&backoff, attempt)).await;
                     continue;
                 }
                 let captured_response = CapturedResponse {
@@ -272,7 +270,7 @@ pub async fn execute_with_client(
             Err(source) => {
                 last_error = Some(source);
                 if attempt < attempts {
-                    sleep(Duration::from_millis(25 * u64::from(attempt + 1))).await;
+                    sleep(backoff_delay(&backoff, attempt)).await;
                 }
             }
         }
@@ -486,7 +484,11 @@ fn json_shape_matches(expected: &Value, actual: &Value) -> bool {
                     .first()
                     .is_some_and(|first| json_shape_matches(&expected[0], first))
         }
-        _ => true,
+        (Value::String(_), Value::String(_))
+        | (Value::Number(_), Value::Number(_))
+        | (Value::Bool(_), Value::Bool(_))
+        | (Value::Null, Value::Null) => true,
+        _ => false,
     }
 }
 
@@ -500,6 +502,13 @@ fn headers_to_map(headers: &HeaderMap) -> BTreeMap<String, String> {
             )
         })
         .collect()
+}
+
+fn backoff_delay(backoff: &Backoff, attempt: u32) -> Duration {
+    match backoff {
+        Backoff::Fixed => Duration::from_millis(250),
+        Backoff::Exponential => Duration::from_millis(100 * 2u64.pow(attempt)),
+    }
 }
 
 fn source_path(endpoint: &Endpoint) -> String {

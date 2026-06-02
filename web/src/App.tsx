@@ -10,7 +10,7 @@ import { WorkspacePage } from './pages/WorkspacePage';
 import { Icon } from './ui';
 import type { VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
-import { BrandMark, GitBranchSwitcher, Sidebar, WorkspaceSwitcher, type WorkspaceInfo } from './Sidebar';
+import { BrandMark, Sidebar, StatusBar, WorkspaceSwitcher } from './Sidebar';
 
 export function App() {
   return (
@@ -30,12 +30,11 @@ function MadShell() {
   const [mockMode, setMockMode] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
-  const [refreshIndexKey, setRefreshIndexKey] = useState(0);
+  const [refreshIndexKey] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [runTick, setRunTick] = useState(0);
   const [workspaceTick, setWorkspaceTick] = useState(0);
-  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
 
   const refreshWorkspaceData = () => setWorkspaceTick(tick => tick + 1);
 
@@ -54,18 +53,16 @@ function MadShell() {
     }).catch(() => {});
     const handler = () => setRunTick(t => t + 1);
     window.addEventListener('mad:run-saved', handler);
-    return () => window.removeEventListener('mad:run-saved', handler);
+    const onEndpointCreated = () => refreshWorkspaceData();
+    const onWorkspaceSwitched = () => refreshWorkspaceData();
+    window.addEventListener('mad:endpoint-created', onEndpointCreated);
+    window.addEventListener('mad:workspace-switched', onWorkspaceSwitched);
+    return () => {
+      window.removeEventListener('mad:run-saved', handler);
+      window.removeEventListener('mad:endpoint-created', onEndpointCreated);
+      window.removeEventListener('mad:workspace-switched', onWorkspaceSwitched);
+    };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    api.getWorkspaceCurrent()
-      .then(ws => {
-        if (!cancelled && ws?.name) setWorkspace({ name: ws.name, path: ws.path ?? '' });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [location.key, workspaceTick]);
 
   const relPath = location.pathname.startsWith('/spec/') ? decodeURIComponent(location.pathname.slice('/spec/'.length)) : '';
 
@@ -80,7 +77,7 @@ function MadShell() {
         return;
       }
       const imported = await api.importProjectRoutes();
-      setRefreshIndexKey(key => key + 1);
+      refreshWorkspaceData();
       setSyncMsg(`Synced ${imported.written.length} spec(s)`);
       if (location.pathname !== '/') navigate('/');
     } catch (e) {
@@ -116,7 +113,7 @@ function MadShell() {
         onOpenVars={() => setVarsOpen(true)}
         onAddEnvironment={() => setEnvModalOpen(true)}
         mockMode={mockMode}
-        workspace={workspace}
+        workspaceTick={workspaceTick}
       />
       <div className="body-row">
         <Sidebar
@@ -136,11 +133,11 @@ function MadShell() {
         </main>
       </div>
       <StatusBar
-        workspaceTick={workspaceTick}
-        onWorkspaceDataChange={refreshWorkspaceData}
-        syncing={syncing}
-        syncMsg={syncMsg}
-        onSync={syncProject}
+        env={env}
+        onScan={syncProject}
+        scanning={syncing}
+        scanMsg={syncMsg}
+        runTick={runTick}
       />
       <VariablesDrawer
         open={varsOpen}
@@ -164,31 +161,6 @@ function MadShell() {
         />
       )}
     </div>
-  );
-}
-
-function StatusBar({ workspaceTick, onWorkspaceDataChange, syncing, syncMsg, onSync }: {
-  workspaceTick: number;
-  onWorkspaceDataChange: () => void;
-  syncing: boolean;
-  syncMsg: string;
-  onSync: () => void;
-}) {
-  const syncOk = syncMsg.startsWith('Synced') || syncMsg.includes('up to date');
-  return (
-    <footer className="statusbar">
-      <GitBranchSwitcher refreshKey={workspaceTick} onBranchChange={onWorkspaceDataChange} />
-      <button
-        className={`sb-stat sync ${syncing ? 'is-syncing' : ''}`}
-        onClick={onSync}
-        disabled={syncing}
-        title="Sync workspace routes into api-docs"
-      >
-        <Icon.sync />
-        <span>{syncing ? 'Syncing...' : 'Sync'}</span>
-      </button>
-      {syncMsg && <span className={`sb-stat msg ${syncOk ? 'ok' : 'fail'}`}>{syncMsg}</span>}
-    </footer>
   );
 }
 
@@ -233,7 +205,7 @@ function EnvSwitcher({ envs, value, onChange, onAdd }: {
   );
 }
 
-function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, mockMode, workspace }: {
+function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, mockMode, workspaceTick }: {
   relPath: string;
   onHome: () => void;
   onNewRequest: () => void;
@@ -245,7 +217,7 @@ function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, e
   onOpenVars: () => void;
   onAddEnvironment: () => void;
   mockMode?: boolean;
-  workspace: WorkspaceInfo | null;
+  workspaceTick: number;
 }) {
   return (
     <header className="topbar">
@@ -253,12 +225,16 @@ function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, e
         <span className="brand-mark"><BrandMark size={20} color="var(--accent)" /></span>
         <span className="brand-name">MarkApiDown</span>
       </button>
-      <div className="crumbs">
-        <WorkspaceSwitcher workspace={workspace} />
-        {relPath && <><span className="sep">/</span><span className="cur">{relPath}</span></>}
-      </div>
+      <span className="topbar-div" />
+      <WorkspaceSwitcher compact workspaceTick={workspaceTick} onNavigateHome={onHome} />
+      {relPath && (
+        <div className="crumbs">
+          <span className="sep">/</span>
+          <span className="cur">{relPath}</span>
+        </div>
+      )}
       <div className="tnav-r">
-        <button className="tnav-item primary" onClick={onNewRequest}><span className="ic"><Icon.bolt2 /></span>New Request</button>
+        <button className="tnav-item primary icon" onClick={onNewRequest} title="New request"><Icon.plus /></button>
         <button className="tnav-item" onClick={onOpenVars}><span className="ic"><Icon.vars /></span>Variables</button>
         {mockMode && <span className="mock-pill">mock</span>}
         <EnvSwitcher envs={envs} value={env} onChange={setEnv} onAdd={onAddEnvironment} />

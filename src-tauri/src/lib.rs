@@ -13,12 +13,6 @@ pub struct TauriState {
 }
 
 #[tauri::command]
-async fn pick_directory(app: AppHandle) -> Result<Option<String>, String> {
-    let path = app.dialog().file().blocking_pick_folder();
-    Ok(path.map(|p| p.to_string()))
-}
-
-#[tauri::command]
 async fn get_server_url(state: State<'_, Arc<TauriState>>) -> Result<String, String> {
     let port = *state.server_port.lock().unwrap();
     Ok(format!("http://127.0.0.1:{port}"))
@@ -61,6 +55,18 @@ pub fn run() {
             let root_clone = workspace_root.clone();
             let port_clone = server_port.clone();
             let app_handle = app.handle().clone();
+            let app_handle_for_picker = app.handle().clone();
+
+            let pick_folder_fn: preview::PickFolderFn = Arc::new(move || {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                app_handle_for_picker
+                    .dialog()
+                    .file()
+                    .pick_folder(move |path| {
+                        let _ = tx.send(path.map(|p| p.to_string()));
+                    });
+                rx
+            });
 
             tauri::async_runtime::spawn(async move {
                 let (tx, rx) = tokio::sync::oneshot::channel::<u16>();
@@ -72,6 +78,7 @@ pub fn run() {
                         7700,
                         "dev",
                         false,
+                        Some(pick_folder_fn),
                         move |port| {
                             *port_clone.lock().unwrap() = port;
                             let _ = tx.send(port);
@@ -100,11 +107,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            pick_directory,
-            get_server_url,
-            open_workspace,
-        ])
+        .invoke_handler(tauri::generate_handler![get_server_url, open_workspace,])
         .run(tauri::generate_context!())
         .expect("error while running mad-desktop");
 }

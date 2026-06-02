@@ -25,6 +25,9 @@ export const Icon = {
   scan: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 5V3.5A1.5 1.5 0 0 1 3.5 2H5" /><path d="M9 2h1.5A1.5 1.5 0 0 1 12 3.5V5" /><path d="M12 9v1.5a1.5 1.5 0 0 1-1.5 1.5H9" /><path d="M5 12H3.5A1.5 1.5 0 0 1 2 10.5V9" /><line x1="2" y1="7" x2="12" y2="7" /></svg>,
   sync: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7a5 5 0 0 1-8.5 3.5" /><path d="M2 7a5 5 0 0 1 8.5-3.5" /><polyline points="11.5,1 11.5,3.5 9,3.5" /><polyline points="2.5,13 2.5,10.5 5,10.5" /></svg>,
   branch: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"><circle cx="4" cy="3" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="11" r="1.5" /><path d="M4 4.5v5" /><path d="M4 7h2.5A3.5 3.5 0 0 0 10 5.5" /></svg>,
+  dots: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor" aria-hidden><circle cx="3" cy="7" r="1.3" /><circle cx="7" cy="7" r="1.3" /><circle cx="11" cy="7" r="1.3" /></svg>,
+  flow: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="3.5" cy="3.5" r="1.8" /><circle cx="10.5" cy="10.5" r="1.8" /><path d="M5 4.5C8 5 9 6 9.5 9" /></svg>,
+  trash: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 4h9" /><path d="M5 4V2.5h4V4" /><path d="M3.5 4l.5 7.5h6l.5-7.5" /></svg>,
 };
 
 export function MethodBadge({ method }: { method: string }) {

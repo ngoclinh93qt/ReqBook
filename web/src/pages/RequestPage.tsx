@@ -112,7 +112,10 @@ export function RequestPage({ env, varsData: _varsData }: {
       });
       setResult(res);
       setResultTab('response');
-      if (res.saved_path) setSaveMsg(`Saved: ${res.saved_path}`);
+      if (res.saved_path) {
+        setSaveMsg(`Saved: ${res.saved_path}`);
+        window.dispatchEvent(new CustomEvent('mad:endpoint-created'));
+      }
     } catch (e) {
       setError(String(e));
     } finally {

@@ -29,14 +29,65 @@ function NavDot({ relPath }: { relPath: string }) {
   return <span className={`nav-dot ${cls}`} />;
 }
 
-// ── Workspace Switcher ────────────────────────────────────────────────────────
+// ── Collection ⋯ context menu ─────────────────────────────────────────────────
+function CollectionMenu({ onNewRequest }: { onNewRequest: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+  return (
+    <div className="sb-more-wrap" ref={ref}>
+      <button
+        className={`sb-more${open ? ' is-open' : ''}`}
+        title="More options"
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+      >
+        <Icon.dots />
+      </button>
+      {open && (
+        <div className="sb-more-menu" onClick={e => e.stopPropagation()}>
+          <button className="sb-more-item" onClick={() => { setOpen(false); onNewRequest(); }}>
+            <Icon.plus /> New request
+          </button>
+          <button className="sb-more-item" onClick={() => setOpen(false)}>
+            <Icon.folder /> New folder
+          </button>
+          <div className="sb-more-divider" />
+          <button className="sb-more-item" onClick={() => setOpen(false)}>
+            <Icon.edit /> Rename
+          </button>
+          <button className="sb-more-item danger" onClick={() => setOpen(false)}>
+            <Icon.trash /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Workspace Switcher (compact = topbar inline, full = sidebar top) ──────────
 export interface WorkspaceInfo {
   name: string;
   path: string;
 }
 
-export function WorkspaceSwitcher({ workspace }: { workspace: WorkspaceInfo | null }) {
+export function WorkspaceSwitcher({
+  compact = false,
+  workspaceTick = 0,
+  onNavigateHome,
+}: {
+  compact?: boolean;
+  workspaceTick?: number;
+  onNavigateHome?: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<WorkspaceInfo | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -48,34 +99,75 @@ export function WorkspaceSwitcher({ workspace }: { workspace: WorkspaceInfo | nu
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const displayPath = workspace?.path.replace(/^\/Users\/[^/]+/, '~') ?? '—';
+  useEffect(() => {
+    api.getWorkspaceCurrent()
+      .then(ws => { if (ws?.name) setCurrent({ name: ws.name, path: ws.path ?? '' }); })
+      .catch(() => {});
+    Promise.all([api.getWorkspaceRecent(), api.getWorkspaceAll()])
+      .then(([recent, all]) => {
+        const seen = new Set<string>();
+        const merged: WorkspaceInfo[] = [];
+        for (const w of [...recent, ...all]) {
+          if (!seen.has(w.path)) { seen.add(w.path); merged.push({ name: w.name, path: w.path }); }
+        }
+        setWorkspaces(merged);
+      })
+      .catch(() => {});
+  }, [workspaceTick]);
+
+  async function switchTo(path: string) {
+    try {
+      await api.openWorkspace(path);
+      const ws = workspaces.find(w => w.path === path);
+      if (ws) setCurrent(ws);
+      window.dispatchEvent(new CustomEvent('mad:workspace-switched'));
+      navigate('/');
+    } catch {}
+    setOpen(false);
+  }
+
+  const displayPath = current?.path.replace(/^\/Users\/[^/]+/, '~') ?? '—';
 
   return (
-    <div className="ws-switcher" ref={ref}>
-      <button className={`ws-trigger ${open ? 'is-open' : ''}`} onClick={() => setOpen(o => !o)}>
-        <span className="ws-folder"><Icon.folder /></span>
-        <span className="ws-meta">
-          <span className="ws-name">{workspace?.name ?? 'No workspace'}</span>
-          <span className="ws-path">{displayPath}</span>
-        </span>
-        <span className="ws-caret">
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <div className={`ws-switcher${compact ? ' compact' : ''}`} ref={ref}>
+      <div className={`ws-trigger${open ? ' is-open' : ''}`}>
+        <button
+          className="ws-main"
+          onClick={() => { onNavigateHome?.(); navigate('/'); setOpen(false); }}
+          title="Overview"
+        >
+          <span className="ws-folder"><Icon.folder /></span>
+          <span className="ws-meta">
+            <span className="ws-name">{current?.name ?? 'No workspace'}</span>
+            {!compact && <span className="ws-path">{displayPath}</span>}
+          </span>
+        </button>
+        <button className="ws-caret-btn" onClick={() => setOpen(o => !o)} title="Switch workspace">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+            strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3.5,5 6,2.5 8.5,5" /><polyline points="3.5,7 6,9.5 8.5,7" />
           </svg>
-        </span>
-      </button>
+        </button>
+      </div>
       {open && (
         <div className="ws-menu" onClick={e => e.stopPropagation()}>
-          <div className="ws-menu-label">Workspace</div>
-          {workspace && (
-            <div className="ws-menu-item is-active">
+          <div className="ws-menu-label">Workspaces</div>
+          {workspaces.map(w => (
+            <button
+              key={w.path}
+              className={`ws-menu-item${w.path === current?.path ? ' is-active' : ''}`}
+              onClick={() => switchTo(w.path)}
+            >
               <span className="ws-folder sm"><Icon.folder /></span>
               <span className="ws-mi-meta">
-                <span className="ws-mi-name">{workspace.name}</span>
-                <span className="ws-mi-path">{displayPath}</span>
+                <span className="ws-mi-name">{w.name}</span>
+                <span className="ws-mi-path">{w.path.replace(/^\/Users\/[^/]+/, '~')}</span>
               </span>
-              <span className="ws-mi-check"><Icon.check /></span>
-            </div>
+              {w.path === current?.path && <span className="ws-mi-check"><Icon.check /></span>}
+            </button>
+          ))}
+          {workspaces.length === 0 && (
+            <div style={{ padding: '8px 10px', fontSize: 12, color: 'var(--fg-4)' }}>No workspaces yet</div>
           )}
           <div className="ws-menu-divider" />
           <button className="ws-menu-action" onClick={() => { navigate('/workspaces'); setOpen(false); }}>
@@ -83,114 +175,6 @@ export function WorkspaceSwitcher({ workspace }: { workspace: WorkspaceInfo | nu
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-export function GitBranchSwitcher({ refreshKey, onBranchChange }: {
-  refreshKey: number;
-  onBranchChange: () => void;
-}) {
-  const [data, setData] = useState<GitBranchesData | null>(null);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError('');
-    setData(null);
-    api.getGitBranches()
-      .then(next => {
-        if (!cancelled) setData(next);
-      })
-      .catch(e => {
-        if (!cancelled) setError(errorMessage(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [refreshKey]);
-
-  async function checkout(branch: string) {
-    if (branch === data?.current || busy) {
-      setOpen(false);
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      const next = await api.checkoutGitBranch(branch);
-      setData(next);
-      setOpen(false);
-      onBranchChange();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const isRepo = data?.is_repo ?? false;
-  const current = loading ? 'Loading...' : data?.current ?? 'No git repo';
-  const branchCount = data?.branches.length ?? 0;
-  const disabled = loading || busy || !isRepo || branchCount === 0;
-
-  return (
-    <div className="git-switcher" ref={ref}>
-      <button
-        className={`git-trigger ${open ? 'is-open' : ''}`}
-        onClick={() => !disabled && setOpen(value => !value)}
-        disabled={loading || busy || !isRepo}
-        title={isRepo ? 'Switch git branch' : 'Workspace is not a git repository'}
-      >
-        <span className="git-ic"><Icon.branch /></span>
-        <span className="git-meta">
-          <span className="git-lab">branch</span>
-          <span className="git-name">{current}</span>
-        </span>
-        {data?.dirty && <span className="git-dirty">dirty</span>}
-        <span className="git-caret"><Icon.chev open={open} /></span>
-      </button>
-
-      {open && (
-        <div className="git-menu" onClick={event => event.stopPropagation()}>
-          <div className="ws-menu-label">Git branch</div>
-          {data?.branches.map(branch => (
-            <button
-              key={`${branch.remote ? 'remote' : 'local'}:${branch.name}`}
-              className={`git-menu-item${branch.current ? ' is-active' : ''}`}
-              onClick={() => checkout(branch.name)}
-              disabled={busy}
-            >
-              <span className="git-mi-main">
-                <span className="git-mi-name">{branch.name}</span>
-                {(branch.summary || branch.commit) && (
-                  <span className="git-mi-sub">
-                    {branch.commit}{branch.commit && branch.summary ? ' - ' : ''}{branch.summary}
-                  </span>
-                )}
-              </span>
-              {branch.remote && <span className="git-remote">remote</span>}
-              {branch.current && <span className="ws-mi-check"><Icon.check /></span>}
-            </button>
-          ))}
-          {error && <div className="git-error">{error}</div>}
-        </div>
-      )}
-      {!open && error && <div className="git-error inline">{error}</div>}
     </div>
   );
 }
@@ -210,17 +194,22 @@ export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [secOpen, setSecOpen] = useState({ endpoints: true, flows: true });
 
+  function refreshEndpoints() {
+    api.getIndex().then(data => setGroups(data.groups)).catch(() => {});
+    api.getFlows().then(data => setFlows(data.flows)).catch(() => {});
+  }
+
   useEffect(() => {
-    api.getIndex()
-      .then(data => setGroups(data.groups))
-      .catch(() => {});
-    api.getFlows()
-      .then(data => setFlows(data.flows))
-      .catch(() => {});
+    refreshEndpoints();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceTick]);
 
-  // Re-render dots when a run is saved
-  // runTick prop causes a re-render so NavDot reads fresh localStorage
+  useEffect(() => {
+    window.addEventListener('mad:endpoint-created', refreshEndpoints);
+    return () => window.removeEventListener('mad:endpoint-created', refreshEndpoints);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   void runTick;
 
   const q = query.trim().toLowerCase();
@@ -236,7 +225,6 @@ export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
 
   const totalSpecs = groups.reduce((n, g) => n + g.specs.length, 0);
 
-  // Derive active rel_path from current route
   const activeRel = location.pathname.startsWith('/spec/')
     ? decodeURIComponent(location.pathname.slice('/spec/'.length))
     : null;
@@ -259,83 +247,59 @@ export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
       </div>
 
       <nav className="sb-scroll">
-        {/* Overview */}
-        <button
-          className={`sb-link ${location.pathname === '/' ? 'is-active' : ''}`}
-          onClick={() => navigate('/')}
-        >
-          <span className="sb-link-ic"><Icon.grid /></span>
-          Overview
-          <span className="sb-link-end">{totalSpecs}</span>
-        </button>
-
         {/* Collections */}
-        <div className="sb-section">
-          <button
-            className="sb-section-h"
-            onClick={() => setSecOpen(s => ({ ...s, endpoints: !s.endpoints }))}
-          >
-            <span className="chev"><Icon.chev open={secOpen.endpoints} /></span>
-            <span className="sb-section-name">Collections</span>
-            <span className="sb-section-count">{totalSpecs}</span>
-            <span
-              role="button"
-              tabIndex={0}
-              className="sb-section-action"
-              title="New request"
-              onClick={event => {
-                event.stopPropagation();
-                onNewRequest();
-              }}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onNewRequest();
-                }
-              }}
+        <div className={`sb-section${activeRel !== null ? ' has-active' : ''}`}>
+          <div className="sb-section-h">
+            <button
+              className="sb-section-toggle"
+              onClick={() => setSecOpen(s => ({ ...s, endpoints: !s.endpoints }))}
+              title={secOpen.endpoints ? 'Collapse' : 'Expand'}
             >
-              <Icon.plus />
+              <Icon.chev open={secOpen.endpoints} />
+            </button>
+            <span className="sb-section-ic"><Icon.folder /></span>
+            <span className="sb-section-name">Endpoints</span>
+            <span className="sb-section-r">
+              <span className="sb-section-badge">{totalSpecs}</span>
+              <button
+                className="sb-add"
+                title="New request"
+                onClick={(e) => { e.stopPropagation(); onNewRequest(); }}
+              >
+                <Icon.plus />
+              </button>
             </span>
-          </button>
+          </div>
           {secOpen.endpoints && (
             <div className="sb-tree">
               {filteredGroups.map(g => {
                 const open = !collapsed[g.resource];
                 return (
                   <div key={g.resource} className="sb-group">
-                    <button
+                    <div
                       className="sb-group-h"
                       onClick={() => setCollapsed(c => ({ ...c, [g.resource]: open }))}
                     >
                       <span className="chev"><Icon.chev open={open} /></span>
-                      <span className="sb-folder-ic"><Icon.folder /></span>
                       <span className="sb-group-name">{g.resource}</span>
-                      <span className="sb-group-count">{g.specs.length}</span>
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className="sb-group-action"
-                        title={`New request in ${g.resource}`}
-                        onClick={event => {
-                          event.stopPropagation();
-                          onNewRequest();
-                        }}
-                        onKeyDown={event => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onNewRequest();
-                          }
-                        }}
-                      >
-                        <Icon.plus />
+                      <span className="sb-group-r">
+                        <span className="sb-group-count">{g.specs.length}</span>
+                        <span className="sb-group-actions">
+                          <button
+                            className="sb-add sm"
+                            title={`New in ${g.resource}`}
+                            onClick={(e) => { e.stopPropagation(); onNewRequest(); }}
+                          >
+                            <Icon.plus />
+                          </button>
+                          <CollectionMenu onNewRequest={onNewRequest} />
+                        </span>
                       </span>
-                    </button>
+                    </div>
                     {open && g.specs.map(s => (
                       <button
                         key={s.rel_path}
-                        className={`sb-item ${activeRel === s.rel_path ? 'is-active' : ''}`}
+                        className={`sb-item${activeRel === s.rel_path ? ' is-active' : ''}`}
                         onClick={() => navigate(`/spec/${s.rel_path}`)}
                         title={`${s.method} ${s.path}`}
                       >
@@ -359,32 +323,44 @@ export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
         </div>
 
         {/* Flows */}
-        <div className="sb-section">
-          <button
-            className="sb-section-h"
-            onClick={() => setSecOpen(s => ({ ...s, flows: !s.flows }))}
-          >
-            <span className="chev"><Icon.chev open={secOpen.flows} /></span>
-            <span className="sb-section-name">Flows</span>
-            <span className="sb-section-count">{flows.length}</span>
-          </button>
+        <div className={`sb-section${activeFlowRel !== null ? ' has-active' : ''}`}>
+          <div className="sb-section-h">
+            <button
+              className="sb-section-toggle"
+              onClick={() => setSecOpen(s => ({ ...s, flows: !s.flows }))}
+              title={secOpen.flows ? 'Collapse' : 'Expand'}
+            >
+              <Icon.chev open={secOpen.flows} />
+            </button>
+            <span className="sb-section-ic"><Icon.flow /></span>
+            <button className="sb-section-name as-link" onClick={() => navigate('/flows')}>
+              Flows
+            </button>
+            <span className="sb-section-r">
+              <span className="sb-section-badge">{flows.length}</span>
+              <button
+                className="sb-add"
+                title="New flow"
+                onClick={(e) => { e.stopPropagation(); navigate('/flows'); }}
+              >
+                <Icon.plus />
+              </button>
+            </span>
+          </div>
           {secOpen.flows && (
             <div className="sb-tree">
               {flows.map(f => (
                 <button
                   key={f.rel_path}
-                  className={`sb-item flow ${activeFlowRel === f.rel_path ? 'is-active' : ''}`}
+                  className={`sb-item flow${activeFlowRel === f.rel_path ? ' is-active' : ''}`}
                   onClick={() => navigate(`/flows/${f.rel_path}`)}
                   title={f.title}
                 >
-                  <span className="sb-flow-ic"><Icon.arr /></span>
+                  <span className="sb-flow-ic"><Icon.flow /></span>
                   <span className="sb-item-path">{f.title}</span>
                 </button>
               ))}
-              <button
-                className="sb-item add flow"
-                onClick={() => navigate('/flows')}
-              >
+              <button className="sb-item add flow" onClick={() => navigate('/flows')}>
                 <span className="sb-flow-ic"><Icon.plus /></span>
                 <span className="sb-item-path">New flow…</span>
               </button>
@@ -396,6 +372,125 @@ export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
   );
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+// ── Status bar ────────────────────────────────────────────────────────────────
+export function StatusBar({ env, onScan, scanning, scanMsg, runTick = 0 }: {
+  env: string;
+  onScan: () => void;
+  scanning: boolean;
+  scanMsg: string;
+  runTick?: number;
+}) {
+  const [git, setGit] = useState<GitBranchesData | null>(null);
+  const [currentBranch, setCurrentBranch] = useState<string | null>(null);
+  const [branchOpen, setBranchOpen] = useState(false);
+  const [branchBusy, setBranchBusy] = useState(false);
+  const branchRef = useRef<HTMLDivElement>(null);
+  const [totals, setTotals] = useState({ passed: 0, failed: 0, never: 0 });
+
+  useEffect(() => {
+    api.getGitBranches()
+      .then(d => { if (d.is_repo && d.current) { setGit(d); setCurrentBranch(d.current); } })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.getIndex().then(data => {
+      let passed = 0, failed = 0, never = 0;
+      for (const g of data.groups) {
+        for (const s of g.specs) {
+          const r = getStoredRun(s.rel_path);
+          if (!r) never++;
+          else if (r.passed) passed++;
+          else failed++;
+        }
+      }
+      setTotals({ passed, failed, never });
+    }).catch(() => {});
+  }, [runTick]);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (branchRef.current && !branchRef.current.contains(e.target as Node)) setBranchOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  async function doCheckout(branch: string) {
+    if (branch === currentBranch || branchBusy) { setBranchOpen(false); return; }
+    setBranchBusy(true);
+    try {
+      const next = await api.checkoutGitBranch(branch);
+      setGit(next);
+      setCurrentBranch(next.current ?? branch);
+    } catch {}
+    finally { setBranchBusy(false); setBranchOpen(false); }
+  }
+
+  return (
+    <footer className="statusbar">
+      {git && currentBranch && (
+        <div className="git-select" ref={branchRef}>
+          <button
+            className={`sb-stat git${branchOpen ? ' is-open' : ''}`}
+            onClick={() => setBranchOpen(o => !o)}
+            disabled={branchBusy}
+          >
+            <Icon.branch />
+            <span className="git-name">{currentBranch}</span>
+            {git.dirty && <span className="git-dirty" title="Uncommitted changes">●</span>}
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+              <path d="M2 4 L5 7 L8 4" />
+            </svg>
+          </button>
+          {branchOpen && (
+            <div className="git-menu" onClick={e => e.stopPropagation()}>
+              <div className="git-menu-label">Switch branch</div>
+              {git.branches.map(b => (
+                <button
+                  key={b.name}
+                  className={`git-menu-item${b.name === currentBranch ? ' is-active' : ''}`}
+                  onClick={() => doCheckout(b.name)}
+                  disabled={branchBusy}
+                >
+                  <Icon.branch />
+                  <span className="git-mi-name">{b.name}</span>
+                  {b.remote && <span style={{ fontSize: 10, color: 'var(--fg-4)', marginLeft: 'auto' }}>remote</span>}
+                  {b.name === currentBranch && <span className="git-mi-check"><Icon.check /></span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <button
+        className={`sb-stat sync${scanning ? ' is-syncing' : ''}`}
+        onClick={onScan}
+        disabled={scanning}
+        title={scanning ? 'Scanning…' : 'Scan project for new API specs'}
+      >
+        <Icon.scan />
+        <span>{scanning ? 'Scanning…' : scanMsg || 'Scan'}</span>
+      </button>
+
+      <div className="status-spacer" />
+
+      {totals.passed > 0 && (
+        <div className="sb-stat" title="Passing specs"><span className="st-dot ok" />{totals.passed} passing</div>
+      )}
+      {totals.failed > 0 && (
+        <div className="sb-stat" title="Failing specs"><span className="st-dot fail" />{totals.failed} failing</div>
+      )}
+      {totals.never > 0 && (
+        <div className="sb-stat muted" title="Never run"><span className="st-dot never" />{totals.never} idle</div>
+      )}
+      {(totals.passed > 0 || totals.failed > 0 || totals.never > 0) && (
+        <div className="sb-stat divider" />
+      )}
+      <div className="sb-stat muted">
+        env <b style={{ color: 'var(--fg-2)', fontWeight: 600 }}>{env}</b>
+      </div>
+    </footer>
+  );
 }
