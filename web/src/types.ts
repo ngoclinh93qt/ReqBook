@@ -161,3 +161,20 @@ export interface WorkspaceEntry {
   name: string;
   last_opened?: string | null;
 }
+
+export interface GitBranchEntry {
+  name: string;
+  current: boolean;
+  remote: boolean;
+  upstream?: string | null;
+  commit?: string | null;
+  summary?: string | null;
+}
+
+export interface GitBranchesData {
+  is_repo: boolean;
+  root?: string | null;
+  current?: string | null;
+  dirty: boolean;
+  branches: GitBranchEntry[];
+}

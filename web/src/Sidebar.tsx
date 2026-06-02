@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
 import { getStoredRun } from './hooks/useRunResults';
-import type { FlowEntry, ResourceGroup } from './types';
+import type { FlowEntry, GitBranchesData, ResourceGroup } from './types';
 import { Icon } from './ui';
 
 // ── Brand mark: [· ● ·] bracket-dot logo ─────────────────────────────────────
@@ -30,12 +30,12 @@ function NavDot({ relPath }: { relPath: string }) {
 }
 
 // ── Workspace Switcher ────────────────────────────────────────────────────────
-interface WorkspaceInfo {
+export interface WorkspaceInfo {
   name: string;
   path: string;
 }
 
-function WorkspaceSwitcher({ workspace }: { workspace: WorkspaceInfo | null }) {
+export function WorkspaceSwitcher({ workspace }: { workspace: WorkspaceInfo | null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -87,42 +87,141 @@ function WorkspaceSwitcher({ workspace }: { workspace: WorkspaceInfo | null }) {
   );
 }
 
+export function GitBranchSwitcher({ refreshKey, onBranchChange }: {
+  refreshKey: number;
+  onBranchChange: () => void;
+}) {
+  const [data, setData] = useState<GitBranchesData | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    setData(null);
+    api.getGitBranches()
+      .then(next => {
+        if (!cancelled) setData(next);
+      })
+      .catch(e => {
+        if (!cancelled) setError(errorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  async function checkout(branch: string) {
+    if (branch === data?.current || busy) {
+      setOpen(false);
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const next = await api.checkoutGitBranch(branch);
+      setData(next);
+      setOpen(false);
+      onBranchChange();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isRepo = data?.is_repo ?? false;
+  const current = loading ? 'Loading...' : data?.current ?? 'No git repo';
+  const branchCount = data?.branches.length ?? 0;
+  const disabled = loading || busy || !isRepo || branchCount === 0;
+
+  return (
+    <div className="git-switcher" ref={ref}>
+      <button
+        className={`git-trigger ${open ? 'is-open' : ''}`}
+        onClick={() => !disabled && setOpen(value => !value)}
+        disabled={loading || busy || !isRepo}
+        title={isRepo ? 'Switch git branch' : 'Workspace is not a git repository'}
+      >
+        <span className="git-ic"><Icon.branch /></span>
+        <span className="git-meta">
+          <span className="git-lab">branch</span>
+          <span className="git-name">{current}</span>
+        </span>
+        {data?.dirty && <span className="git-dirty">dirty</span>}
+        <span className="git-caret"><Icon.chev open={open} /></span>
+      </button>
+
+      {open && (
+        <div className="git-menu" onClick={event => event.stopPropagation()}>
+          <div className="ws-menu-label">Git branch</div>
+          {data?.branches.map(branch => (
+            <button
+              key={`${branch.remote ? 'remote' : 'local'}:${branch.name}`}
+              className={`git-menu-item${branch.current ? ' is-active' : ''}`}
+              onClick={() => checkout(branch.name)}
+              disabled={busy}
+            >
+              <span className="git-mi-main">
+                <span className="git-mi-name">{branch.name}</span>
+                {(branch.summary || branch.commit) && (
+                  <span className="git-mi-sub">
+                    {branch.commit}{branch.commit && branch.summary ? ' - ' : ''}{branch.summary}
+                  </span>
+                )}
+              </span>
+              {branch.remote && <span className="git-remote">remote</span>}
+              {branch.current && <span className="ws-mi-check"><Icon.check /></span>}
+            </button>
+          ))}
+          {error && <div className="git-error">{error}</div>}
+        </div>
+      )}
+      {!open && error && <div className="git-error inline">{error}</div>}
+    </div>
+  );
+}
+
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
-export function Sidebar({ runTick }: { runTick: number }) {
+export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
+  runTick: number;
+  workspaceTick: number;
+  onNewRequest: () => void;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [groups, setGroups] = useState<ResourceGroup[]>([]);
   const [flows, setFlows] = useState<FlowEntry[]>([]);
-  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [secOpen, setSecOpen] = useState({ endpoints: true, flows: true });
 
   useEffect(() => {
     api.getIndex()
-      .then(data => {
-        setGroups(data.groups);
-        setWorkspace({ name: data.project_name, path: '' });
-      })
+      .then(data => setGroups(data.groups))
       .catch(() => {});
     api.getFlows()
       .then(data => setFlows(data.flows))
       .catch(() => {});
-  }, []);
+  }, [workspaceTick]);
 
   // Re-render dots when a run is saved
   // runTick prop causes a re-render so NavDot reads fresh localStorage
   void runTick;
-
-  // Fetch workspace details (name + path)
-  useEffect(() => {
-    api.getWorkspaceCurrent()
-      .then(ws => {
-        if (ws?.name) setWorkspace({ name: ws.name, path: ws.path ?? '' });
-      })
-      .catch(() => {});
-  }, []);
 
   const q = query.trim().toLowerCase();
   const filteredGroups = useMemo(() =>
@@ -147,8 +246,6 @@ export function Sidebar({ runTick }: { runTick: number }) {
 
   return (
     <aside className="sidebar">
-      <WorkspaceSwitcher workspace={workspace} />
-
       <div className="sb-search">
         <span className="sb-ic"><Icon.search /></span>
         <input
@@ -172,15 +269,34 @@ export function Sidebar({ runTick }: { runTick: number }) {
           <span className="sb-link-end">{totalSpecs}</span>
         </button>
 
-        {/* Endpoints */}
+        {/* Collections */}
         <div className="sb-section">
           <button
             className="sb-section-h"
             onClick={() => setSecOpen(s => ({ ...s, endpoints: !s.endpoints }))}
           >
             <span className="chev"><Icon.chev open={secOpen.endpoints} /></span>
-            <span className="sb-section-name">Endpoints</span>
+            <span className="sb-section-name">Collections</span>
             <span className="sb-section-count">{totalSpecs}</span>
+            <span
+              role="button"
+              tabIndex={0}
+              className="sb-section-action"
+              title="New request"
+              onClick={event => {
+                event.stopPropagation();
+                onNewRequest();
+              }}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onNewRequest();
+                }
+              }}
+            >
+              <Icon.plus />
+            </span>
           </button>
           {secOpen.endpoints && (
             <div className="sb-tree">
@@ -196,6 +312,25 @@ export function Sidebar({ runTick }: { runTick: number }) {
                       <span className="sb-folder-ic"><Icon.folder /></span>
                       <span className="sb-group-name">{g.resource}</span>
                       <span className="sb-group-count">{g.specs.length}</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="sb-group-action"
+                        title={`New request in ${g.resource}`}
+                        onClick={event => {
+                          event.stopPropagation();
+                          onNewRequest();
+                        }}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onNewRequest();
+                          }
+                        }}
+                      >
+                        <Icon.plus />
+                      </span>
                     </button>
                     {open && g.specs.map(s => (
                       <button
@@ -259,4 +394,8 @@ export function Sidebar({ runTick }: { runTick: number }) {
       </nav>
     </aside>
   );
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

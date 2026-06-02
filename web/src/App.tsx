@@ -10,8 +10,7 @@ import { WorkspacePage } from './pages/WorkspacePage';
 import { Icon } from './ui';
 import type { VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
-import { BrandMark, Sidebar } from './Sidebar';
-import { RequestBuilderModal } from './RequestBuilder';
+import { BrandMark, GitBranchSwitcher, Sidebar, WorkspaceSwitcher, type WorkspaceInfo } from './Sidebar';
 
 export function App() {
   return (
@@ -32,10 +31,13 @@ function MadShell() {
   const [varsOpen, setVarsOpen] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
   const [refreshIndexKey, setRefreshIndexKey] = useState(0);
-  const [scanning, setScanning] = useState(false);
-  const [scanMsg, setScanMsg] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const [runTick, setRunTick] = useState(0);
-  const [curlOpen, setCurlOpen] = useState(false);
+  const [workspaceTick, setWorkspaceTick] = useState(0);
+  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
+
+  const refreshWorkspaceData = () => setWorkspaceTick(tick => tick + 1);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -55,27 +57,37 @@ function MadShell() {
     return () => window.removeEventListener('mad:run-saved', handler);
   }, []);
 
-  const projectName = 'MarkApiDown';
+  useEffect(() => {
+    let cancelled = false;
+    api.getWorkspaceCurrent()
+      .then(ws => {
+        if (!cancelled && ws?.name) setWorkspace({ name: ws.name, path: ws.path ?? '' });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [location.key, workspaceTick]);
+
   const relPath = location.pathname.startsWith('/spec/') ? decodeURIComponent(location.pathname.slice('/spec/'.length)) : '';
 
-  async function scanProject() {
-    setScanning(true);
-    setScanMsg('');
+  async function syncProject() {
+    if (syncing) return;
+    setSyncing(true);
+    setSyncMsg('');
     try {
       const scan = await api.scanProject();
       if (scan.missing_count === 0) {
-        setScanMsg(`${scan.routes_found} route(s), nothing missing`);
+        setSyncMsg(`${scan.routes_found} route(s), up to date`);
         return;
       }
       const imported = await api.importProjectRoutes();
       setRefreshIndexKey(key => key + 1);
-      setScanMsg(`Imported ${imported.written.length} spec(s)`);
+      setSyncMsg(`Synced ${imported.written.length} spec(s)`);
       if (location.pathname !== '/') navigate('/');
     } catch (e) {
-      setScanMsg(String(e));
+      setSyncMsg(String(e));
     } finally {
-      setScanning(false);
-      window.setTimeout(() => setScanMsg(''), 3500);
+      setSyncing(false);
+      window.setTimeout(() => setSyncMsg(''), 3500);
     }
   }
 
@@ -93,10 +105,9 @@ function MadShell() {
   return (
     <div className="shell">
       <TopBar
-        projectName={projectName}
         relPath={relPath}
         onHome={() => navigate('/')}
-        onNewRequest={() => setCurlOpen(true)}
+        onNewRequest={() => navigate('/request')}
         theme={theme}
         setTheme={setTheme}
         env={env}
@@ -104,24 +115,33 @@ function MadShell() {
         envs={varsData?.envs.length ? varsData.envs : [env]}
         onOpenVars={() => setVarsOpen(true)}
         onAddEnvironment={() => setEnvModalOpen(true)}
-        onScanProject={scanProject}
-        scanning={scanning}
-        scanMsg={scanMsg}
         mockMode={mockMode}
+        workspace={workspace}
       />
       <div className="body-row">
-        <Sidebar runTick={runTick} />
+        <Sidebar
+          runTick={runTick}
+          workspaceTick={workspaceTick}
+          onNewRequest={() => navigate('/request')}
+        />
         <main className="main">
           <Routes>
-            <Route path="/" element={<IndexPage env={env} refreshKey={refreshIndexKey} />} />
-            <Route path="/flows" element={<FlowsPage />} />
-            <Route path="/flows/*" element={<FlowCanvasPage />} />
-            <Route path="/spec/*" element={<SpecPage env={env} varsData={varsData} browserVars={browserVars} mockMode={mockMode} />} />
-            <Route path="/request" element={<RequestPage key={location.key} env={env} varsData={varsData} />} />
-            <Route path="/workspaces" element={<WorkspacePage />} />
+            <Route path="/" element={<IndexPage env={env} refreshKey={refreshIndexKey + workspaceTick} />} />
+            <Route path="/flows" element={<FlowsPage key={workspaceTick} />} />
+            <Route path="/flows/*" element={<FlowCanvasPage key={workspaceTick} />} />
+            <Route path="/spec/*" element={<SpecPage key={workspaceTick} env={env} varsData={varsData} browserVars={browserVars} mockMode={mockMode} />} />
+            <Route path="/request" element={<RequestPage key={`${location.key}-${workspaceTick}`} env={env} varsData={varsData} />} />
+            <Route path="/workspaces" element={<WorkspacePage key={workspaceTick} onWorkspaceChanged={refreshWorkspaceData} />} />
           </Routes>
         </main>
       </div>
+      <StatusBar
+        workspaceTick={workspaceTick}
+        onWorkspaceDataChange={refreshWorkspaceData}
+        syncing={syncing}
+        syncMsg={syncMsg}
+        onSync={syncProject}
+      />
       <VariablesDrawer
         open={varsOpen}
         onClose={() => setVarsOpen(false)}
@@ -132,7 +152,6 @@ function MadShell() {
         browserVars={browserVars}
         saveBrowserVars={saveBrowserVars}
       />
-      {curlOpen && <RequestBuilderModal onClose={() => setCurlOpen(false)} />}
       {envModalOpen && (
         <AddEnvironmentModal
           existing={varsData?.envs ?? []}
@@ -145,6 +164,31 @@ function MadShell() {
         />
       )}
     </div>
+  );
+}
+
+function StatusBar({ workspaceTick, onWorkspaceDataChange, syncing, syncMsg, onSync }: {
+  workspaceTick: number;
+  onWorkspaceDataChange: () => void;
+  syncing: boolean;
+  syncMsg: string;
+  onSync: () => void;
+}) {
+  const syncOk = syncMsg.startsWith('Synced') || syncMsg.includes('up to date');
+  return (
+    <footer className="statusbar">
+      <GitBranchSwitcher refreshKey={workspaceTick} onBranchChange={onWorkspaceDataChange} />
+      <button
+        className={`sb-stat sync ${syncing ? 'is-syncing' : ''}`}
+        onClick={onSync}
+        disabled={syncing}
+        title="Sync workspace routes into api-docs"
+      >
+        <Icon.sync />
+        <span>{syncing ? 'Syncing...' : 'Sync'}</span>
+      </button>
+      {syncMsg && <span className={`sb-stat msg ${syncOk ? 'ok' : 'fail'}`}>{syncMsg}</span>}
+    </footer>
   );
 }
 
@@ -189,8 +233,7 @@ function EnvSwitcher({ envs, value, onChange, onAdd }: {
   );
 }
 
-function TopBar({ projectName, relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, onScanProject, scanning, scanMsg, mockMode }: {
-  projectName: string;
+function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, mockMode, workspace }: {
   relPath: string;
   onHome: () => void;
   onNewRequest: () => void;
@@ -201,10 +244,8 @@ function TopBar({ projectName, relPath, onHome, onNewRequest, theme, setTheme, e
   envs: string[];
   onOpenVars: () => void;
   onAddEnvironment: () => void;
-  onScanProject: () => void;
-  scanning: boolean;
-  scanMsg: string;
   mockMode?: boolean;
+  workspace: WorkspaceInfo | null;
 }) {
   return (
     <header className="topbar">
@@ -213,18 +254,12 @@ function TopBar({ projectName, relPath, onHome, onNewRequest, theme, setTheme, e
         <span className="brand-name">MarkApiDown</span>
       </button>
       <div className="crumbs">
-        <span className="sep">/</span>
-        <button onClick={onHome}>{projectName}</button>
+        <WorkspaceSwitcher workspace={workspace} />
         {relPath && <><span className="sep">/</span><span className="cur">{relPath}</span></>}
       </div>
       <div className="tnav-r">
         <button className="tnav-item primary" onClick={onNewRequest}><span className="ic"><Icon.bolt2 /></span>New Request</button>
         <button className="tnav-item" onClick={onOpenVars}><span className="ic"><Icon.vars /></span>Variables</button>
-        <button className="tnav-item" onClick={onScanProject} disabled={scanning}>
-          <span className="ic">{scanning ? <span className="pulse-dot tiny" /> : <Icon.scan />}</span>
-          {scanning ? 'Scanning' : 'Scan'}
-        </button>
-        {scanMsg && <span className={`top-msg ${scanMsg.startsWith('Imported') || scanMsg.includes('nothing') ? 'ok' : 'fail'}`}>{scanMsg}</span>}
         {mockMode && <span className="mock-pill">mock</span>}
         <EnvSwitcher envs={envs} value={env} onChange={setEnv} onAdd={onAddEnvironment} />
         <button className="btn icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">

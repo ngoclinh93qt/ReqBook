@@ -154,7 +154,7 @@ export function IndexPage({ env, refreshKey }: { env: string; refreshKey: number
       })}
 
       {filtered.length === 0 && (
-        <div className="empty">{query ? `No endpoints match "${query}".` : 'No endpoints yet. Scan the project or import a curl command.'}</div>
+        <div className="empty">{query ? `No endpoints match "${query}".` : 'No endpoints yet. Sync the workspace or create a new request.'}</div>
       )}
     </div>
   );

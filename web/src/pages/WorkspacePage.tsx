@@ -12,7 +12,7 @@ async function pickDirectory(): Promise<string | null> {
   return invoke<string | null>('pick_directory');
 }
 
-export function WorkspacePage() {
+export function WorkspacePage({ onWorkspaceChanged }: { onWorkspaceChanged?: () => void }) {
   const navigate = useNavigate();
   const [current, setCurrent] = useState<WorkspaceEntry | null>(null);
   const [recent, setRecent] = useState<WorkspaceEntry[]>([]);
@@ -65,6 +65,7 @@ export function WorkspacePage() {
         await invoke('open_workspace', { path });
       }
       await api.openWorkspace(path);
+      onWorkspaceChanged?.();
       navigate('/');
     } catch (e) {
       setError(String(e));
@@ -118,6 +119,7 @@ export function WorkspacePage() {
       try {
         await api.createWorkspace(path, newName.trim() || undefined);
         await api.openWorkspace(path);
+        onWorkspaceChanged?.();
         navigate('/');
       } catch (e) {
         setError(String(e));
@@ -134,6 +136,7 @@ export function WorkspacePage() {
       const { invoke } = await import('@tauri-apps/api/core');
       await api.createWorkspace(path, newName.trim() || undefined);
       await invoke('open_workspace', { path });
+      onWorkspaceChanged?.();
       navigate('/');
     } catch (e) {
       setError(String(e));

@@ -1,4 +1,4 @@
-import type { AdHocRequest, AdHocResponse, ExecResult, FlowData, FlowEntry, FlowRunResult, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData, WorkspaceEntry } from './types';
+import type { AdHocRequest, AdHocResponse, ExecResult, FlowData, FlowEntry, FlowRunResult, GitBranchesData, ImportResult, IndexData, RuntimeExecOptions, ScanProjectResult, SpecData, ValidateResult, VarsData, WorkspaceEntry } from './types';
 
 const BASE = '/api';
 
@@ -105,4 +105,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path, name }),
     }).then(r => json<{ status: string; name: string }>(r)),
+
+  getGitBranches: () =>
+    fetch(`${BASE}/git/branches`).then(r => json<GitBranchesData>(r)),
+
+  checkoutGitBranch: (branch: string) =>
+    fetch(`${BASE}/git/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ branch }),
+    }).then(r => json<GitBranchesData>(r)),
 };

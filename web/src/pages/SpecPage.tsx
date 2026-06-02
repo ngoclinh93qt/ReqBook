@@ -3,13 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { saveRun } from '../hooks/useRunResults';
 import type { ExecResult, RuntimeExecOptions, SpecData, VarsData } from '../types';
-import { Icon, JsonEditor, MethodBadge, parseRequest, PathStr, highlight, uniqueMatches } from '../ui';
+import { Icon, JsonEditor, parseRequest, highlight, uniqueMatches } from '../ui';
 
 type VarRow = { id: string; name: string; override: string; locked: boolean };
 type ParamRow = { id: string; name: string; value: string; locked: boolean };
 type HeaderRow = { id: string; name: string; value: string; enabled: boolean; locked: boolean };
+type RequestTab = 'params' | 'headers' | 'body' | 'expected' | 'tests' | 'source';
 
 const rid = () => Math.random().toString(36).slice(2, 9);
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+const hasBody = (method: string) => !['GET', 'DELETE', 'HEAD', 'OPTIONS'].includes(method);
 
 export function SpecPage({ env, varsData, browserVars, mockMode }: {
   env: string;
@@ -21,11 +24,6 @@ export function SpecPage({ env, varsData, browserVars, mockMode }: {
   const navigate = useNavigate();
   const [spec, setSpec] = useState<SpecData | null>(null);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'request' | 'expected' | 'tests' | 'source'>('request');
-  const [resultTab, setResultTab] = useState<'diff' | 'response' | 'headers' | 'request'>('diff');
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<ExecResult | null>(null);
-  const [showEdit, setShowEdit] = useState(false);
   const [sourceText, setSourceText] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
 
@@ -42,120 +40,74 @@ export function SpecPage({ env, varsData, browserVars, mockMode }: {
 
   useEffect(() => { loadSpec(); }, [loadSpec]);
 
-  if (error) return <div className="spec-wrap"><button className="btn" onClick={() => navigate('/')}>Back</button><div className="empty fail-text">{error}</div></div>;
-  if (!spec) return <div className="spec-wrap"><div className="empty">Loading spec…</div></div>;
-
   async function saveSource() {
     if (!spec) return;
     setSaveMsg('');
     try {
       await api.saveSpec(relPath, sourceText);
       setSaveMsg('Saved');
-      setShowEdit(false);
       await loadSpec();
     } catch (e) {
       setSaveMsg(String(e));
     }
   }
 
-  const envVars = varsData?.vars ?? {};
-  const sourceTab = sourceText || spec.raw_source;
-  const tabContent = {
-    request: spec.request,
-    expected: spec.expected_response,
-    tests: spec.tests ?? '# No tests yet\n',
-    source: sourceTab,
-  };
+  if (error) {
+    return (
+      <div className="req-page">
+        <button className="btn" onClick={() => navigate('/')}>Back</button>
+        <div className="empty fail-text">{error}</div>
+      </div>
+    );
+  }
+  if (!spec) return <div className="req-page"><div className="empty">Loading spec...</div></div>;
 
   return (
-    <div className="spec-wrap">
-      <header className="spec-head">
-        <div className="top-row">
-          <button className="btn ghost sm back-btn" onClick={() => navigate('/')}>← Back</button>
-          <MethodBadge method={spec.method} />
-          <span className="file-chip">{spec.rel_path}</span>
-          <div className="top-actions">
-            <button className="btn ghost sm" onClick={() => setShowEdit(open => !open)}><Icon.edit /> Edit source</button>
-          </div>
-        </div>
-        <h1>{spec.title}</h1>
-        <p className="desc">{spec.description}</p>
-        <div className="url-row">
-          <span className="url"><span className="base">{envVars.baseUrl ?? envVars.base_url ?? '{{baseUrl}}'}</span><PathStr path={spec.path} /></span>
-          <button className="copy-url" onClick={() => navigator.clipboard?.writeText(spec.path)}><Icon.copy /> Copy</button>
-        </div>
-      </header>
-
-      <div className="split">
-        <div>
-          <div className="card">
-            <div className="tabs">
-              {(['request', 'expected', 'tests', 'source'] as const).map(item => (
-                <button key={item} className={`tab ${tab === item ? 'is-on' : ''}`} onClick={() => setTab(item)}>{label(item)}</button>
-              ))}
-              <div className="tab-actions"><button className="btn ghost sm icon" onClick={() => navigator.clipboard?.writeText(tabContent[tab])}><Icon.copy /></button></div>
-            </div>
-            <pre className="code" dangerouslySetInnerHTML={{ __html: highlight(tabContent[tab]) }} />
-          </div>
-
-          {showEdit && (
-            <div className="card edit-card">
-              <div className="card-h"><Icon.edit /><span>Edit markdown source</span><span className="tag">{spec.rel_path}</span></div>
-              <div className="edit-body">
-                <textarea className="input mono source-editor" value={sourceText} onChange={e => setSourceText(e.target.value)} spellCheck={false} />
-                <div className="edit-actions">
-                  {saveMsg && <span className={saveMsg === 'Saved' ? 'ok-text' : 'fail-text'}>{saveMsg}</span>}
-                  <button className="btn sm" onClick={() => { setSourceText(spec.raw_source); setShowEdit(false); }}>Cancel</button>
-                  <button className="btn-primary btn-sm-primary" onClick={saveSource}>Save</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Runner
-          spec={spec}
-          env={env}
-          envVars={envVars}
-          browserVars={browserVars}
-          running={running}
-          setRunning={setRunning}
-          result={result}
-          setResult={setResult}
-          resultTab={resultTab}
-          setResultTab={setResultTab}
-          relPath={relPath}
-          mockMode={mockMode}
-        />
-      </div>
-    </div>
+    <SpecWorkspace
+      spec={spec}
+      relPath={relPath}
+      env={env}
+      envVars={varsData?.vars ?? {}}
+      browserVars={browserVars}
+      mockMode={mockMode}
+      sourceText={sourceText}
+      setSourceText={setSourceText}
+      saveSource={saveSource}
+      saveMsg={saveMsg}
+      navigateHome={() => navigate('/')}
+    />
   );
 }
 
-function Runner({ spec, env, envVars, browserVars, running, setRunning, result, setResult, resultTab, setResultTab, relPath, mockMode }: {
+function SpecWorkspace({ spec, relPath, env, envVars, browserVars, mockMode, sourceText, setSourceText, saveSource, saveMsg, navigateHome }: {
   spec: SpecData;
+  relPath: string;
   env: string;
   envVars: Record<string, string>;
   browserVars: Record<string, string>;
-  running: boolean;
-  setRunning: (running: boolean) => void;
-  result: ExecResult | null;
-  setResult: (result: ExecResult | null) => void;
-  resultTab: 'diff' | 'response' | 'headers' | 'request';
-  setResultTab: (tab: 'diff' | 'response' | 'headers' | 'request') => void;
-  relPath: string;
   mockMode?: boolean;
+  sourceText: string;
+  setSourceText: (value: string) => void;
+  saveSource: () => Promise<void>;
+  saveMsg: string;
+  navigateHome: () => void;
 }) {
   const isMock = !!mockMode;
-  const detectedVars = useMemo(() => uniqueMatches(spec.request, /\{\{([a-zA-Z0-9_]+)\}\}/g), [spec.request]);
-  const detectedParams = useMemo(() => uniqueMatches(spec.path, /:([a-zA-Z0-9_*]+)/g), [spec.path]);
-  const parsed = useMemo(() => parseRequest(spec.request), [spec.request]);
+  const [reqTab, setReqTab] = useState<RequestTab>('params');
+  const [resultTab, setResultTab] = useState<'diff' | 'response' | 'headers' | 'request'>('diff');
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<ExecResult | null>(null);
+  const [varsOpen, setVarsOpen] = useState(true);
   const [varRows, setVarRows] = useState<VarRow[]>([]);
   const [paramRows, setParamRows] = useState<ParamRow[]>([]);
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>([]);
   const [bodyText, setBodyText] = useState('');
   const [bodyDirty, setBodyDirty] = useState(false);
   const [curlOpen, setCurlOpen] = useState(false);
+
+  const detectedVars = useMemo(() => uniqueMatches(spec.request, /\{\{([a-zA-Z0-9_]+)\}\}/g), [spec.request]);
+  const detectedParams = useMemo(() => uniqueMatches(spec.path, /:([a-zA-Z0-9_*]+)/g), [spec.path]);
+  const parsed = useMemo(() => parseRequest(spec.request), [spec.request]);
 
   useEffect(() => {
     setVarRows(detectedVars.map(name => ({ id: rid(), name, override: '', locked: true })));
@@ -164,24 +116,25 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     setBodyText(parsed.body);
     setBodyDirty(false);
     setResult(null);
-  }, [detectedParams, detectedVars, parsed.body, parsed.headers, setResult, spec.rel_path]);
+    setReqTab('params');
+    setResultTab('diff');
+  }, [detectedParams, detectedVars, parsed.body, parsed.headers, spec.rel_path]);
 
-  // Auto-detect vars typed into headers / params and add them to varRows.
-  // Body variables are suggested in the JSON editor instead of being synced here.
   useEffect(() => {
     const allText = [
+      bodyDirty ? bodyText : '',
       ...headerRows.map(row => row.value),
       ...paramRows.map(row => row.value),
     ].join('\n');
     const found = uniqueMatches(allText, /\{\{([a-zA-Z0-9_]+)\}\}/g);
     if (found.length === 0) return;
     setVarRows(rows => {
-      const existing = new Set(rows.map(r => r.name));
+      const existing = new Set(rows.map(row => row.name));
       const missing = found.filter(name => !existing.has(name));
       if (missing.length === 0) return rows;
       return [...rows, ...missing.map(name => ({ id: rid(), name, override: '', locked: false }))];
     });
-  }, [headerRows, paramRows]);
+  }, [bodyDirty, bodyText, headerRows, paramRows]);
 
   const availableVariableNames = useMemo(() => {
     const names = new Set<string>();
@@ -205,6 +158,14 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     return { value: '', src: 'missing' };
   }
 
+  function resolve(text: string) {
+    return text.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, name) => {
+      const row = varRows.find(item => item.name === name);
+      if (row) return valueOf(row).value || `{{${name}}}`;
+      return browserVars[name] ?? envVars[name] ?? `{{${name}}}`;
+    });
+  }
+
   function buildOptions(): RuntimeExecOptions {
     const referencedVars = new Set(detectedVars);
     const overrideText = [
@@ -224,14 +185,6 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     const path_params = Object.fromEntries(paramRows.filter(row => row.name && row.value).map(row => [row.name, resolve(row.value)]));
     const headers = Object.fromEntries(headerRows.filter(row => row.enabled && row.name).map(row => [row.name, resolve(row.value)]));
     return { vars, path_params, headers, body: bodyDirty ? bodyText : undefined };
-  }
-
-  function resolve(text: string) {
-    return text.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, name) => {
-      const row = varRows.find(item => item.name === name);
-      if (row) return valueOf(row).value || `{{${name}}}`;
-      return browserVars[name] ?? envVars[name] ?? `{{${name}}}`;
-    });
   }
 
   async function run() {
@@ -255,85 +208,205 @@ function Runner({ spec, env, envVars, browserVars, running, setRunning, result, 
     }
   }
 
-  const resultTabs = [
-    { id: 'diff', label: 'Diff' },
-    { id: 'response', label: 'Body' },
-    { id: 'headers', label: 'Headers', badge: Object.keys(result?.response?.headers ?? {}).length },
-    { id: 'request', label: 'Request' },
-  ] as const;
+  const baseUrl = envVars.baseUrl ?? envVars.base_url ?? '{{baseUrl}}';
+  const resolvedPath = paramRows.reduce((path, row) => row.name && row.value ? path.replace(`:${row.name}`, resolve(row.value)) : path, spec.path);
+  const displayUrl = `${baseUrl}${resolvedPath}`;
+  const missingVars = varRows.filter(row => valueOf(row).src === 'missing').length;
+  const canSend = !!spec.path;
+
+  const reqTabs: { id: RequestTab; label: string; badge?: string | number | null }[] = [
+    { id: 'params', label: 'Params', badge: paramRows.length || null },
+    { id: 'headers', label: 'Headers', badge: headerRows.filter(row => row.enabled && row.name).length || null },
+    ...(hasBody(spec.method) || parsed.body ? [{ id: 'body' as const, label: 'Body', badge: bodyText ? '1' : null }] : []),
+    { id: 'expected', label: 'Expected' },
+    { id: 'tests', label: 'Tests' },
+    { id: 'source', label: 'Source' },
+  ];
 
   return (
-    <div>
-      <div className="card">
-        <div className="card-h"><span className="run-dot" /><span>Run this endpoint</span><span className="tag">env <b>{env}</b></span></div>
-
-        <div className="run-section">
-          <div className="sec-h"><span>Variables</span><span className="tag">{varRows.length} resolved live</span></div>
-          {varRows.map(row => {
-            const { value, src } = valueOf(row);
-            return (
-              <div className="kv" key={row.id}>
-                {row.locked ? <div className="k"><span className="br">{'{{'}</span>{row.name}<span className="br">{'}}'}</span></div> : <input className="input flush mono" value={row.name} placeholder="name" onChange={e => setVarRows(rows => rows.map(item => item.id === row.id ? { ...item, name: e.target.value } : item))} />}
-                <input className="input flush mono" value={row.override || value} placeholder={src === 'missing' ? '— required —' : ''} onChange={e => setVarRows(rows => rows.map(item => item.id === row.id ? { ...item, override: e.target.value } : item))} />
-                <div className={`src ${src}`}><span className="dot" />{src}</div>
-                <button className="row-del" onClick={() => setVarRows(rows => rows.filter(item => item.id !== row.id))}><Icon.x /></button>
-              </div>
-            );
-          })}
-          <button className="add-row" onClick={() => setVarRows(rows => [...rows, { id: rid(), name: '', override: '', locked: false }])}><Icon.plus /> Add variable</button>
-        </div>
-
-        <div className="run-section">
-          <div className="sec-h"><span>Path params</span><span className="tag">{paramRows.length}</span></div>
-          {paramRows.length === 0 && <div className="hint-line">No path params.</div>}
-          {paramRows.map(row => (
-            <div className="kv" key={row.id}>
-              {row.locked ? <div className="k"><span className="br">:</span>{row.name}</div> : <input className="input flush mono" value={row.name} placeholder="name" onChange={e => setParamRows(rows => rows.map(item => item.id === row.id ? { ...item, name: e.target.value } : item))} />}
-              <input className="input flush mono" value={row.value} placeholder="— required —" onChange={e => setParamRows(rows => rows.map(item => item.id === row.id ? { ...item, value: e.target.value } : item))} />
-              <div className="src runtime"><span className="dot" />runtime</div>
-              <button className="row-del" onClick={() => setParamRows(rows => rows.filter(item => item.id !== row.id))}><Icon.x /></button>
-            </div>
-          ))}
-          <button className="add-row" onClick={() => setParamRows(rows => [...rows, { id: rid(), name: '', value: '', locked: false }])}><Icon.plus /> Add param</button>
-        </div>
-
-        <div className="run-section">
-          <div className="sec-h"><span>Headers</span><span className="tag">{headerRows.length}</span></div>
-          {headerRows.map(row => (
-            <div className="kv hdr" key={row.id}>
-              <input className="input flush mono info-input" value={row.name} placeholder="Header-Name" onChange={e => setHeaderRows(rows => rows.map(item => item.id === row.id ? { ...item, name: e.target.value } : item))} />
-              <input className="input flush mono" value={row.value} placeholder="value" onChange={e => setHeaderRows(rows => rows.map(item => item.id === row.id ? { ...item, value: e.target.value } : item))} />
-              <button className="row-del always" onClick={() => setHeaderRows(rows => rows.filter(item => item.id !== row.id))}><Icon.x /></button>
-            </div>
-          ))}
-          <div className="inline-actions">
-            <button className="add-row" onClick={() => setHeaderRows(rows => [...rows, { id: rid(), name: '', value: '', enabled: true, locked: false }])}><Icon.plus /> Add header</button>
-            <HeaderSuggestions
-              existing={headerRows}
-              onPick={(name, value) => setHeaderRows(rows => [...rows, { id: rid(), name, value, enabled: true, locked: false }])}
-            />
-          </div>
-        </div>
-
-        {(parsed.body || !['GET', 'DELETE', 'HEAD'].includes(spec.method)) && (
-          <div className="run-section">
-            <div className="sec-h"><span>Body</span><span className="tag">{bodyDirty ? 'edited' : 'from spec'}</span></div>
-            <JsonEditor value={bodyText} onChange={value => { setBodyText(value); setBodyDirty(value !== parsed.body); }} placeholder="Empty body" minHeight={140} variableNames={availableVariableNames} />
-            {bodyDirty && <button className="btn ghost sm reset-body" onClick={() => { setBodyText(parsed.body); setBodyDirty(false); }}>Reset to spec body</button>}
-          </div>
-        )}
-
-        <div className="run-actions">
-          <button className="btn-primary run-button" onClick={run} disabled={running}>{running ? <><span className="pulse-dot" />{isMock ? 'Loading mock…' : 'Sending request…'}</> : <><Icon.play />{isMock ? 'Mock' : 'Send'} {spec.method} {spec.path}</>}</button>
-          <button className="btn" onClick={() => setCurlOpen(true)} title="Copy as curl"><Icon.copy /> Copy as curl</button>
+    <div className="req-page">
+      <div className="rp-crumb">
+        <button className="rp-back" onClick={navigateHome}>
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="9" y1="5.5" x2="2" y2="5.5" /><polyline points="5,3 2,5.5 5,8" /></svg>
+          Collections
+        </button>
+        <span className="sep">/</span>
+        <span className="rp-rel">{spec.rel_path}</span>
+        <div className="rp-crumb-r">
+          <button className="btn icon" title="Copy as curl" onClick={() => setCurlOpen(true)}><Icon.copy /></button>
         </div>
       </div>
 
-      {running && !result && <div className="card result-card"><div className="empty compact"><span className="pulse-dot" />{isMock ? 'Loading mock…' : `Sending ${spec.method}…`}</div></div>}
-      {result && <ResultCard result={result} resultTab={resultTab} setResultTab={setResultTab} tabs={resultTabs} spec={spec} />}
+      <div className="rp-titles">
+        <h1 className="rp-title">{spec.title}</h1>
+        {spec.description && <p className="rp-desc">{spec.description}</p>}
+      </div>
+
+      <div className="rp-bar">
+        <select className={`rp-method-select m-${spec.method.toLowerCase()}`} value={spec.method} disabled>
+          {HTTP_METHODS.map(item => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <div className="rp-url">
+          <span className="base">{baseUrl}</span>
+          <input className="rp-url-input" value={resolvedPath} readOnly spellCheck={false} />
+        </div>
+        <button className="btn-primary rp-send" onClick={run} disabled={running || !canSend}>
+          {running ? <><span className="pulse-dot" />{isMock ? 'Loading mock...' : 'Sending...'}</> : <><Icon.play />{isMock ? 'Mock' : 'Send'}</>}
+        </button>
+      </div>
+
+      <div className={`var-strip ${varsOpen ? 'open' : ''}`}>
+        <button className="vs-head" onClick={() => setVarsOpen(open => !open)}>
+          <span className="chev"><Icon.chev open={varsOpen} /></span>
+          <Icon.vars />
+          <span className="vs-title">Variables</span>
+          <span className="vs-count">{varRows.length}</span>
+          {missingVars > 0 && <span className="vs-missing">{missingVars} missing</span>}
+          <span className="vs-hint">resolved against <b>{env}</b></span>
+        </button>
+        {varsOpen && (
+          <div className="vs-body">
+            {varRows.length === 0 && <div className="vs-empty">No variables detected. Use <code>{'{{name}}'}</code> in the URL, headers, or body.</div>}
+            {varRows.map(row => {
+              const { value, src } = valueOf(row);
+              return (
+                <div className="vrow" key={row.id}>
+                  {row.locked ? (
+                    <div className="vrow-name"><span className="br">{'{{'}</span>{row.name}<span className="br">{'}}'}</span></div>
+                  ) : (
+                    <input className="vrow-input name" value={row.name} placeholder="name" onChange={event => setVarRows(rows => rows.map(item => item.id === row.id ? { ...item, name: event.target.value } : item))} />
+                  )}
+                  <input className="vrow-input" value={row.override || value} placeholder={src === 'missing' ? '-- required --' : ''} onChange={event => setVarRows(rows => rows.map(item => item.id === row.id ? { ...item, override: event.target.value } : item))} />
+                  <span className={`src ${src}`}><span className="dot" />{src}</span>
+                  <button className="row-del always" onClick={() => setVarRows(rows => rows.filter(item => item.id !== row.id))}><Icon.x /></button>
+                </div>
+              );
+            })}
+            <button className="add-row" onClick={() => setVarRows(rows => [...rows, { id: rid(), name: '', override: '', locked: false }])}><Icon.plus />Add variable</button>
+          </div>
+        )}
+      </div>
+
+      <div className="rp-split">
+        <section className="rp-pane">
+          <div className="rp-pane-h">
+            <div className="tabs flush">
+              {reqTabs.map(tab => (
+                <button key={tab.id} className={`tab ${reqTab === tab.id ? 'is-on' : ''}`} onClick={() => setReqTab(tab.id)}>
+                  {tab.label}{tab.badge != null && <span className="badge">{tab.badge}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rp-pane-b">
+            {reqTab === 'params' && (
+              <div className="kv-block">
+                <div className="kv-sub">Path params</div>
+                {paramRows.length === 0 && <div className="kv-none">No <code>:params</code> in this path.</div>}
+                {paramRows.map(row => (
+                  <div className="kvrow" key={row.id}>
+                    <div className="kvrow-name">{row.locked ? <span className="pn"><span className="br">:</span>{row.name}</span> : <input className="kvi mono" value={row.name} placeholder="name" onChange={event => setParamRows(rows => rows.map(item => item.id === row.id ? { ...item, name: event.target.value } : item))} />}</div>
+                    <div className="kvrow-val"><input className="kvi mono" value={row.value} placeholder="-- required --" onChange={event => setParamRows(rows => rows.map(item => item.id === row.id ? { ...item, value: event.target.value } : item))} /></div>
+                    <span className="src runtime"><span className="dot" />runtime</span>
+                    <button className="row-del always" onClick={() => setParamRows(rows => rows.filter(item => item.id !== row.id))}><Icon.x /></button>
+                  </div>
+                ))}
+                <button className="add-row" onClick={() => setParamRows(rows => [...rows, { id: rid(), name: '', value: '', locked: false }])}><Icon.plus />Add param</button>
+              </div>
+            )}
+
+            {reqTab === 'headers' && (
+              <div className="kv-block">
+                {headerRows.map(row => (
+                  <div className={`kvrow has-check ${row.enabled ? '' : 'dim'}`} key={row.id}>
+                    <button className={`kv-check ${row.enabled ? 'on' : ''}`} onClick={() => setHeaderRows(rows => rows.map(item => item.id === row.id ? { ...item, enabled: !item.enabled } : item))}>{row.enabled ? <Icon.check /> : null}</button>
+                    <div className="kvrow-name"><input className="kvi mono hdr" value={row.name} placeholder="Header-Name" onChange={event => setHeaderRows(rows => rows.map(item => item.id === row.id ? { ...item, name: event.target.value } : item))} /></div>
+                    <div className="kvrow-val"><input className="kvi mono" value={row.value} placeholder="value" onChange={event => setHeaderRows(rows => rows.map(item => item.id === row.id ? { ...item, value: event.target.value } : item))} /></div>
+                    <span />
+                    <button className="row-del always" onClick={() => setHeaderRows(rows => rows.filter(item => item.id !== row.id))}><Icon.x /></button>
+                  </div>
+                ))}
+                <div className="inline-actions">
+                  <button className="add-row" onClick={() => setHeaderRows(rows => [...rows, { id: rid(), name: '', value: '', enabled: true, locked: false }])}><Icon.plus />Add header</button>
+                  <HeaderSuggestions
+                    existing={headerRows}
+                    onPick={(name, value) => setHeaderRows(rows => [...rows, { id: rid(), name, value, enabled: true, locked: false }])}
+                  />
+                </div>
+              </div>
+            )}
+
+            {reqTab === 'body' && (
+              <div className="body-block">
+                <div className="bb-head">
+                  <span className="chip"><span className="dot" style={{ background: 'var(--info)' }} />JSON</span>
+                  {bodyDirty && <span className="edited-dot">edited</span>}
+                  {parsed.body && bodyDirty && <button className="btn ghost sm" style={{ marginLeft: 'auto' }} onClick={() => { setBodyText(parsed.body); setBodyDirty(false); }}>Reset to spec body</button>}
+                </div>
+                <JsonEditor value={bodyText} onChange={value => { setBodyText(value); setBodyDirty(value !== parsed.body); }} placeholder="Empty body" minHeight={240} variableNames={availableVariableNames} />
+              </div>
+            )}
+
+            {reqTab === 'expected' && <CodeOrEmpty value={spec.expected_response} empty="No expected response defined." />}
+            {reqTab === 'tests' && <CodeOrEmpty value={spec.tests ?? ''} empty="No tests yet." />}
+            {reqTab === 'source' && (
+              <div className="source-edit-pane">
+                <textarea className="input mono source-editor" value={sourceText} onChange={event => setSourceText(event.target.value)} spellCheck={false} />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="rp-pane response">
+          <div className="rp-pane-h">
+            <span className="rp-pane-label">Response</span>
+            {result?.response && (
+              <span className={`resp-pill ${result.diff.passed ? 'ok' : 'fail'}`}>
+                {result.diff.passed ? <Icon.check /> : <Icon.cross />}
+                {result.response.status}
+                <span className="dim">· {result.duration_ms}ms</span>
+              </span>
+            )}
+          </div>
+          <div className="rp-pane-b resp-b">
+            {!result && !running && (
+              <div className="resp-empty">
+                <div className="resp-empty-ic"><Icon.play /></div>
+                <div className="resp-empty-t">Ready to send</div>
+                <div className="resp-empty-s">Hit Send to run this {spec.method} request against <b>{env}</b> and inspect the diff against the expected response.</div>
+                <button className="btn-primary" onClick={run} disabled={!canSend}><Icon.play />Send request</button>
+              </div>
+            )}
+            {running && (
+              <div className="resp-empty">
+                <span className="pulse-dot" style={{ width: 10, height: 10 }} />
+                <div className="resp-empty-t" style={{ marginTop: 12 }}>{isMock ? 'Loading mock...' : `Sending ${spec.method}...`}</div>
+                <div className="resp-empty-s mono">{displayUrl}</div>
+              </div>
+            )}
+            {result && !running && (
+              <ResultCard result={result} resultTab={resultTab} setResultTab={setResultTab} spec={spec} />
+            )}
+          </div>
+        </section>
+      </div>
+
+      {reqTab === 'source' && (
+        <div className="rp-savebar">
+          <span className="note">{saveMsg === 'Saved' ? <span className="ok-text"><Icon.check />Saved</span> : saveMsg ? <span className="fail-text">{saveMsg}</span> : 'Editing markdown source'}</span>
+          <button className="btn" onClick={() => setSourceText(spec.raw_source)}>Discard</button>
+          <button className="btn-primary btn-sm-primary" onClick={() => saveSource()}><Icon.check />Save changes</button>
+        </div>
+      )}
+
       {curlOpen && <CurlPreview curl={buildCurl(spec, envVars, buildOptions())} onClose={() => setCurlOpen(false)} />}
     </div>
   );
+}
+
+function CodeOrEmpty({ value, empty }: { value: string; empty: string }) {
+  if (!value.trim()) return <div className="kv-none" style={{ padding: 16 }}>{empty}</div>;
+  return <pre className="code" dangerouslySetInnerHTML={{ __html: highlight(value) }} />;
 }
 
 function HeaderSuggestions({ existing, onPick }: {
@@ -380,24 +453,29 @@ function HeaderSuggestions({ existing, onPick }: {
   );
 }
 
-function ResultCard({ result, resultTab, setResultTab, tabs, spec }: {
+function ResultCard({ result, resultTab, setResultTab, spec }: {
   result: ExecResult;
   resultTab: 'diff' | 'response' | 'headers' | 'request';
   setResultTab: (tab: 'diff' | 'response' | 'headers' | 'request') => void;
-  tabs: readonly { id: 'diff' | 'response' | 'headers' | 'request'; label: string; badge?: number }[];
   spec: SpecData;
 }) {
   const passed = result.diff?.passed ?? false;
+  const tabs = [
+    { id: 'diff' as const, label: 'Diff' },
+    { id: 'response' as const, label: 'Body' },
+    { id: 'headers' as const, label: 'Headers', badge: Object.keys(result.response?.headers ?? {}).length },
+    { id: 'request' as const, label: 'Request' },
+  ];
   return (
-    <div className="card result-card">
+    <div className="result-card embedded">
       <div className={`result-status ${passed ? 'ok' : 'fail'}`}>
         <span className="verdict">{passed ? <Icon.check /> : <Icon.cross />}{passed ? 'Passed' : 'Failed'}</span>
         {result.mock && <span className="mock-badge">MOCK</span>}
         <span className="sep">·</span><span>{result.response?.status ?? 'No response'}</span>
         <span className="sep">·</span><span>{result.duration_ms}ms</span>
       </div>
-      <div className="tabs">
-        {tabs.map(tab => <button key={tab.id} className={`tab ${resultTab === tab.id ? 'is-on' : ''}`} onClick={() => setResultTab(tab.id)}>{tab.label}{tab.badge != null && <span className="badge">{tab.badge}</span>}</button>)}
+      <div className="tabs flush">
+        {tabs.map(tab => <button key={tab.id} className={`tab ${resultTab === tab.id ? 'is-on' : ''}`} onClick={() => setResultTab(tab.id)}>{tab.label}{tab.badge != null && tab.badge > 0 && <span className="badge">{tab.badge}</span>}</button>)}
       </div>
       {resultTab === 'diff' && <pre className="code">{formatDiff(result, spec)}</pre>}
       {resultTab === 'response' && <pre className="code" dangerouslySetInnerHTML={{ __html: highlight(formatBody(result.response?.body ?? result.error ?? '')) }} />}
@@ -410,17 +488,13 @@ function ResultCard({ result, resultTab, setResultTab, tabs, spec }: {
 function CurlPreview({ curl, onClose }: { curl: string; onClose: () => void }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal" onClick={event => event.stopPropagation()}>
         <div className="modal-h"><Icon.copy /><div><h2>Copy as curl</h2><div className="sub">Generated with current runtime overrides.</div></div><button className="btn icon" onClick={onClose}><Icon.x /></button></div>
         <div className="modal-b"><pre className="code">{curl}</pre></div>
         <div className="modal-f"><div className="note">Unresolved variables remain as placeholders.</div><button className="btn-primary btn-sm-primary" onClick={() => navigator.clipboard?.writeText(curl)}>Copy</button></div>
       </div>
     </div>
   );
-}
-
-function label(tab: string) {
-  return tab === 'expected' ? 'Expected' : tab[0].toUpperCase() + tab.slice(1);
 }
 
 function formatBody(body: string) {

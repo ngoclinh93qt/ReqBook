@@ -23,6 +23,8 @@ export const Icon = {
   bolt: () => <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"><path d="M7 1 L2 7 H5.5 L4.5 11 L10 5 H6.5 Z" /></svg>,
   bolt2: () => <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"><path d="M7.5 1.5 3 8h3.5L6 12.5 11 6H7z" /></svg>,
   scan: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 5V3.5A1.5 1.5 0 0 1 3.5 2H5" /><path d="M9 2h1.5A1.5 1.5 0 0 1 12 3.5V5" /><path d="M12 9v1.5a1.5 1.5 0 0 1-1.5 1.5H9" /><path d="M5 12H3.5A1.5 1.5 0 0 1 2 10.5V9" /><line x1="2" y1="7" x2="12" y2="7" /></svg>,
+  sync: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7a5 5 0 0 1-8.5 3.5" /><path d="M2 7a5 5 0 0 1 8.5-3.5" /><polyline points="11.5,1 11.5,3.5 9,3.5" /><polyline points="2.5,13 2.5,10.5 5,10.5" /></svg>,
+  branch: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"><circle cx="4" cy="3" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="11" r="1.5" /><path d="M4 4.5v5" /><path d="M4 7h2.5A3.5 3.5 0 0 0 10 5.5" /></svg>,
 };
 
 export function MethodBadge({ method }: { method: string }) {
