@@ -49,6 +49,9 @@ export function FlowCanvasPage() {
   const [pan, setPan] = useState({ x: 24, y: 24 });
   const [zoom, setZoom] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [autoSaveState, setAutoSaveState] = useState<'idle' | 'pending' | 'saved'>('idle');
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoadingRef = useRef(false);
   const [dragEdge, setDragEdge] = useState<{
     fromNodeId: string;
     mouseX: number;
@@ -63,12 +66,14 @@ export function FlowCanvasPage() {
 
   useEffect(() => {
     if (relPath === 'new') return;
+    isLoadingRef.current = true;
     api.getFlow(relPath).then(flow => {
       setFlowName(flow.name);
       setTitle(flow.title);
       setNodes(flow.steps.length > 0 ? flowStepsToNodes(flow.steps) : [newNode(0)]);
       setSelectedId(null);
-    }).catch(e => setMsg(String(e)));
+    }).catch(e => setMsg(String(e)))
+    .finally(() => { setTimeout(() => { isLoadingRef.current = false; }, 80); });
   }, [relPath]);
 
   const endpoints = useMemo(() => {
@@ -88,6 +93,25 @@ export function FlowCanvasPage() {
   const selected = nodes.find(node => node.id === selectedId) ?? null;
   const savePath = `flows/${slug(flowName)}.md`;
   const markdown = renderFlowMarkdown(flowName, title, nodes);
+
+  // Autosave on every edit (debounced 1.5 s) — skipped for unsaved new flows
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isLoadingRef.current || relPath === 'new') return;
+    setAutoSaveState('pending');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await api.saveFlow(savePath, markdown);
+        setAutoSaveState('saved');
+        setTimeout(() => setAutoSaveState('idle'), 2000);
+      } catch {
+        setAutoSaveState('idle');
+      }
+    }, 1500);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [markdown]);
+
   const totalMs = nodes.reduce((sum, node) => sum + (node.ms ?? 0), 0);
   const allDone = !isRunning && nodes.some(node => node.status !== 'idle') && nodes.every(node => node.status === 'ok' || node.status === 'fail');
   const anyFail = nodes.some(node => node.status === 'fail');
@@ -343,8 +367,7 @@ export function FlowCanvasPage() {
           <BackIcon /> All flows
         </button>
         <span className="flow-slash">/</span>
-        <input className="input flush flow-title-edit" value={title} onChange={e => setTitle(e.target.value)} />
-        <input className="input flush mono flow-slug-edit" value={flowName} onChange={e => setFlowName(e.target.value)} title="File name" />
+        <span className="flow-tb-crumb">{title || flowName}</span>
         <span className="chip flow-shape-chip" title="Execution shape derived from dependencies">
           <span className="chain-glyph">chain</span>
           <span><b>{waves.length}</b> wave{waves.length !== 1 ? 's' : ''} · max <b>{maxParallel}</b> in parallel</span>
@@ -361,6 +384,30 @@ export function FlowCanvasPage() {
           ) : (
             <button className="btn-primary btn-sm-primary stop-btn" onClick={stopFlow}><span className="stop-square" /> Stop</button>
           )}
+        </div>
+      </div>
+
+      <div className="flow-doc-header">
+        <input
+          className="flow-doc-title"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Flow title"
+          spellCheck={false}
+        />
+        <div className="flow-doc-meta">
+          <span className="flow-doc-prefix">flows/</span>
+          <input
+            className="flow-doc-slug"
+            value={flowName}
+            onChange={e => setFlowName(e.target.value)}
+            placeholder="flow-name"
+            spellCheck={false}
+          />
+          <span className="flow-doc-prefix">.md</span>
+          {autoSaveState === 'pending' && <span className="autosave-pill">Saving…</span>}
+          {autoSaveState === 'saved' && <span className="autosave-pill is-saved"><Icon.check /> Saved</span>}
+          {relPath === 'new' && <span className="autosave-pill is-new">Not saved — click Save to create</span>}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-.PHONY: release-check fmt clippy test web-build validate bench bench-size bench-size-minimal bench-cold-start bench-web
+.PHONY: release-check fmt clippy test web-build validate bench bench-agent-token bench-size bench-size-minimal bench-cold-start bench-web
 
 release-check: fmt clippy test web-build validate
 
@@ -18,10 +18,14 @@ web-build:
 validate:
 	cargo run -- validate api-docs
 	cargo run -- validate examples/jsonplaceholder/api-docs
+	cargo run -- validate examples/agent-token-api/api-docs
 
 bench: web-build
 	cargo build --release --locked
 	node scripts/benchmark.mjs
+
+bench-agent-token:
+	node scripts/codex-token-benchmark.mjs
 
 bench-size:
 	cargo build --release --locked

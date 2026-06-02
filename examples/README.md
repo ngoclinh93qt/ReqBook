@@ -51,3 +51,18 @@ user's full record. Run with:
 ```bash
 mad flow api-docs/pipelines/post-with-author.md
 ```
+
+## agent-token-api
+
+A local fixture for the agent token benchmark. It includes a tiny Node.js API
+implementation and matching MarkApiDown specs so agents can be measured in two
+modes:
+
+- source-only discovery from `examples/agent-token-api/src/`
+- MarkApiDown-assisted discovery from `examples/agent-token-api/api-docs/`
+
+```bash
+cd examples/agent-token-api
+mad validate api-docs/
+npm start
+```

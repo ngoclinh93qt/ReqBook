@@ -5,6 +5,7 @@
 ```yaml
 apiVersion: v1
 baseUrl: https://jsonplaceholder.typicode.com
+id: 1
 requestId: req_demo_001
 workspaceId: wsp_demo
 ```

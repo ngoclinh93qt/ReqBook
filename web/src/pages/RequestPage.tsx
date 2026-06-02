@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../api';
 import type { AdHocResponse, VarsData } from '../types';
 import { Icon, highlight } from '../ui';
+import type { RequestInitState } from '../RequestBuilder';
 
 const rid = () => Math.random().toString(36).slice(2, 9);
 type KVRow = { id: string; name: string; value: string };
@@ -18,13 +20,18 @@ export function RequestPage({ env }: {
   env: string;
   varsData: VarsData | null;
 }) {
-  const [method, setMethod] = useState('GET');
-  const [url, setUrl] = useState('');
-  const [headerRows, setHeaderRows] = useState<KVRow[]>([]);
+  const location = useLocation();
+  const init = location.state as RequestInitState | null;
+
+  const [method, setMethod] = useState(init?.method ?? 'GET');
+  const [url, setUrl] = useState(init?.url ?? '');
+  const [headerRows, setHeaderRows] = useState<KVRow[]>(() =>
+    init?.headers?.map(([name, value]) => ({ id: rid(), name, value })) ?? []
+  );
   const [varRows, setVarRows] = useState<KVRow[]>([]);
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(init?.body ?? '');
   const [saveAs, setSaveAs] = useState('');
-  const [reqTab, setReqTab] = useState<ReqTab>('headers');
+  const [reqTab, setReqTab] = useState<ReqTab>(init?.body ? 'body' : init?.headers?.length ? 'headers' : 'headers');
 
   const [running, setRunning] = useState(false);
   const [curlParsing, setCurlParsing] = useState(false);
