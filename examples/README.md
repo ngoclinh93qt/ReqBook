@@ -66,3 +66,51 @@ cd examples/agent-token-api
 mad validate api-docs/
 npm start
 ```
+
+## saas-auth-api
+
+A realistic auth/onboarding workspace for agent-assisted backend changes. It
+documents create user, login, and current-user endpoints plus a flow that
+captures `userId` and `authToken`.
+
+```bash
+cd examples/saas-auth-api
+mad validate api-docs/
+mad mock api-docs --port 8080
+mad flow api-docs/flows/signup-login-profile.md
+mad serve
+```
+
+Use this example when testing PR-reviewable API docs, auth variables, and agent
+prompts for "add a password reset API" style tasks.
+
+## github-api-client
+
+A public API workspace for GitHub repository smoke checks. No token is required
+for the default public requests, but teams can add `MAD_GITHUB_TOKEN` locally if
+they want authenticated rate limits.
+
+```bash
+cd examples/github-api-client
+mad validate api-docs/
+mad exec api-docs/apis/repos/get-repository.md
+mad flow api-docs/flows/repository-release-smoke.md
+```
+
+Use this example to show path variables, public API docs, and API testing for
+coding agents without running a local server.
+
+## ecommerce-checkout-flow
+
+A business-flow example that reads like checkout documentation and runs in mock
+mode from recorded expected responses.
+
+```bash
+cd examples/ecommerce-checkout-flow
+mad validate api-docs/
+mad mock api-docs --port 4001
+mad flow api-docs/flows/cart-to-checkout.md
+```
+
+Use this example to demonstrate executable business workflows, captured cart and
+checkout IDs, and CI-friendly smoke checks.

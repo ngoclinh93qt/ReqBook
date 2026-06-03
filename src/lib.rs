@@ -1,7 +1,9 @@
 //! Public API for embedding MarkApiDown.
 
 pub mod adhoc;
+pub mod agent_context;
 pub mod engine;
+pub mod exporter;
 pub mod history;
 pub mod importer;
 #[cfg(feature = "install")]

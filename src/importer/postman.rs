@@ -104,6 +104,7 @@ fn convert_item(item: &Value, resource: &str) -> Option<ImportedEndpoint> {
         tests: None,
         notes: None,
         tags: Vec::new(),
+        auth: None,
     })
 }
 

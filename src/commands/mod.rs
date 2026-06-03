@@ -1,7 +1,10 @@
 //! CLI command implementations and shared helpers.
 
+pub mod check;
+pub mod context;
 pub mod doctor;
 pub mod exec;
+pub mod export;
 pub mod import;
 pub mod init;
 pub mod install;

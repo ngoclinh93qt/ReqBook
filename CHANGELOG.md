@@ -4,9 +4,17 @@
 
 Initial release of MarkApiDown — markdown-native API specs with execution, pipelines, and cross-agent workflows.
 
+### Positioning
+
+- Updated product framing to executable API documentation for humans, CI, and coding agents
+- Avoids positioning MarkApiDown as a desktop API client clone; the source of truth remains Markdown in the repo
+
 ### Engine
 
 - HTTP endpoint execution (`mad exec`) with variable resolution, secret detection, and response diffing
+- Response match modes: default JSON shape matching, strict exact matching, and JSON Schema validation
+- `response.match: strict` and `response.match: schema` frontmatter support, plus `http strict` fence syntax
+- Structured assertion failures can be promoted to contract failures with `--strict-assertions` or strict response mode
 - Pipeline execution (`mad flow`) with step captures, inject, and assert
 - Variable resolution priority: pipeline → CLI → endpoint frontmatter → env.md → .env.local → `MAD_*` OS vars
 - Secret detection in versioned markdown — exits 5 on `sk_`, `pk_live_`, `Bearer eyJ`, or long hex strings
@@ -20,10 +28,15 @@ Initial release of MarkApiDown — markdown-native API specs with execution, pip
 - `mad validate` — validate one file or a directory tree; exit codes 0/2/5
 - `mad exec` — execute one endpoint with `--env`, `--var`, `--dry-run`, `--timeout`, `--output`
 - `mad flow` — execute a pipeline with `--parallel`/`--no-parallel`
+- `mad check` — PR-focused contract checks with Markdown, GitHub, JUnit, and JSON reports
+- `mad context` — compact deterministic endpoint, flow, or changed-spec context for coding agents
 - `mad index` — regenerate `api-docs/README.md`
 - `mad import postman` — import Postman Collection v2.1 JSON
 - `mad import insomnia` — import Insomnia v4 JSON
 - `mad import openapi` — import OpenAPI 3.x YAML or JSON
+- `mad import collection` — import local API client collection directories
+- `mad import http` — import `.http` / REST Client files
+- `mad export openapi` — export MarkApiDown endpoint specs as OpenAPI 3.x YAML or JSON
 - `mad skills install/list/uninstall` — install cross-agent skills for Claude Code, Cursor, Copilot, and more
 - `mad serve` — web preview at `http://127.0.0.1:8080` with spec browser and live Run button
 - `mad doctor [--fix]` — diagnose project setup (api-docs, .env.local, agents, network)

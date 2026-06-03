@@ -27,6 +27,17 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
             mark_api_down::importer::openapi::import,
             collection,
         ),
+        ImportCommand::Collection { path } => {
+            let (name, endpoints) = mark_api_down::importer::collection::import_dir(&path)
+                .with_context(|| format!("{}: invalid API client collection", path.display()))?;
+            write_imported(&name, &path, &endpoints, collection)
+        }
+        ImportCommand::Http { file } => run_file_import(
+            &file,
+            ".http request file",
+            mark_api_down::importer::http_file::import,
+            collection,
+        ),
         ImportCommand::Curl { file } => {
             let source = match file {
                 Some(ref path) => read_text(path, "reading curl command")?,
@@ -153,13 +164,22 @@ fn run_file_import(
     let source = read_text(file, &format!("reading {kind}"))?;
     let (name, endpoints) =
         parse(&source).with_context(|| format!("{}: invalid {kind}", file.display()))?;
+    write_imported(&name, file, &endpoints, collection)
+}
+
+fn write_imported(
+    name: &str,
+    source_path: &Path,
+    endpoints: &[mark_api_down::importer::ImportedEndpoint],
+    collection: &Path,
+) -> Result<()> {
     if endpoints.is_empty() {
-        println!("no endpoints found in {}", file.display());
+        println!("no endpoints found in {}", source_path.display());
         return Ok(());
     }
     let parent = collection.parent().unwrap_or(Path::new("."));
-    let written = mark_api_down::importer::write_endpoints(parent, &endpoints)?;
-    println!("imported from {} ({})", name, file.display());
+    let written = mark_api_down::importer::write_endpoints(parent, endpoints)?;
+    println!("imported from {} ({})", name, source_path.display());
     for path in &written {
         println!("  created {}", path.display());
     }

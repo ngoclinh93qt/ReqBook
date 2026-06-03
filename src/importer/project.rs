@@ -253,6 +253,7 @@ fn scan_file(
                 tests: None,
                 notes: Some(format!("Imported from: `{}`", path.display())),
                 tags: vec![],
+                auth: None,
             });
         }
     }

@@ -1,7 +1,9 @@
 //! Import tools for Postman, Insomnia, OpenAPI specs, raw curl commands,
 //! and project source-code route scanning.
 
+pub mod collection;
 pub mod curl;
+pub mod http_file;
 pub mod insomnia;
 pub mod openapi;
 pub mod postman;
@@ -27,6 +29,7 @@ pub struct ImportedEndpoint {
     pub tests: Option<String>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
+    pub auth: Option<String>,
 }
 
 /// Write imported endpoints under `root/api-docs/apis/` and return paths written.
@@ -92,7 +95,7 @@ pub(crate) fn render_endpoint(ep: &ImportedEndpoint) -> String {
     out.push_str(&format!("path: {path}\n"));
     out.push_str(&format!("tags: [{tags_str}]\n"));
     out.push_str("version: 1\n");
-    out.push_str("auth: none\n");
+    out.push_str(&format!("auth: {}\n", ep.auth.as_deref().unwrap_or("none")));
     out.push_str("timeout: 5000\n");
     out.push_str("retry:\n");
     out.push_str("  attempts: 0\n");

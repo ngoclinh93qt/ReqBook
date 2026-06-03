@@ -19,6 +19,15 @@ pub struct Endpoint {
     pub request: String,
     /// Expected HTTP response block.
     pub expected_response: String,
+    /// Response match mode used by the execution engine.
+    #[serde(default)]
+    pub response_match: ResponseMatchMode,
+    /// Response fields documented as intentionally ignored during strict matching.
+    #[serde(default)]
+    pub response_ignore: Vec<String>,
+    /// Optional JSON Schema block used when `response.match: schema`.
+    #[serde(default)]
+    pub response_schema: Option<String>,
     /// Optional agent task test instructions.
     pub tests: Option<String>,
     /// Optional notes section.
@@ -84,6 +93,34 @@ pub struct EndpointSchema {
     /// Retry policy.
     #[serde(default)]
     pub retry: Option<RetryPolicy>,
+    /// Response comparison configuration.
+    #[serde(default)]
+    pub response: Option<ResponseConfig>,
+}
+
+/// Response comparison configuration.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct ResponseConfig {
+    /// Match mode. Defaults to shape matching.
+    #[serde(default, rename = "match")]
+    pub match_mode: Option<ResponseMatchMode>,
+    /// Paths to ignore in strict mode, e.g. `body.id` or `headers.x-request-id`.
+    #[serde(default)]
+    pub ignore: Vec<String>,
+}
+
+/// Response comparison modes.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResponseMatchMode {
+    /// JSON shape matching; scalar values are type-checked, not exact-matched.
+    #[default]
+    Shape,
+    /// Exact status, expected headers, and exact JSON/string body matching.
+    Strict,
+    /// Validate the actual response body against a JSON Schema block.
+    Schema,
 }
 
 /// Supported endpoint protocols.

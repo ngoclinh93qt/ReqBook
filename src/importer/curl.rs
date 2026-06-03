@@ -303,6 +303,7 @@ fn to_endpoint(req: CurlRequest) -> Result<ImportedEndpoint> {
         tests: None,
         notes: Some(notes.join("\n\n")),
         tags: vec![],
+        auth: None,
     })
 }
 

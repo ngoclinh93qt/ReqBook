@@ -2,6 +2,209 @@
 
 This file is the shared coordination plan for all agents working on Trellis. Keep it current as phases are completed, blocked, or revised. Do not remove historical notes that explain decisions.
 
+## Competitive positioning update - 2026-06-03
+
+Research note: do not position MarkApiDown as a clone of any Git-native or local-first API client. MarkApiDown's sharper category is:
+
+> Executable API documentation for humans, CI, and coding agents.
+
+Use this wording across docs, landing pages, examples, and release notes:
+
+- "Executable Markdown for API workflows"
+- "Runnable Markdown API specs"
+- "API testing for coding agents"
+- "Agent-ready API workspace"
+- "Keep API docs, tests, and agent context in one Markdown source of truth"
+
+The competitive argument should be fair:
+
+- Local API clients are the right choice when a team primarily wants manual request exploration and a polished desktop request builder.
+- Hurl is the right choice when a team primarily wants a fast plain-text HTTP test runner in CI.
+- Postman is the right choice when a team primarily wants a broad API platform, hosted collaboration, monitoring, and governance.
+- MarkApiDown is the right choice when a team wants API docs in the repo to be readable, executable, reviewable in PRs, runnable in CI, and directly usable by coding agents.
+
+Current app capabilities already present:
+
+- Markdown endpoint specs and pipeline specs under `api-docs/`.
+- CLI validation, execution, flow execution, browser preview, mock server, ad-hoc request saving, doctor checks.
+- Import from cURL, Postman, Insomnia, OpenAPI, and source route scanning.
+- Basic structured assertions with `status`, `body.*`, and `headers.*`.
+- Agent skills, slash commands, MCP tools, compact agent outputs, search, variables, history, session, authoring, and batch exec.
+
+Implementation status from this update:
+
+- Phase 16 core shipped: `response.match` supports `shape`, `strict`, and `schema`; `http strict` fence syntax is accepted; strict assertions can affect execution results; `mad check` emits Markdown, GitHub, JUnit, and JSON reports with `--changed-from`.
+- Phase 17 first pass shipped: `mad export openapi`, `mad import collection`, `mad import http`, improved OpenAPI tag/operation/security preservation.
+- Phase 18 core shipped: `mad context` and MCP `mad_context` return compact endpoint, flow, and changed-spec context.
+- Phase 19 examples validated: `jsonplaceholder`, `saas-auth-api`, `github-api-client`, `ecommerce-checkout-flow`, and `agent-token-api`.
+- Phase 20 remains future work: the VS Code extension MVP has not been started in this update.
+
+### Phase 16 - contract trust and PR review
+
+Priority: P0. Goal: make "contract" credible for serious API teams and make API behavior changes easy to review in pull requests.
+
+Feature work:
+
+- Add explicit response match modes:
+  - `shape` remains the default for JSON bodies to preserve the current forgiving workflow.
+  - `strict` requires status, expected headers, and JSON/string body to match exactly except documented ignored fields.
+  - `schema` validates the actual response against a JSON Schema block.
+- Add frontmatter or section syntax for match mode:
+
+```yaml
+response:
+  match: strict
+```
+
+````markdown
+## Expected response
+
+```http strict
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": "usr_123",
+  "email": "ada@example.com",
+  "status": "active"
+}
+```
+````
+
+- Promote structured assertions so failing assertions affect the command result when `--strict-assertions` or `response.match: strict` is enabled.
+- Add a PR-focused command:
+
+```bash
+mad check api-docs/ --changed-from origin/main --report markdown
+mad check api-docs/ --changed-from origin/main --report github
+mad check api-docs/ --report junit
+```
+
+Expected report shape:
+
+```text
+API contract check
+
+Changed endpoints: 3
+Passed contracts: 2
+Changed response shape: 1
+Missing variables: 1
+
+- PASS POST /users create user
+- PASS GET /users/:userId fetch user
+- FAIL POST /checkout/sessions response.body.payment.status changed
+- WARN GET /me requires authToken but env dev does not define it
+```
+
+Acceptance checks:
+
+- `mad exec` preserves current behavior unless a stricter mode is explicitly set.
+- `mad check --changed-from` only evaluates changed endpoint and flow files.
+- Markdown, GitHub, JUnit, and JSON reports are deterministic and snapshot-tested.
+- Strict contract failures and assertion failures are visible in CLI output, MCP output, and reports.
+
+### Phase 17 - OpenAPI round trip and migration depth
+
+Priority: P0. Goal: reduce adoption fear by making MarkApiDown easy to enter and easy to leave.
+
+Feature work:
+
+- Keep existing `mad import openapi`, but add export:
+
+```bash
+mad export openapi api-docs/ --out openapi.generated.yaml
+mad export openapi api-docs/ --json --out openapi.generated.json
+```
+
+- Improve import metadata preservation:
+  - `operationId` -> stable title/slug hint.
+  - OpenAPI examples -> `## Expected response`.
+  - schemas -> optional `## Schema` blocks for `response.match: schema`.
+  - tags/security/servers -> frontmatter and `_shared/env.md`.
+- Add first-pass local API client collection and `.http` migration:
+
+```bash
+mad import collection ./local-client-collection
+mad import http ./requests.http
+```
+
+Acceptance checks:
+
+- Importing then exporting the same small OpenAPI fixture keeps paths, methods, status examples, parameters, tags, and auth scheme.
+- Exported OpenAPI passes a common validator.
+- Local client collection and `.http` imports create valid endpoint files and never commit secrets.
+
+### Phase 18 - agent context commands
+
+Priority: P0. Goal: give coding agents compact, deterministic API context without forcing them to read every markdown file.
+
+Feature work:
+
+```bash
+mad context users.create
+mad context flow signup-login-profile
+mad context --changed-from origin/main
+mad agent-plan "add password reset API"
+```
+
+Example context output:
+
+```text
+Endpoint: POST /users
+File: api-docs/apis/users/post-create-user.md
+Auth: bearer
+Variables: baseUrl, email, role
+Expected: 201 body.id, body.email, body.status
+Related flow: signup-login-profile
+Safe next command: mad exec api-docs/apis/users/post-create-user.md --env dev
+```
+
+Acceptance checks:
+
+- Context output is stable, under a configurable token budget, and excludes full bodies unless `--verbose`.
+- `mad context --changed-from` summarizes only changed specs and related flows.
+- MCP exposes the same context shape for agents.
+
+### Phase 19 - real examples and adoption kits
+
+Priority: P0. Goal: make the product feel useful on realistic workflows, not toy single requests.
+
+Examples to maintain:
+
+- `examples/saas-auth-api`: signup, login, current user, token capture, PR-reviewable onboarding flow.
+- `examples/github-api-client`: public GitHub repository smoke checks, path variables, rate-limit-aware notes.
+- `examples/ecommerce-checkout-flow`: cart, item, checkout session, captured cart/session ids, mock-mode demo.
+- Existing `examples/jsonplaceholder` remains the smallest no-auth quick start.
+- Existing `examples/agent-token-api` remains the benchmark fixture.
+
+Each example must include:
+
+- `README.md` with install, validate, execute, flow, mock/serve commands.
+- `api-docs/mad.md`, `_shared/env.md`, endpoint files, and at least one flow where appropriate.
+- Realistic `## Assertions`, `## Tests`, and `## Notes`.
+- A copyable agent prompt.
+
+### Phase 20 - lightweight editor workflow
+
+Priority: P1. Goal: meet developers where they write specs without building a full desktop API client clone.
+
+Feature work:
+
+- VS Code extension MVP:
+  - Preview current endpoint markdown.
+  - Run current endpoint.
+  - Validate current file.
+  - Autocomplete variables from `_shared/env.md`, `.env.local`, and captures in related flows.
+  - Show compact response/result panel.
+- Keep this editor workflow narrow. The browser UI remains the local visual workspace; the extension is the fast in-editor bridge.
+
+### Product guardrails
+
+- Do not build a full desktop API client clone as the next major milestone.
+- Do not market as a generic API client alternative. Lead with executable API docs, agent context, PR review, and CI.
+- Do not claim token or cost reductions with numbers until a benchmark is published.
+- Keep Markdown as the source of truth. Avoid new project config formats unless required by platform tooling.
+
 ## Current status
 
 - Current phase: Phase 14 MCP server in progress

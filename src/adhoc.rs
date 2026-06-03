@@ -11,7 +11,8 @@ use std::{
 use anyhow::{bail, Result};
 
 use crate::parser::{
-    AuthMode, Backoff, Endpoint, EndpointSchema, HttpMethod, Protocol, RetryPolicy,
+    AuthMode, Backoff, Endpoint, EndpointSchema, HttpMethod, Protocol, ResponseMatchMode,
+    RetryPolicy,
 };
 
 /// Parameters for an ad-hoc request (shared between CLI and REST).
@@ -59,11 +60,15 @@ pub fn build_endpoint(params: &AdHocParams) -> Result<Endpoint> {
                 attempts: 0,
                 backoff: Backoff::Fixed,
             }),
+            response: None,
         },
         title: format!("{} {}", params.method.to_uppercase(), params.url),
         description: "Ad-hoc request".to_string(),
         request: req,
         expected_response: "HTTP/1.1 200 OK".to_string(),
+        response_match: ResponseMatchMode::Shape,
+        response_ignore: Vec::new(),
+        response_schema: None,
         tests: None,
         notes: None,
         assertions: Vec::new(),

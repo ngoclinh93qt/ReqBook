@@ -179,6 +179,8 @@ Fields:
 | `auth` | no | enum | `none`, `bearer`, `basic`, or `custom`. Missing uses project default. |
 | `timeout` | no | integer | Request timeout in milliseconds. Missing uses project default. |
 | `retry` | no | object | Retry policy. Missing uses project default. |
+| `response.match` | no | enum | `shape` (default), `strict`, or `schema`. |
+| `response.ignore` | no | string array | Strict-mode paths to ignore, for example `body.id` or `headers.x-request-id`. |
 
 Unknown frontmatter keys are warnings unless a future compatibility mode promotes them to errors.
 
@@ -282,7 +284,7 @@ If the URL is relative, MarkApiDown resolves it against the selected environment
 
 ### Expected response block
 
-The `## Expected response` section must contain exactly one fenced code block tagged `http`.
+The `## Expected response` section must contain exactly one fenced code block tagged `http`. Add `response.match` in frontmatter or use a fence suffix such as `http strict` for one-off strict matching.
 
 ```http
 HTTP/1.1 201 Created
@@ -294,11 +296,36 @@ Content-Type: application/json
 }
 ```
 
-MarkApiDown compares:
+Default `shape` mode compares:
 
 - Status strictly.
 - Headers as subset match. Expected headers must be present in the actual response, but extra response headers are allowed.
 - Body as JSON shape when both expected and actual bodies are valid JSON. Otherwise, body is compared as an exact string.
+
+`strict` mode requires the expected status, expected headers, and JSON/string body to match exactly, except documented ignored fields:
+
+```yaml
+response:
+  match: strict
+  ignore: [body.id, headers.x-request-id]
+```
+
+`schema` mode validates the actual response body against a JSON Schema block:
+
+````markdown
+## Schema
+
+```json
+{
+  "type": "object",
+  "required": ["id", "email"],
+  "properties": {
+    "id": { "type": "string" },
+    "email": { "type": "string" }
+  }
+}
+```
+````
 
 ### Error responses section
 

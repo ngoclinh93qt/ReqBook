@@ -23,6 +23,7 @@ pub(crate) async fn exec(args: ExecArgs) -> Result<()> {
             context,
             timeout_ms: args.timeout,
             dry_run: args.dry_run,
+            strict_assertions: args.strict_assertions,
         },
     )
     .await?;
@@ -54,6 +55,7 @@ pub(crate) async fn flow(args: FlowArgs) -> Result<()> {
                 context,
                 timeout_ms: args.timeout,
                 dry_run: false,
+                strict_assertions: args.strict_assertions,
             },
         },
     )

@@ -141,6 +141,7 @@ mod tests {
         assert!(names.contains(&"mad_history"));
         assert!(names.contains(&"mad_session"));
         assert!(names.contains(&"mad_exec_batch"));
+        assert!(names.contains(&"mad_context"));
     }
 
     #[test]

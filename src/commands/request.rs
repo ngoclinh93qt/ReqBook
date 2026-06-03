@@ -48,6 +48,7 @@ pub(crate) async fn run(args: RequestArgs, collection: &Path) -> Result<()> {
             context,
             timeout_ms: args.timeout,
             dry_run: args.dry_run,
+            strict_assertions: false,
         },
     )
     .await?;

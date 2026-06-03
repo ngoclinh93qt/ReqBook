@@ -1,6 +1,10 @@
 //! Pipeline orchestration.
 
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -166,7 +170,7 @@ async fn run_parallel(
 async fn execute_step(
     step: &PipelineStep,
     env: &str,
-    root: &PathBuf,
+    root: &Path,
     exec_opts: ExecOpts,
     initial_captures: BTreeMap<String, String>,
 ) -> Result<(BTreeMap<String, String>, StepResult), PipelineError> {

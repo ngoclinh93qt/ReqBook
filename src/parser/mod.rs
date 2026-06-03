@@ -89,10 +89,25 @@ pub fn parse_endpoint(source: &str, path: impl AsRef<Path>) -> Result<Endpoint, 
     })?;
     let description = doc.description.clone().unwrap_or_default();
     let request = exactly_one_code(&doc, "Request", "http", &path)?;
-    let expected_response = exactly_one_code(&doc, "Expected response", "http", &path)?;
+    let (expected_response, expected_info) =
+        exactly_one_code_with_info(&doc, "Expected response", "http", &path)?;
     let tests = optional_one_code(&doc, "Tests", "agent-task", &path)?;
     let notes = doc.section_text("Notes");
     let assertions = parse_assertions(doc.section_text("Assertions").as_deref().unwrap_or(""));
+    let response_schema = optional_schema_code(&doc, &path)?;
+    let response_match = response_match_from_schema_or_fence(&schema, &expected_info);
+    let response_ignore = schema
+        .response
+        .as_ref()
+        .map(|response| response.ignore.clone())
+        .unwrap_or_default();
+
+    if response_match == ResponseMatchMode::Schema && response_schema.is_none() {
+        return Err(ParseError::MissingSection {
+            path: path.clone(),
+            name: "```json``` in ## Schema".to_string(),
+        });
+    }
 
     Ok(Endpoint {
         source: Some(path),
@@ -101,6 +116,9 @@ pub fn parse_endpoint(source: &str, path: impl AsRef<Path>) -> Result<Endpoint, 
         description,
         request,
         expected_response,
+        response_match,
+        response_ignore,
+        response_schema,
         tests,
         notes,
         assertions,
@@ -360,13 +378,22 @@ fn exactly_one_code(
     lang: &str,
     path: &str,
 ) -> Result<String, ParseError> {
+    exactly_one_code_with_info(doc, section, lang, path).map(|(code, _)| code)
+}
+
+fn exactly_one_code_with_info(
+    doc: &MarkdownDoc,
+    section: &str,
+    lang: &str,
+    path: &str,
+) -> Result<(String, String), ParseError> {
     let Some(section_data) = doc.sections.get(section) else {
         return Err(ParseError::MissingSection {
             path: path.to_string(),
             name: format!("## {section}"),
         });
     };
-    let blocks = section_data.code.get(lang).cloned().unwrap_or_default();
+    let blocks = matching_code_blocks(section_data, &[lang]);
     match blocks.len() {
         1 => Ok(blocks[0].clone()),
         0 => Err(ParseError::MissingSection {
@@ -389,16 +416,67 @@ fn optional_one_code(
     let Some(section_data) = doc.sections.get(section) else {
         return Ok(None);
     };
-    let blocks = section_data.code.get(lang).cloned().unwrap_or_default();
+    let blocks = matching_code_blocks(section_data, &[lang]);
     match blocks.len() {
         0 => Ok(None),
-        1 => Ok(Some(blocks[0].clone())),
+        1 => Ok(Some(blocks[0].0.clone())),
         _ => Err(ParseError::Invalid {
             path: path.to_string(),
             message: format!("multiple {lang} blocks in ## {section}"),
             fix: format!("keep one `{lang}` block in ## {section}"),
         }),
     }
+}
+
+fn optional_schema_code(doc: &MarkdownDoc, path: &str) -> Result<Option<String>, ParseError> {
+    let Some(section_data) = doc.sections.get("Schema") else {
+        return Ok(None);
+    };
+    let blocks = matching_code_blocks(section_data, &["json", "json-schema", "schema"]);
+    match blocks.len() {
+        0 => Ok(None),
+        1 => Ok(Some(blocks[0].0.clone())),
+        _ => Err(ParseError::Invalid {
+            path: path.to_string(),
+            message: "multiple schema blocks in ## Schema".to_string(),
+            fix: "keep one `json` or `json schema` block in ## Schema".to_string(),
+        }),
+    }
+}
+
+fn matching_code_blocks(section: &Section, langs: &[&str]) -> Vec<(String, String)> {
+    let mut blocks = Vec::new();
+    for (info, values) in &section.code {
+        let token = info.split_whitespace().next().unwrap_or("");
+        if langs.iter().any(|lang| token.eq_ignore_ascii_case(lang)) {
+            blocks.extend(values.iter().cloned().map(|code| (code, info.clone())));
+        }
+    }
+    blocks
+}
+
+fn response_match_from_schema_or_fence(
+    schema: &EndpointSchema,
+    expected_info: &str,
+) -> ResponseMatchMode {
+    if let Some(mode) = schema
+        .response
+        .as_ref()
+        .and_then(|response| response.match_mode)
+    {
+        return mode;
+    }
+
+    expected_info
+        .split_whitespace()
+        .skip(1)
+        .find_map(|token| match token.to_ascii_lowercase().as_str() {
+            "strict" => Some(ResponseMatchMode::Strict),
+            "schema" => Some(ResponseMatchMode::Schema),
+            "shape" => Some(ResponseMatchMode::Shape),
+            _ => None,
+        })
+        .unwrap_or(ResponseMatchMode::Shape)
 }
 
 /// Parse `## Assertions` section text into structured `Assertion` values.
@@ -679,6 +757,27 @@ retries: 2
         let source = endpoint_doc().replace("resource: users", "resource: [");
         let err = parse_endpoint(&source, "bad.md").unwrap_err();
         assert!(matches!(err, ParseError::InvalidYaml { .. }));
+    }
+
+    #[test]
+    fn reads_response_match_from_frontmatter() {
+        let source = endpoint_doc().replace(
+            "retry:\n  attempts: 1\n  backoff: fixed",
+            "retry:\n  attempts: 1\n  backoff: fixed\nresponse:\n  match: strict\n  ignore: [body.id]",
+        );
+        let endpoint = parse_endpoint(&source, "endpoint.md").unwrap();
+        assert_eq!(endpoint.response_match, ResponseMatchMode::Strict);
+        assert_eq!(endpoint.response_ignore, vec!["body.id"]);
+    }
+
+    #[test]
+    fn reads_response_match_from_http_fence() {
+        let source = endpoint_doc().replace(
+            "```http\nHTTP/1.1 200 OK",
+            "```http strict\nHTTP/1.1 200 OK",
+        );
+        let endpoint = parse_endpoint(&source, "endpoint.md").unwrap();
+        assert_eq!(endpoint.response_match, ResponseMatchMode::Strict);
     }
 
     #[test]

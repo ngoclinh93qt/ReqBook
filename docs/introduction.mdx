@@ -120,18 +120,18 @@ When an agent needs to test an API endpoint without MarkApiDown, it reads router
 
 | Task | Without MarkApiDown | With MarkApiDown |
 |---|---|---|
-| Test one endpoint | Read 3+ source files, construct curl, parse stdout (~500 tokens/call) | `mad_exec spec.md` structured result (~50 tokens/call) |
+| Test one endpoint | Read source files, construct curl, parse stdout | `mad_exec spec.md` structured result |
 | Debug multi-step flow | Write a temp script, manually chain requests, no trace on failure | `mad_flow pipeline.md` per-step state, captured values |
-| Detect a regression | Only after a bug report | `mad validate` in CI fails before merge |
-| Agent discovers APIs | Scan entire codebase (~10,000–50,000 tokens) | `mad_search --tag auth` compact index instantly |
+| Detect a regression | Only after a bug report | `mad check` or `mad validate` in CI fails before merge |
+| Agent discovers APIs | Scan broad source and docs manually | `mad context` and `mad_search` return compact API context |
 | Share tests with team | "Send me the curl" | Commit markdown, review in PR |
 | Mock backend | Run live server or hardcode | `mad mock` from recorded responses |
 
-The setup cost is five minutes (`mad init`). After that, every agent call costs ~10× fewer tokens and produces reviewable, reusable artifacts.
+The setup cost is five minutes (`mad init`). After that, API docs, tests, CI checks, mock responses, and agent context come from the same reviewable markdown files.
 
 ---
 
-## Why not Postman, Insomnia, or Bruno?
+## Why not Postman, Insomnia, Bruno, or Hurl?
 
 <CardGroup cols={2}>
  <Card title="Agents need file-based tools" icon="robot">
@@ -147,6 +147,8 @@ The setup cost is five minutes (`mad init`). After that, every agent call costs 
  A single Rust binary. No signup, no workspace ID, no internet dependency at runtime. Works offline.
  </Card>
 </CardGroup>
+
+Postman is the right choice when a team wants a broad hosted API platform with collaboration, monitoring, and governance. Bruno is the right choice when a team primarily wants a mature Git-native desktop API client. Hurl is the right choice when a team wants a fast plain-text HTTP test runner in CI. MarkApiDown is for teams that want API docs in the repo to be readable, executable, reviewable in PRs, runnable in CI, and directly usable by coding agents.
 
 ---
 

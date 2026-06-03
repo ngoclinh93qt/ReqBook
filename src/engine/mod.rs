@@ -10,7 +10,7 @@ use thiserror::Error;
 use tokio::time::{sleep, Duration};
 
 use crate::{
-    parser::{Assertion, AssertionOp, Backoff, Endpoint, HttpMethod, Protocol},
+    parser::{Assertion, AssertionOp, Backoff, Endpoint, HttpMethod, Protocol, ResponseMatchMode},
     resolver::{mask, resolve, Context, ResolveError},
 };
 
@@ -26,6 +26,8 @@ pub struct ExecOpts {
     pub timeout_ms: Option<u64>,
     /// If true, resolve and return the request without sending it.
     pub dry_run: bool,
+    /// If true, failing structured assertions make the execution fail.
+    pub strict_assertions: bool,
 }
 
 /// Result of evaluating a single assertion rule.
@@ -92,6 +94,9 @@ pub struct ResponseDiff {
     pub headers: Vec<String>,
     /// Body mismatch, if any.
     pub body: Option<String>,
+    /// Assertion mismatches promoted to contract failures.
+    #[serde(default)]
+    pub assertions: Vec<String>,
 }
 
 /// Engine errors.
@@ -191,12 +196,21 @@ pub async fn execute_with_client(
                 source,
             }
         })?;
-    let expected = parse_expected(&endpoint.expected_response).map_err(|message| {
-        EngineError::InvalidExpected {
+    let expected_response = if endpoint.response_match == ResponseMatchMode::Strict {
+        resolve(&endpoint.expected_response, &opts.context).map_err(|source| {
+            EngineError::Resolve {
+                path: path.clone(),
+                source,
+            }
+        })?
+    } else {
+        endpoint.expected_response.clone()
+    };
+    let expected =
+        parse_expected(&expected_response).map_err(|message| EngineError::InvalidExpected {
             path: path.clone(),
             message,
-        }
-    })?;
+        })?;
     let request =
         parse_request(&resolved_request).map_err(|message| EngineError::InvalidRequest {
             path: path.clone(),
@@ -256,9 +270,24 @@ pub async fn execute_with_client(
                     body: mask(&body),
                     size: bytes.len(),
                 };
-                let diff = diff_response(&expected, status, &headers, &body);
                 let assertion_results =
                     evaluate_assertions(&endpoint.assertions, status, &headers, &body);
+                let mut diff = diff_response(
+                    &expected,
+                    endpoint.response_match,
+                    endpoint.response_schema.as_deref(),
+                    &endpoint.response_ignore,
+                    status,
+                    &headers,
+                    &body,
+                );
+                if opts.strict_assertions || endpoint.response_match == ResponseMatchMode::Strict {
+                    for assertion in assertion_results.iter().filter(|result| !result.passed) {
+                        diff.passed = false;
+                        diff.assertions
+                            .push(format!("{}: {}", assertion.rule, assertion.message));
+                    }
+                }
                 return Ok(Execution {
                     request: captured_request,
                     response: Some(captured_response),
@@ -417,6 +446,9 @@ fn parse_expected(source: &str) -> Result<ParsedExpected, String> {
 
 fn diff_response(
     expected: &ParsedExpected,
+    match_mode: ResponseMatchMode,
+    schema: Option<&str>,
+    ignore: &[String],
     status: StatusCode,
     headers: &HeaderMap,
     body: &str,
@@ -426,6 +458,7 @@ fn diff_response(
         status: None,
         headers: Vec::new(),
         body: None,
+        assertions: Vec::new(),
     };
     if expected.status != status {
         diff.passed = false;
@@ -438,8 +471,12 @@ fn diff_response(
 
     let actual_headers = headers_to_map(headers);
     for (name, expected_value) in &expected.headers {
+        if ignored_header(ignore, name) {
+            continue;
+        }
         match actual_headers.get(name) {
-            Some(actual) if actual.contains(expected_value) => {}
+            Some(actual)
+                if header_matches(match_mode, expected_value.as_str(), actual.as_str()) => {}
             Some(actual) => {
                 diff.passed = false;
                 diff.headers.push(format!(
@@ -453,22 +490,139 @@ fn diff_response(
         }
     }
 
-    if !expected.body.trim().is_empty() {
-        let body_ok = match (
-            serde_json::from_str::<Value>(&expected.body),
-            serde_json::from_str::<Value>(body),
-        ) {
-            (Ok(expected_json), Ok(actual_json)) => {
-                json_shape_matches(&expected_json, &actual_json)
+    match match_mode {
+        ResponseMatchMode::Shape => {
+            if !expected.body.trim().is_empty() {
+                let body_ok = match (
+                    serde_json::from_str::<Value>(&expected.body),
+                    serde_json::from_str::<Value>(body),
+                ) {
+                    (Ok(expected_json), Ok(actual_json)) => {
+                        json_shape_matches(&expected_json, &actual_json)
+                    }
+                    _ => expected.body.trim() == body.trim(),
+                };
+                if !body_ok {
+                    diff.passed = false;
+                    diff.body = Some("response body did not match expected shape".to_string());
+                }
             }
-            _ => expected.body.trim() == body.trim(),
-        };
-        if !body_ok {
-            diff.passed = false;
-            diff.body = Some("response body did not match expected shape".to_string());
         }
+        ResponseMatchMode::Strict => {
+            if !expected.body.trim().is_empty()
+                && !strict_body_matches(&expected.body, body, ignore, &mut diff)
+            {
+                diff.passed = false;
+            }
+        }
+        ResponseMatchMode::Schema => match schema {
+            Some(schema) => match validate_json_schema(schema, body) {
+                Ok(errors) if errors.is_empty() => {}
+                Ok(errors) => {
+                    diff.passed = false;
+                    diff.body = Some(format!("schema validation failed: {}", errors.join("; ")));
+                }
+                Err(message) => {
+                    diff.passed = false;
+                    diff.body = Some(message);
+                }
+            },
+            None => {
+                diff.passed = false;
+                diff.body =
+                    Some("response.match is schema but no ## Schema block was found".to_string());
+            }
+        },
     }
     diff
+}
+
+fn header_matches(mode: ResponseMatchMode, expected: &str, actual: &str) -> bool {
+    match mode {
+        ResponseMatchMode::Strict => actual == expected,
+        ResponseMatchMode::Shape | ResponseMatchMode::Schema => actual.contains(expected),
+    }
+}
+
+fn ignored_header(ignore: &[String], name: &str) -> bool {
+    ignore.iter().any(|path| {
+        let path = path.trim().to_ascii_lowercase();
+        path == format!("headers.{name}") || path == name
+    })
+}
+
+fn strict_body_matches(
+    expected: &str,
+    actual: &str,
+    ignore: &[String],
+    diff: &mut ResponseDiff,
+) -> bool {
+    match (
+        serde_json::from_str::<Value>(expected),
+        serde_json::from_str::<Value>(actual),
+    ) {
+        (Ok(mut expected_json), Ok(mut actual_json)) => {
+            for path in ignore.iter().filter_map(|path| body_ignore_path(path)) {
+                remove_json_path(&mut expected_json, &path);
+                remove_json_path(&mut actual_json, &path);
+            }
+            if expected_json == actual_json {
+                true
+            } else {
+                diff.body = Some("response JSON did not match expected body exactly".to_string());
+                false
+            }
+        }
+        _ => {
+            if expected.trim_end() == actual.trim_end() {
+                true
+            } else {
+                diff.body = Some("response body did not match expected body exactly".to_string());
+                false
+            }
+        }
+    }
+}
+
+fn body_ignore_path(path: &str) -> Option<String> {
+    let path = path.trim();
+    path.strip_prefix("response.body.")
+        .or_else(|| path.strip_prefix("body."))
+        .map(str::to_string)
+}
+
+fn remove_json_path(value: &mut Value, path: &str) {
+    let mut current = value;
+    let mut parts = path.split('.').peekable();
+    while let Some(part) = parts.next() {
+        let is_last = parts.peek().is_none();
+        match current {
+            Value::Object(map) if is_last => {
+                map.remove(part);
+                return;
+            }
+            Value::Object(map) => {
+                let Some(next) = map.get_mut(part) else {
+                    return;
+                };
+                current = next;
+            }
+            Value::Array(items) => {
+                let Ok(index) = part.parse::<usize>() else {
+                    return;
+                };
+                let Some(next) = items.get_mut(index) else {
+                    return;
+                };
+                if is_last {
+                    *next = Value::Null;
+                    return;
+                }
+                current = next;
+            }
+            _ => return,
+        }
+    }
 }
 
 fn json_shape_matches(expected: &Value, actual: &Value) -> bool {
@@ -489,6 +643,175 @@ fn json_shape_matches(expected: &Value, actual: &Value) -> bool {
         | (Value::Bool(_), Value::Bool(_))
         | (Value::Null, Value::Null) => true,
         _ => false,
+    }
+}
+
+fn validate_json_schema(schema_source: &str, body: &str) -> Result<Vec<String>, String> {
+    let schema: Value = match serde_json::from_str(schema_source) {
+        Ok(schema) => schema,
+        Err(json_err) => serde_yaml::from_str(schema_source).map_err(|yaml_err| {
+            format!("invalid JSON Schema block: JSON error: {json_err}; YAML error: {yaml_err}")
+        })?,
+    };
+    let actual: Value =
+        serde_json::from_str(body).map_err(|err| format!("response body is not JSON: {err}"))?;
+    let mut errors = Vec::new();
+    validate_schema_value(&schema, &actual, "$", &mut errors);
+    Ok(errors)
+}
+
+fn validate_schema_value(schema: &Value, actual: &Value, path: &str, errors: &mut Vec<String>) {
+    if let Some(type_spec) = schema.get("type") {
+        if !schema_type_matches(type_spec, actual) {
+            errors.push(format!(
+                "{path}: expected type {}, got {}",
+                schema_type_label(type_spec),
+                actual_type(actual)
+            ));
+            return;
+        }
+    }
+
+    if let Some(enum_values) = schema.get("enum").and_then(Value::as_array) {
+        if !enum_values.iter().any(|allowed| allowed == actual) {
+            errors.push(format!("{path}: value is not in enum"));
+        }
+    }
+
+    if let Some(const_value) = schema.get("const") {
+        if const_value != actual {
+            errors.push(format!("{path}: value does not equal const"));
+        }
+    }
+
+    match actual {
+        Value::Object(map) => {
+            if let Some(required) = schema.get("required").and_then(Value::as_array) {
+                for item in required.iter().filter_map(Value::as_str) {
+                    if !map.contains_key(item) {
+                        errors.push(format!("{path}.{item}: required property missing"));
+                    }
+                }
+            }
+            if let Some(properties) = schema.get("properties").and_then(Value::as_object) {
+                for (name, property_schema) in properties {
+                    if let Some(value) = map.get(name) {
+                        validate_schema_value(
+                            property_schema,
+                            value,
+                            &format!("{path}.{name}"),
+                            errors,
+                        );
+                    }
+                }
+                if schema.get("additionalProperties").and_then(Value::as_bool) == Some(false) {
+                    for key in map.keys() {
+                        if !properties.contains_key(key) {
+                            errors.push(format!("{path}.{key}: additional property not allowed"));
+                        }
+                    }
+                }
+            }
+        }
+        Value::Array(items) => {
+            if let Some(min_items) = schema.get("minItems").and_then(Value::as_u64) {
+                if (items.len() as u64) < min_items {
+                    errors.push(format!("{path}: expected at least {min_items} item(s)"));
+                }
+            }
+            if let Some(max_items) = schema.get("maxItems").and_then(Value::as_u64) {
+                if (items.len() as u64) > max_items {
+                    errors.push(format!("{path}: expected at most {max_items} item(s)"));
+                }
+            }
+            if let Some(item_schema) = schema.get("items") {
+                for (idx, item) in items.iter().enumerate() {
+                    validate_schema_value(item_schema, item, &format!("{path}[{idx}]"), errors);
+                }
+            }
+        }
+        Value::String(value) => {
+            if let Some(min) = schema.get("minLength").and_then(Value::as_u64) {
+                if (value.chars().count() as u64) < min {
+                    errors.push(format!("{path}: expected minLength {min}"));
+                }
+            }
+            if let Some(max) = schema.get("maxLength").and_then(Value::as_u64) {
+                if (value.chars().count() as u64) > max {
+                    errors.push(format!("{path}: expected maxLength {max}"));
+                }
+            }
+            if let Some(pattern) = schema.get("pattern").and_then(Value::as_str) {
+                match regex::Regex::new(pattern) {
+                    Ok(re) if re.is_match(value) => {}
+                    Ok(_) => errors.push(format!("{path}: string does not match pattern")),
+                    Err(err) => errors.push(format!("{path}: invalid pattern: {err}")),
+                }
+            }
+        }
+        Value::Number(number) => {
+            if let Some(actual) = number.as_f64() {
+                if let Some(minimum) = schema.get("minimum").and_then(Value::as_f64) {
+                    if actual < minimum {
+                        errors.push(format!("{path}: expected minimum {minimum}"));
+                    }
+                }
+                if let Some(maximum) = schema.get("maximum").and_then(Value::as_f64) {
+                    if actual > maximum {
+                        errors.push(format!("{path}: expected maximum {maximum}"));
+                    }
+                }
+            }
+        }
+        Value::Bool(_) | Value::Null => {}
+    }
+}
+
+fn schema_type_matches(type_spec: &Value, actual: &Value) -> bool {
+    match type_spec {
+        Value::String(kind) => single_schema_type_matches(kind, actual),
+        Value::Array(kinds) => kinds
+            .iter()
+            .filter_map(Value::as_str)
+            .any(|kind| single_schema_type_matches(kind, actual)),
+        _ => true,
+    }
+}
+
+fn single_schema_type_matches(kind: &str, actual: &Value) -> bool {
+    match kind {
+        "object" => actual.is_object(),
+        "array" => actual.is_array(),
+        "string" => actual.is_string(),
+        "number" => actual.is_number(),
+        "integer" => actual.as_i64().is_some() || actual.as_u64().is_some(),
+        "boolean" => actual.is_boolean(),
+        "null" => actual.is_null(),
+        _ => true,
+    }
+}
+
+fn schema_type_label(type_spec: &Value) -> String {
+    match type_spec {
+        Value::String(kind) => kind.clone(),
+        Value::Array(kinds) => kinds
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+            .join("|"),
+        other => other.to_string(),
+    }
+}
+
+fn actual_type(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(n) if n.as_i64().is_some() || n.as_u64().is_some() => "integer",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
     }
 }
 
@@ -816,6 +1139,108 @@ Content-Type: application/json
     }
 
     #[tokio::test]
+    async fn strict_response_requires_exact_json_body() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/get"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"ok": true, "extra": "nope"})),
+            )
+            .mount(&server)
+            .await;
+        let doc = format!(
+            r#"---
+resource: anything
+protocol: http
+method: GET
+path: /get
+version: 1
+response:
+  match: strict
+---
+# Get anything
+
+Fetches anything.
+
+## Request
+
+```http
+GET {}/get
+```
+
+## Expected response
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{{"ok": true}}
+```
+"#,
+            server.uri()
+        );
+        let endpoint = parse_endpoint(&doc, "strict.md").unwrap();
+        let execution = execute(&endpoint, "dev", ExecOpts::default())
+            .await
+            .unwrap();
+        assert!(!execution.diff.passed);
+        assert!(execution.diff.body.unwrap().contains("exactly"));
+    }
+
+    #[tokio::test]
+    async fn schema_response_validates_json_schema_block() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/get"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": 1})))
+            .mount(&server)
+            .await;
+        let doc = format!(
+            r#"---
+resource: anything
+protocol: http
+method: GET
+path: /get
+version: 1
+response:
+  match: schema
+---
+# Get anything
+
+Fetches anything.
+
+## Request
+
+```http
+GET {}/get
+```
+
+## Expected response
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{{}}
+```
+
+## Schema
+
+```json
+{{"type":"object","required":["id"],"properties":{{"id":{{"type":"integer"}}}}}}
+```
+"#,
+            server.uri()
+        );
+        let endpoint = parse_endpoint(&doc, "schema.md").unwrap();
+        let execution = execute(&endpoint, "dev", ExecOpts::default())
+            .await
+            .unwrap();
+        assert!(execution.diff.passed);
+    }
+
+    #[tokio::test]
     async fn rejects_unsupported_protocol() {
         let mut endpoint = endpoint("https://example.com");
         endpoint.schema.protocol = crate::parser::Protocol::Ws;
@@ -855,6 +1280,9 @@ Content-Type: application/json
         headers.insert("content-type", HeaderValue::from_static("application/json"));
         let diff = diff_response(
             &expected,
+            ResponseMatchMode::Shape,
+            None,
+            &[],
             StatusCode::OK,
             &headers,
             "{\"name\":\"missing id\"}",

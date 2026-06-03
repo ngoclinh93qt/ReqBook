@@ -56,6 +56,9 @@ impl Reporter for ConsoleReporter {
             if let Some(body) = &result.diff.body {
                 out.push_str(&format!("\ndiff.body: {body}"));
             }
+            for assertion in &result.diff.assertions {
+                out.push_str(&format!("\ndiff.assertion: {assertion}"));
+            }
         }
         Ok(out)
     }
@@ -143,6 +146,7 @@ mod tests {
             duration_ms: 1,
             diff: ResponseDiff {
                 passed: true,
+                assertions: Vec::new(),
                 ..ResponseDiff::default()
             },
             assertion_results: Vec::new(),

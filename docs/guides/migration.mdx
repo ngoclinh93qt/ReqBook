@@ -224,14 +224,14 @@ mad import openapi openapi.json
  | `requestBody` | Body in `http` request block | First example or schema stub is used. |
  | `responses.<code>` | `## Expected response` block | Only the first documented response code is imported. |
  | `security bearerAuth` | `auth: bearer` in frontmatter | `basicAuth` maps to `auth: basic`. |
- | `components/schemas` | `## Notes` prose | Schema documentation is preserved as readable notes. |
+ | `components/schemas` | `## Schema` or `## Notes` | Response schemas can be used with `response.match: schema`; broader component reuse may still need manual cleanup. |
 
  **What needs manual review after import**
 
  | Item | Reason |
  |---|---|
  | Multiple response codes | Only the first documented response is imported. Add others manually in `## Notes`. |
- | JSON Schema validation | Schema constraints are not executable in the current MarkApiDown release. Added as `agent-task` assertions for manual review. |
+ | JSON Schema validation | Use `response.match: schema` with a `## Schema` block for executable response-body validation. Review complex `$ref` graphs manually. |
  | OAuth 2.0 / OpenID Connect | Model as a MarkApiDown pipeline that captures the token and injects it into subsequent steps. |
  | Multiple servers | Only the first server is imported as `dev`. Add remaining servers as additional `env.md` sections. |
  | Callbacks and webhooks | Must be documented manually. `protocol: ws` and `protocol: sse` are reserved for future use. |

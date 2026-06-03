@@ -53,6 +53,10 @@ pub(super) fn tools_list_result() -> Value {
                         "infer_expected": {
                             "type": "boolean",
                             "description": "When true, include inferred_expected block formatted for pasting into the spec (default: false)."
+                        },
+                        "strict_assertions": {
+                            "type": "boolean",
+                            "description": "When true, failing structured assertions make the tool result fail (default: false)."
                         }
                     },
                     "required": ["spec_path"]
@@ -141,6 +145,40 @@ pub(super) fn tools_list_result() -> Value {
                         "tag": {
                             "type": "string",
                             "description": "Tag to filter on."
+                        }
+                    },
+                    "required": []
+                }
+            },
+            {
+                "name": "mad_context",
+                "description": "Return compact deterministic API context for an endpoint, flow, or changed specs.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "target": {
+                            "type": "string",
+                            "description": "Endpoint/flow id or file path, e.g. users.create."
+                        },
+                        "changed_from": {
+                            "type": "string",
+                            "description": "Git ref used to summarize changed specs only."
+                        },
+                        "root": {
+                            "type": "string",
+                            "description": "api-docs root directory (default: api-docs)."
+                        },
+                        "token_budget": {
+                            "type": "integer",
+                            "description": "Approximate output token budget (default: 800)."
+                        },
+                        "verbose": {
+                            "type": "boolean",
+                            "description": "Include full request and expected response blocks (default: false)."
+                        },
+                        "env": {
+                            "type": "string",
+                            "description": "Environment used in suggested next commands (default: dev)."
                         }
                     },
                     "required": []
@@ -236,6 +274,10 @@ pub(super) async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
         .get("infer_expected")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let strict_assertions = args
+        .get("strict_assertions")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let context = build_context(args, &session);
 
@@ -265,6 +307,7 @@ pub(super) async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
             context,
             timeout_ms: None,
             dry_run,
+            strict_assertions,
         },
     )
     .await;
@@ -450,6 +493,10 @@ pub(super) async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
                 context: exec_opts,
                 timeout_ms: None,
                 dry_run: false,
+                strict_assertions: args
+                    .get("strict_assertions")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
             },
         },
     )
@@ -748,6 +795,45 @@ pub(super) async fn handle_search(args: &Value) -> Result<Value, (i32, String)> 
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
+pub(super) fn handle_context(args: &Value) -> Result<Value, (i32, String)> {
+    let root = args
+        .get("root")
+        .and_then(|v| v.as_str())
+        .unwrap_or("api-docs");
+    let target = args
+        .get("target")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let changed_from = args
+        .get("changed_from")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let token_budget = args
+        .get("token_budget")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(800) as usize;
+    let verbose = args
+        .get("verbose")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let env = args
+        .get("env")
+        .and_then(|v| v.as_str())
+        .unwrap_or("dev")
+        .to_string();
+
+    let text = crate::agent_context::render(crate::agent_context::AgentContextOptions {
+        root: std::path::PathBuf::from(root),
+        target,
+        changed_from,
+        token_budget,
+        verbose,
+        env,
+    })
+    .map_err(|err| (-32000, err.to_string()))?;
+    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+}
+
 pub(super) async fn handle_history(args: &Value) -> Result<Value, (i32, String)> {
     let spec_path = args
         .get("spec_path")
@@ -888,6 +974,10 @@ pub(super) async fn handle_exec_batch(args: &Value) -> Result<Value, (i32, Strin
                 context: step_ctx,
                 timeout_ms: None,
                 dry_run: false,
+                strict_assertions: args
+                    .get("strict_assertions")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
             },
         )
         .await;

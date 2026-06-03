@@ -6,9 +6,9 @@
 
 # MarkApiDown
 
-**Runnable API contracts for coding agents** — design specs, send requests, validate contracts, from CLI and browser.
+**Executable API documentation for humans, CI, and coding agents** — keep API docs, tests, and agent context in one Markdown source of truth.
 
-MarkApiDown is a local-first, markdown-native API workspace. Endpoint specs, environments, and flows are ordinary markdown files in your repo. The Rust engine validates and executes them. The browser lets you edit, run, and design APIs visually. Agent skills make the same files usable from Claude Code, Cursor, GitHub Copilot, and others.
+MarkApiDown is executable Markdown for API workflows. Endpoint specs, environments, and flows are ordinary markdown files in your repo. The Rust engine validates and executes them. The browser lets you edit, run, and design APIs visually. Agent skills and MCP tools make the same files usable from Claude Code, Cursor, GitHub Copilot, and others.
 
 ```bash
 cargo install mark-api-down
@@ -35,7 +35,8 @@ mad request GET https://httpbin.org/get  # ad-hoc request (mad-cli)
 | Local Rust binary | Fast CLI and browser preview without a hosted workspace. |
 | Flow canvas | Connect endpoints, capture values, inject downstream — save as markdown. |
 | Agent-native | Give Claude Code, Cursor, Copilot, and others runnable API contracts they can read, write, and validate. |
-| Import and scan | Import cURL/Postman/OpenAPI or scan a project for missing specs. |
+| Contract checks | Run `mad check` in CI with Markdown, GitHub, JUnit, or JSON reports. |
+| Import, export, scan | Import cURL/Postman/Insomnia/OpenAPI/local client collections/`.http`, export OpenAPI, or scan a project for missing specs. |
 
 ## Project layout
 
@@ -111,7 +112,12 @@ mad init
 mad validate api-docs/
 mad exec api-docs/apis/users/get-user-by-id.md --env=dev --var userId=42
 mad flow api-docs/flows/user-onboarding.md --env=dev
+mad check api-docs/ --changed-from origin/main --report github
+mad context users.create
+mad export openapi api-docs/ --out openapi.generated.yaml
 mad import curl
+mad import collection ./local-client-collection
+mad import http ./requests.http
 mad import project .
 mad skills install
 mad serve

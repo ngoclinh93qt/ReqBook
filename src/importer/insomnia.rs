@@ -102,6 +102,7 @@ fn convert_request(r: &Value, resource: &str) -> Option<ImportedEndpoint> {
         tests: None,
         notes: None,
         tags: Vec::new(),
+        auth: None,
     })
 }
 

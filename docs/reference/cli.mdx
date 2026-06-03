@@ -267,6 +267,22 @@ mad import openapi openapi.yaml
 mad import openapi openapi.json
 ```
 
+### mad import collection
+
+Import a local API client collection directory.
+
+```bash
+mad import collection ./local-client-collection
+```
+
+### mad import http
+
+Import a `.http` / REST Client request file.
+
+```bash
+mad import http ./requests.http
+```
+
 ### mad import curl
 
 Import a single cURL command as a MarkApiDown endpoint file.
@@ -288,6 +304,60 @@ mad import curl --file=request.curl
 ```
 
 **Exit codes (all import subcommands)**: `0` on success, `2` if the input file is not a valid spec for that tool, `3` on filesystem error.
+
+---
+
+## mad export openapi
+
+Export endpoint specs as OpenAPI 3.x YAML or JSON.
+
+```bash
+mad export openapi api-docs/ --out openapi.generated.yaml
+mad export openapi api-docs/ --json --out openapi.generated.json
+```
+
+| Flag | Description |
+|---|---|
+| `--out` | Write to this file instead of stdout. |
+| `--json` | Emit JSON instead of YAML. |
+
+---
+
+## mad check
+
+Run PR-focused contract checks for endpoint and flow specs.
+
+```bash
+mad check api-docs/ --changed-from origin/main --report markdown
+mad check api-docs/ --changed-from origin/main --report github
+mad check api-docs/ --report junit
+mad check api-docs/ --report json
+```
+
+| Flag | Description |
+|---|---|
+| `--changed-from` | Only evaluate changed endpoint and flow files since this git ref. |
+| `--report` | `markdown`, `github`, `junit`, or `json`. |
+| `--strict-assertions` | Treat failing `## Assertions` rules as contract failures. |
+
+---
+
+## mad context
+
+Print compact deterministic API context for coding agents.
+
+```bash
+mad context users.create
+mad context flow signup-login-profile
+mad context --changed-from origin/main
+```
+
+| Flag | Description |
+|---|---|
+| `--root` | api-docs root directory. Defaults to `api-docs`. |
+| `--changed-from` | Summarize only changed specs since this git ref. |
+| `--token-budget` | Approximate output token budget. |
+| `--verbose` | Include full request and expected response blocks. |
 
 ---
 

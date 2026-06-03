@@ -56,6 +56,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
             let title_str = op["summary"]
                 .as_str()
                 .map(sentence_case)
+                .or_else(|| op["operationId"].as_str().map(operation_id_title))
                 .unwrap_or_else(|| format!("{} {}", method_upper, mad_path));
 
             // Description: first line only
@@ -84,13 +85,77 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
                 request,
                 expected_response,
                 tests,
-                notes: None,
-                tags: Vec::new(),
+                notes: import_notes(op),
+                tags: tags(op),
+                auth: auth_mode(op),
             });
         }
     }
 
     Ok((title, endpoints))
+}
+
+fn operation_id_title(operation_id: &str) -> String {
+    let mut out = String::new();
+    for (idx, ch) in operation_id.chars().enumerate() {
+        if idx > 0 && ch.is_ascii_uppercase() {
+            out.push(' ');
+        } else if matches!(ch, '_' | '-') {
+            out.push(' ');
+            continue;
+        }
+        out.push(ch);
+    }
+    sentence_case(&out)
+}
+
+fn tags(op: &Value) -> Vec<String> {
+    op["tags"]
+        .as_sequence()
+        .map(|tags| {
+            tags.iter()
+                .filter_map(|tag| tag.as_str().map(resource_slug))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn auth_mode(op: &Value) -> Option<String> {
+    let security = op["security"].as_sequence()?;
+    for requirement in security {
+        let Some(map) = requirement.as_mapping() else {
+            continue;
+        };
+        for (key, _) in map {
+            let name = key.as_str().unwrap_or_default().to_ascii_lowercase();
+            if name.contains("bearer") || name.contains("jwt") || name.contains("token") {
+                return Some("bearer".to_string());
+            }
+            if name.contains("basic") {
+                return Some("basic".to_string());
+            }
+        }
+    }
+    None
+}
+
+fn import_notes(op: &Value) -> Option<String> {
+    let mut notes = Vec::new();
+    if let Some(operation_id) = op["operationId"].as_str() {
+        notes.push(format!("OpenAPI operationId: `{operation_id}`."));
+    }
+    if !op["security"].is_null() {
+        notes.push(
+            "OpenAPI security metadata was preserved in frontmatter where supported.".to_string(),
+        );
+    }
+    if !op["responses"].is_null() {
+        notes.push(
+            "OpenAPI response examples were imported into `## Expected response` when present."
+                .to_string(),
+        );
+    }
+    (!notes.is_empty()).then(|| notes.join("\n\n"))
 }
 
 fn build_request_block(method: &str, url: &str, op: &Value) -> String {
