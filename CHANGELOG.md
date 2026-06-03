@@ -42,6 +42,13 @@ Initial release of MarkApiDown — markdown-native API specs with execution, pip
 - `mad doctor [--fix]` — diagnose project setup (api-docs, .env.local, agents, network)
 - `mad completion` — shell completion for bash, zsh, fish, PowerShell
 
+### Editor workflow
+
+- VS Code extension MVP in `packages/vscode`
+- Commands for endpoint preview, endpoint execution, current-file validation, and compact agent context
+- Variable autocomplete from `_shared/env.md`, `.env.local`, current spec path params, and flow captures
+- Result panel for run, validate, and context output
+
 ### Cross-agent skills
 
 - `mad-author` — skill for authoring endpoint specs in correct MarkApiDown format

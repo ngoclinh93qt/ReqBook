@@ -115,6 +115,21 @@ mad doctor
 
 ---
 
+## VS Code extension
+
+The VS Code extension uses the same `mad` binary. Install MarkApiDown first, then configure the extension if VS Code cannot find `mad` on its process `PATH`.
+
+```json
+{
+  "markapidown.madPath": "/absolute/path/to/mad",
+  "markapidown.env": "dev"
+}
+```
+
+See the [VS Code extension guide](/docs/guides/vscode-extension) for commands, variable autocomplete, and result panel behavior.
+
+---
+
 ## Shell completions
 
 Generate and install completions for your shell so you get tab-completion for subcommands and flags:

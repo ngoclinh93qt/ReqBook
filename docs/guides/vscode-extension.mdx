@@ -1,0 +1,87 @@
+---
+title: "VS Code extension"
+description: "Preview, validate, run, and inspect MarkApiDown specs from VS Code."
+icon: "code"
+---
+
+# VS Code extension
+
+The MarkApiDown VS Code extension is the in-editor bridge for teams that write API specs directly in `api-docs/`. It keeps the workflow narrow: edit markdown in VS Code, call the `mad` binary for validation and execution, and keep the browser UI available for larger visual workflows.
+
+<Note>
+ The extension requires the `mad` binary. Install MarkApiDown first with Cargo, npm, Homebrew, or the shell installer, then make sure `mad version` works in a terminal.
+</Note>
+
+---
+
+## Commands
+
+Open an endpoint or flow markdown file, then run these commands from the Command Palette or editor context menu:
+
+| Command | What it does |
+|---|---|
+| `MarkApiDown: Preview Endpoint` | Opens a VS Code webview preview of the current markdown spec with action buttons. |
+| `MarkApiDown: Run Endpoint` | Saves the current file, runs `mad exec <file> --output json`, and shows a compact result panel. |
+| `MarkApiDown: Validate Current File` | Saves the current file, runs `mad validate <file>`, and shows validation output. |
+| `MarkApiDown: Show Agent Context` | Runs `mad context <file>` and shows the compact context that coding agents should use. |
+
+The result panel shows status, duration, request URL, response diff, structured assertions, and raw command output.
+
+---
+
+## Variable autocomplete
+
+The extension suggests variables while editing `{{variable}}` templates and path params. Suggestions are collected from:
+
+- `api-docs/_shared/env.md`
+- `.env.local`
+- `:pathParam` values in the current spec
+- `Capture: ... as <name>` directives in `api-docs/flows/` and `api-docs/pipelines/`
+
+This keeps authoring fast without adding a separate project config format.
+
+---
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `markapidown.madPath` | `mad` | Path to the `mad` binary. Use an absolute path if VS Code cannot find `mad` on its process `PATH`. |
+| `markapidown.env` | `dev` | Environment used for `Run Endpoint` and `Show Agent Context`. |
+| `markapidown.apiDocsRoot` | empty | Optional `api-docs` root override. Relative paths resolve from the workspace root. |
+| `markapidown.resultPanel` | `true` | Show command output in the MarkApiDown result panel. If disabled, output goes to the output channel. |
+
+Example workspace setting:
+
+```json
+{
+  "markapidown.madPath": "/Users/you/.cargo/bin/mad",
+  "markapidown.env": "dev"
+}
+```
+
+---
+
+## Development install
+
+The extension source lives in `packages/vscode/`.
+
+```bash
+cd packages/vscode
+npm pack --dry-run
+```
+
+For local development, open the repository in VS Code, open `packages/vscode/extension.js`, and run the extension in an Extension Development Host. The extension has no runtime npm dependencies.
+
+---
+
+## When to use each surface
+
+| Surface | Best for |
+|---|---|
+| VS Code extension | Fast edit-run-validate loops while authoring markdown specs. |
+| `mad serve` browser UI | Rich request editing, response inspection, flow canvas, and visual review. |
+| `mad-cli` | CI, scripts, PR checks, imports, exports, and automation. |
+| MCP / agent skills | Let coding agents discover, author, execute, and debug API specs. |
+
+The same markdown files power every surface.

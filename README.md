@@ -17,12 +17,13 @@ mad serve                          # opens mad-ui
 mad request GET https://httpbin.org/get  # ad-hoc request (mad-cli)
 ```
 
-## Two interfaces, one binary
+## Surfaces
 
 | Interface | Launch | Use for |
 | --- | --- | --- |
 | **mad-cli** | `mad <command>` | Scripts, CI, agents, ad-hoc requests |
 | **mad-ui** | `mad serve` | Interactive design, debugging, review |
+| **VS Code extension** | `packages/vscode` | In-editor preview, run, validate, context, and variable autocomplete |
 
 ## Why MarkApiDown
 

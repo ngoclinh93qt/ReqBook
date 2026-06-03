@@ -52,6 +52,7 @@
             "pages": [
               "guides/vibe-coding",
               "guides/web-preview",
+              "guides/vscode-extension",
               "guides/ci-cd",
               "guides/migration"
             ]

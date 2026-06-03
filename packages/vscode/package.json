@@ -1,0 +1,119 @@
+{
+  "name": "markapidown-vscode",
+  "displayName": "MarkApiDown",
+  "description": "Preview, validate, run, and inspect MarkApiDown API specs from VS Code.",
+  "version": "0.1.0",
+  "publisher": "markapidown",
+  "license": "Apache-2.0",
+  "files": [
+    "extension.js",
+    "README.md",
+    "package.json"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "workspaceContains:api-docs/mad.md",
+    "onCommand:markapidown.previewEndpoint",
+    "onCommand:markapidown.runEndpoint",
+    "onCommand:markapidown.validateFile",
+    "onCommand:markapidown.showContext"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "markapidown.previewEndpoint",
+        "title": "MarkApiDown: Preview Endpoint"
+      },
+      {
+        "command": "markapidown.runEndpoint",
+        "title": "MarkApiDown: Run Endpoint"
+      },
+      {
+        "command": "markapidown.validateFile",
+        "title": "MarkApiDown: Validate Current File"
+      },
+      {
+        "command": "markapidown.showContext",
+        "title": "MarkApiDown: Show Agent Context"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "markapidown.runEndpoint",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@80"
+        },
+        {
+          "command": "markapidown.previewEndpoint",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@81"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "markapidown.validateFile",
+          "when": "resourceLangId == markdown",
+          "group": "markapidown@1"
+        },
+        {
+          "command": "markapidown.runEndpoint",
+          "when": "resourceLangId == markdown",
+          "group": "markapidown@2"
+        },
+        {
+          "command": "markapidown.showContext",
+          "when": "resourceLangId == markdown",
+          "group": "markapidown@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "markapidown.previewEndpoint"
+        },
+        {
+          "command": "markapidown.runEndpoint"
+        },
+        {
+          "command": "markapidown.validateFile"
+        },
+        {
+          "command": "markapidown.showContext"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MarkApiDown",
+      "properties": {
+        "markapidown.madPath": {
+          "type": "string",
+          "default": "mad",
+          "description": "Path to the mad binary used by the extension."
+        },
+        "markapidown.env": {
+          "type": "string",
+          "default": "dev",
+          "description": "Default MarkApiDown environment for run and context commands."
+        },
+        "markapidown.apiDocsRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Optional api-docs root path. Relative paths are resolved from the workspace root."
+        },
+        "markapidown.resultPanel": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show command results in the MarkApiDown result panel."
+        }
+      }
+    }
+  }
+}

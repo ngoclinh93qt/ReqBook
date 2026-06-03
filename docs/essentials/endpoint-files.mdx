@@ -69,6 +69,8 @@ retry:
 | `timeout` | no | integer (ms) | Per-request timeout in milliseconds | `5000` |
 | `retry.attempts` | no | integer | Retry count after failure | `0` |
 | `retry.backoff` | no | enum | `fixed` or `exponential` | `fixed` |
+| `response.match` | no | enum | `shape`, `strict`, or `schema` comparison mode | `shape` |
+| `response.ignore` | no | string[] | Strict-mode paths to ignore, such as `body.id` | `[]` |
 
 <Note>
  Unknown frontmatter keys produce a warning and are ignored. This forward-compatible behavior means future MarkApiDown versions can introduce new fields without breaking existing spec files.
@@ -119,6 +121,31 @@ Accept: application/json
 | Status | Strict equality |
 | Headers | Subset match listed headers must be present; extra response headers are allowed |
 | Body | JSON shape when both sides are valid JSON; exact string match otherwise |
+
+Set `response.match: strict` when the JSON/string body must match exactly:
+
+```yaml
+response:
+  match: strict
+  ignore: [body.id, headers.x-request-id]
+```
+
+Set `response.match: schema` when the actual JSON body should validate against a schema:
+
+````markdown
+## Schema
+
+```json
+{
+  "type": "object",
+  "required": ["id", "email"],
+  "properties": {
+    "id": { "type": "string" },
+    "email": { "type": "string" }
+  }
+}
+```
+````
 
 ### Example
 

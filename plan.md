@@ -37,7 +37,7 @@ Implementation status from this update:
 - Phase 17 first pass shipped: `mad export openapi`, `mad import collection`, `mad import http`, improved OpenAPI tag/operation/security preservation.
 - Phase 18 core shipped: `mad context` and MCP `mad_context` return compact endpoint, flow, and changed-spec context.
 - Phase 19 examples validated: `jsonplaceholder`, `saas-auth-api`, `github-api-client`, `ecommerce-checkout-flow`, and `agent-token-api`.
-- Phase 20 remains future work: the VS Code extension MVP has not been started in this update.
+- Phase 20 MVP shipped: `packages/vscode` provides preview, run, validate, compact context, result panel, and variable autocomplete powered by the `mad` binary.
 
 ### Phase 16 - contract trust and PR review
 
