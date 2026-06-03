@@ -74,7 +74,23 @@ name: docs
   assert.equal(spec(path.join("_shared", "env.md"), source), undefined);
 });
 
-test("ignores markdown outside the api-docs root", () => {
+test("detects specs under a custom collection root", () => {
+  const customRoot = path.join("/repo", "docs", "http-specs");
+  const detected = detectReqbookSpec({
+    filePath: path.join(customRoot, "apis", "users", "get-user.md"),
+    apiDocsRoot: customRoot,
+    source: `---
+method: GET
+path: /users/:id
+---
+`,
+  });
+
+  assert.equal(detected.kind, "endpoint");
+  assert.equal(detected.relPath, path.join("apis", "users", "get-user.md"));
+});
+
+test("ignores markdown outside the collection root", () => {
   const detected = detectReqbookSpec({
     filePath: path.join("/repo", "README.md"),
     apiDocsRoot: root,

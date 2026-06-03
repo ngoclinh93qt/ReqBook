@@ -30,8 +30,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: MarkApiDown version
-      placeholder: mad 0.1.0
+      label: Reqbook version
+      placeholder: rqb 0.1.0
   - type: input
     id: os
     attributes:

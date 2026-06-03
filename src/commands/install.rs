@@ -1,8 +1,10 @@
 //! `rqb install` and `rqb skills` commands.
 
+#[cfg(feature = "install")]
 use std::path::Path;
 
 use anyhow::{bail, Result};
+#[cfg(feature = "install")]
 use owo_colors::OwoColorize;
 
 use crate::{InstallCommand, SkillsCommand};
@@ -136,6 +138,7 @@ pub(crate) fn install_mcp() -> Result<()> {
 }
 
 #[cfg(not(feature = "install"))]
+#[allow(dead_code)]
 pub(crate) fn install_mcp() -> Result<()> {
     bail!(
         "install support is not compiled into this binary\nFix: install Reqbook with default features."

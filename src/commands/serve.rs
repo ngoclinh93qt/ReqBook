@@ -2,6 +2,8 @@
 
 use std::path::Path;
 
+#[cfg(not(feature = "web"))]
+use anyhow::bail;
 use anyhow::Result;
 
 use crate::{MockArgs, ServeArgs};

@@ -25,7 +25,7 @@ cargo clippy --locked -- -D warnings
 cargo test --locked
 cargo test --locked --no-default-features --features minimal
 cd web && npm run build
-cargo run -- validate api-docs
+cargo run --bin rqb -- validate api-docs
 ```
 
 Or run the aggregated local release check:

@@ -449,7 +449,7 @@ async function findApiDocsRoot(file) {
     current = path.dirname(file);
   }
   while (true) {
-    if (path.basename(current) === "api-docs" && (await hasReqbookManifest(current))) {
+    if (await hasReqbookManifest(current)) {
       return current;
     }
     if (await hasReqbookManifest(path.join(current, "api-docs"))) {
@@ -460,8 +460,13 @@ async function findApiDocsRoot(file) {
     current = parent;
   }
 
-  if (workspaceFolder && (await hasReqbookManifest(path.join(workspaceFolder, "api-docs")))) {
-    return path.join(workspaceFolder, "api-docs");
+  if (workspaceFolder) {
+    if (await hasReqbookManifest(workspaceFolder)) {
+      return workspaceFolder;
+    }
+    if (await hasReqbookManifest(path.join(workspaceFolder, "api-docs"))) {
+      return path.join(workspaceFolder, "api-docs");
+    }
   }
 
   return workspaceFolder ? path.join(workspaceFolder, "api-docs") : path.dirname(file);

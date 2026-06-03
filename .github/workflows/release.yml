@@ -28,7 +28,7 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --locked -- -D warnings
       - run: cargo test --locked
-      - run: cargo run -- validate api-docs
+      - run: cargo run --bin rqb -- validate api-docs
 
   build-binaries:
     needs: checks
@@ -80,19 +80,19 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir staging
-          cp target/${{ matrix.target }}/release/mad staging/
-          tar -cJf mad-${{ matrix.target }}.tar.xz -C staging mad
+          cp target/${{ matrix.target }}/release/rqb staging/
+          tar -cJf rqb-${{ matrix.target }}.tar.xz -C staging rqb
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory staging
-          Copy-Item target/${{ matrix.target }}/release/mad.exe staging/
-          Compress-Archive -Path staging/mad.exe -DestinationPath mad-${{ matrix.target }}.zip
+          Copy-Item target/${{ matrix.target }}/release/rqb.exe staging/
+          Compress-Archive -Path staging/rqb.exe -DestinationPath rqb-${{ matrix.target }}.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: mad-${{ matrix.target }}
-          path: mad-${{ matrix.target }}.*
+          name: rqb-${{ matrix.target }}
+          path: rqb-${{ matrix.target }}.*
 
   github-release:
     needs: build-binaries
@@ -154,4 +154,4 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name == 'push' }}
-          tags: ghcr.io/${{ github.repository_owner }}/mad:${{ github.ref_name }},ghcr.io/${{ github.repository_owner }}/mad:latest
+          tags: ghcr.io/${{ github.repository_owner }}/rqb:${{ github.ref_name }},ghcr.io/${{ github.repository_owner }}/rqb:latest

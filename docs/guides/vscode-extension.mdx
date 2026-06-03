@@ -6,7 +6,7 @@ icon: "code"
 
 # VS Code extension
 
-The Reqbook VS Code extension is the in-editor bridge for teams that write API specs directly in `api-docs/`. It keeps the workflow narrow: edit markdown in VS Code, call the `rqb` binary for validation and execution, and keep the browser UI available for larger visual workflows.
+The Reqbook VS Code extension is the in-editor bridge for teams that write API specs directly in a Reqbook collection. It keeps the workflow narrow: edit markdown in VS Code, call the `rqb` binary for validation and execution, and keep the browser UI available for larger visual workflows.
 
 <Note>
  The extension requires the `rqb` binary. Install Reqbook first with Cargo, npm, Homebrew, or the shell installer, then make sure `rqb version` works in a terminal.
@@ -33,9 +33,10 @@ The result panel shows endpoint status, duration, request URL, response diff, st
 
 The extension detects runnable Reqbook files and shows Run controls only for those files:
 
-- Endpoint specs inside `api-docs/` with `method:` and `path:` frontmatter show `Run Endpoint`.
-- Flow and pipeline specs under `api-docs/flows/` or `api-docs/pipelines/` show `Run Flow`.
-- Non-runnable collection docs such as `api-docs/reqbook.md`, `README.md`, and `_shared/env.md` do not show Run controls.
+- The collection root is the nearest parent directory with `reqbook.md` or `mad.md`; it does not need to be named `api-docs`.
+- Endpoint specs inside that collection with `method:` and `path:` frontmatter show `Run Endpoint`.
+- Flow and pipeline specs under `<collection>/flows/` or `<collection>/pipelines/` show `Run Flow`.
+- Non-runnable collection docs such as `<collection>/reqbook.md`, `<collection>/mad.md`, `README.md`, and `_shared/env.md` do not show Run controls.
 
 Runnable files get both an inline CodeLens button at the top of the editor and a Run button in the editor title bar.
 
@@ -45,10 +46,10 @@ Runnable files get both an inline CodeLens button at the top of the editor and a
 
 The extension suggests variables while editing `{{variable}}` templates and path params. Suggestions are collected from:
 
-- `api-docs/_shared/env.md`
+- `<collection>/_shared/env.md`
 - `.env.local`
 - `:pathParam` values in the current spec
-- `Capture: ... as <name>` directives in `api-docs/flows/` and `api-docs/pipelines/`
+- `Capture: ... as <name>` directives in `<collection>/flows/` and `<collection>/pipelines/`
 
 This keeps authoring fast without adding a separate project config format.
 
@@ -60,7 +61,7 @@ This keeps authoring fast without adding a separate project config format.
 |---|---|---|
 | `reqbook.rqbPath` | `rqb` | Path to the `rqb` binary. Use an absolute path if VS Code cannot find `rqb` on its process `PATH`. |
 | `reqbook.env` | `dev` | Environment used for `Run Endpoint` and `Show Agent Context`. |
-| `reqbook.apiDocsRoot` | empty | Optional `api-docs` root override. Relative paths resolve from the workspace root. |
+| `reqbook.apiDocsRoot` | empty | Optional collection root override. Relative paths resolve from the workspace root. |
 | `reqbook.resultPanel` | `true` | Show command output in the Reqbook result panel. If disabled, output goes to the output channel. |
 
 Example workspace setting:

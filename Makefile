@@ -16,9 +16,9 @@ web-build:
 	cd web && npm ci && npm run build
 
 validate:
-	cargo run -- validate api-docs
-	cargo run -- validate examples/jsonplaceholder/api-docs
-	cargo run -- validate examples/agent-token-api/api-docs
+	cargo run --bin rqb -- validate api-docs
+	cargo run --bin rqb -- validate examples/jsonplaceholder/api-docs
+	cargo run --bin rqb -- validate examples/agent-token-api/api-docs
 
 bench: web-build
 	cargo build --release --locked
@@ -39,4 +39,4 @@ bench-cold-start:
 	hyperfine --warmup 5 './target/release/rqb --help'
 
 bench-web:
-	cargo run --release -- serve --port 7700 --host 127.0.0.1
+	cargo run --release --bin rqb -- serve --port 7700 --host 127.0.0.1

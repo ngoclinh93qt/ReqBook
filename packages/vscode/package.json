@@ -60,6 +60,8 @@
   },
   "activationEvents": [
     "onLanguage:markdown",
+    "workspaceContains:**/reqbook.md",
+    "workspaceContains:**/mad.md",
     "workspaceContains:api-docs/reqbook.md",
     "workspaceContains:api-docs/mad.md",
     "onCommand:reqbook.previewEndpoint",
@@ -155,7 +157,7 @@
         "reqbook.apiDocsRoot": {
           "type": "string",
           "default": "",
-          "description": "Optional api-docs root path. Relative paths are resolved from the workspace root."
+          "description": "Optional Reqbook collection root path. Relative paths are resolved from the workspace root."
         },
         "reqbook.resultPanel": {
           "type": "boolean",

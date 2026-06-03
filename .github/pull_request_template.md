@@ -8,7 +8,7 @@
 - [ ] `cargo clippy --locked -- -D warnings`
 - [ ] `cargo test --locked`
 - [ ] `cd web && npm run build`
-- [ ] `cargo run -- validate api-docs`
+- [ ] `cargo run --bin rqb -- validate api-docs`
 
 ## Notes
 
