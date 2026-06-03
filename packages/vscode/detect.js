@@ -1,4 +1,5 @@
 const path = require("path");
+const os = require("os");
 
 function detectReqbookSpec({ filePath, source, apiDocsRoot }) {
   if (!filePath || !apiDocsRoot || typeof source !== "string") return undefined;
@@ -76,7 +77,55 @@ function splitPath(value) {
   return path.normalize(value).split(/[\\/]+/).filter(Boolean);
 }
 
+function candidateReqbookBinaries({ configuredPath = "rqb", cwd, workspaceFolders = [], env = process.env }) {
+  if (configuredPath && configuredPath !== "rqb") {
+    return [configuredPath];
+  }
+
+  const candidates = [];
+  const add = (value) => {
+    if (value && !candidates.includes(value)) candidates.push(value);
+  };
+  const addBuildDirs = (root) => {
+    add(path.join(root, "target", "debug", executableName("rqb")));
+    add(path.join(root, "target", "release", executableName("rqb")));
+  };
+
+  add(env.RQB_PATH);
+  for (const root of [cwd, ...parentDirs(cwd), ...workspaceFolders]) {
+    if (root) addBuildDirs(root);
+  }
+  add(path.join(os.homedir(), ".cargo", "bin", executableName("rqb")));
+  add("/opt/homebrew/bin/rqb");
+  add("/usr/local/bin/rqb");
+  add("/usr/bin/rqb");
+
+  for (const dir of String(env.PATH || "").split(path.delimiter)) {
+    add(path.join(dir, executableName("rqb")));
+  }
+
+  add("rqb");
+  return candidates;
+}
+
+function executableName(name) {
+  return process.platform === "win32" ? `${name}.exe` : name;
+}
+
+function parentDirs(start) {
+  const dirs = [];
+  if (!start) return dirs;
+  let current = path.resolve(start);
+  while (true) {
+    const parent = path.dirname(current);
+    if (parent === current) return dirs;
+    dirs.push(parent);
+    current = parent;
+  }
+}
+
 module.exports = {
   detectReqbookSpec,
+  candidateReqbookBinaries,
   parseFrontmatter,
 };

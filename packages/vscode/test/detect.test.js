@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const test = require("node:test");
 
-const { detectReqbookSpec } = require("../detect");
+const { candidateReqbookBinaries, detectReqbookSpec } = require("../detect");
 
 const root = path.join("/repo", "api-docs");
 
@@ -142,4 +142,36 @@ path: /flows/:id
   );
 
   assert.equal(detected.kind, "endpoint");
+});
+
+test("builds rqb binary candidates from workspace and common install paths", () => {
+  const candidates = candidateReqbookBinaries({
+    configuredPath: "rqb",
+    cwd: path.join("/repo", "examples", "jsonplaceholder"),
+    workspaceFolders: ["/repo"],
+    env: {
+      RQB_PATH: "/custom/rqb",
+      PATH: ["/opt/bin", "/usr/local/bin"].join(path.delimiter),
+    },
+  });
+
+  assert.equal(candidates[0], "/custom/rqb");
+  assert.ok(candidates.includes(path.join("/repo", "target", "debug", "rqb")));
+  assert.ok(candidates.includes(path.join("/repo", "target", "release", "rqb")));
+  assert.ok(candidates.includes(path.join("/repo", "examples", "jsonplaceholder", "target", "debug", "rqb")));
+  assert.ok(candidates.includes(path.join("/repo", "examples", "target", "debug", "rqb")));
+  assert.ok(candidates.includes("/opt/bin/rqb"));
+  assert.equal(candidates.at(-1), "rqb");
+});
+
+test("uses explicit configured rqb path as the only candidate", () => {
+  assert.deepEqual(
+    candidateReqbookBinaries({
+      configuredPath: "/explicit/rqb",
+      cwd: "/repo",
+      workspaceFolders: ["/repo"],
+      env: {},
+    }),
+    ["/explicit/rqb"]
+  );
 });

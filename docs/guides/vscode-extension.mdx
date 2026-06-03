@@ -9,8 +9,18 @@ icon: "code"
 The Reqbook VS Code extension is the in-editor bridge for teams that write API specs directly in a Reqbook collection. It keeps the workflow narrow: edit markdown in VS Code, call the `rqb` binary for validation and execution, and keep the browser UI available for larger visual workflows.
 
 <Note>
- The extension requires the `rqb` binary. Install Reqbook first with Cargo, npm, Homebrew, or the shell installer, then make sure `rqb version` works in a terminal.
+ The extension requires the `rqb` binary. It auto-detects `rqb` from `RQB_PATH`, workspace build outputs, Cargo, Homebrew, and PATH. Use `reqbook.rqbPath` only when you need an explicit override.
 </Note>
+
+---
+
+## Demo
+
+<video controls muted playsInline preload="metadata" style={{ width: "100%", borderRadius: "8px" }}>
+  <source src="/assets/vscode-demo.mp4" type="video/mp4" />
+</video>
+
+The demo shows a runnable endpoint in VS Code with inline CodeLens actions, direct execution through `rqb`, and the structured result panel.
 
 ---
 
@@ -59,7 +69,7 @@ This keeps authoring fast without adding a separate project config format.
 
 | Setting | Default | Description |
 |---|---|---|
-| `reqbook.rqbPath` | `rqb` | Path to the `rqb` binary. Use an absolute path if VS Code cannot find `rqb` on its process `PATH`. |
+| `reqbook.rqbPath` | `rqb` | Optional path to the `rqb` binary. The extension auto-detects common local and installed paths when this remains `rqb`. |
 | `reqbook.env` | `dev` | Environment used for `Run Endpoint` and `Show Agent Context`. |
 | `reqbook.apiDocsRoot` | empty | Optional collection root override. Relative paths resolve from the workspace root. |
 | `reqbook.resultPanel` | `true` | Show command output in the Reqbook result panel. If disabled, output goes to the output channel. |

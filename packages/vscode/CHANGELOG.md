@@ -7,6 +7,7 @@ Initial preview release.
 - Preview Reqbook endpoint and flow markdown files inside VS Code.
 - Auto-detect runnable endpoint and flow files and show inline CodeLens run buttons.
 - Detect runnable files from any collection root with `reqbook.md` or `mad.md`, not only `api-docs/`.
+- Auto-detect the local `rqb` binary from workspace builds and common install paths.
 - Run the current endpoint or flow through the local `rqb` binary.
 - Validate the current markdown file.
 - Show agent-ready context from `rqb context`.

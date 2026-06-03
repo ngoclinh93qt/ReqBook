@@ -95,7 +95,9 @@ jobs:
           path: rqb-${{ matrix.target }}.*
 
   github-release:
-    needs: build-binaries
+    needs:
+      - build-binaries
+      - vscode-package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -107,6 +109,75 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  vscode-package:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: packages/vscode/package-lock.json
+      - name: Package VS Code extension
+        run: |
+          mkdir -p dist
+          cd packages/vscode
+          npm ci
+          npm test
+          npm run check
+          npm run package -- --out ../../dist/reqbook-vscode-${{ github.ref_name }}.vsix --no-dependencies
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reqbook-vscode
+          path: dist/*.vsix
+
+  vscode-marketplace:
+    needs: vscode-package
+    runs-on: ubuntu-latest
+    if: ${{ vars.PUBLISH_VSCODE == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: packages/vscode/package-lock.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: reqbook-vscode
+          path: dist/
+      - name: Publish to Visual Studio Marketplace
+        run: |
+          cd packages/vscode
+          npm ci
+          npm exec -- vsce publish --packagePath ../../dist/*.vsix --no-dependencies
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+  open-vsx:
+    needs: vscode-package
+    runs-on: ubuntu-latest
+    if: ${{ vars.PUBLISH_OPEN_VSX == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: packages/vscode/package-lock.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: reqbook-vscode
+          path: dist/
+      - name: Publish to Open VSX
+        run: |
+          cd packages/vscode
+          npm ci
+          npm exec -- ovsx publish ../../dist/*.vsix -p "$OVSX_PAT"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
 
   cargo-publish:
     needs: checks

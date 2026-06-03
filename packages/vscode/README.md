@@ -12,7 +12,11 @@ cargo install reqbook
 npm install -g reqbook
 ```
 
-If `rqb` is not on the VS Code process `PATH`, set `reqbook.rqbPath` to the absolute binary path.
+The extension auto-detects `rqb` from `RQB_PATH`, the workspace `target/debug` or `target/release` directories, Cargo's `~/.cargo/bin`, Homebrew paths, and the VS Code process `PATH`. Set `reqbook.rqbPath` only when you need an explicit override.
+
+## Demo
+
+Watch the official VS Code demo in the docs: https://docs.markapidown.net/guides/vscode-extension#demo
 
 ## Commands
 
@@ -43,7 +47,7 @@ Completion is offered while editing `{{variable}}` templates and path params.
 
 ## Settings
 
-- `reqbook.rqbPath`: path to the `rqb` binary, default `rqb`
+- `reqbook.rqbPath`: optional path to the `rqb` binary, default `rqb`
 - `reqbook.env`: default environment for run/context, default `dev`
 - `reqbook.apiDocsRoot`: optional collection root override
 - `reqbook.resultPanel`: show command output in a result panel

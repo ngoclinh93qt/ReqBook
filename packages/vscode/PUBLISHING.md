@@ -18,10 +18,10 @@ npm run check
 npm run package -- --out /tmp/reqbook-vscode-0.1.0.vsix
 ```
 
-Install the generated VSIX in VS Code and smoke test these commands against a real `api-docs/` workspace:
+Install the generated VSIX in VS Code and smoke test these commands against a real Reqbook collection:
 
 - `Reqbook: Preview Endpoint`
-- `Reqbook: Run Endpoint`
+- `Reqbook: Run Spec`
 - `Reqbook: Validate Current File`
 - `Reqbook: Show Agent Context`
 
@@ -37,13 +37,22 @@ npm run publish
 
 If the Marketplace publisher is not `reqbook`, update `publisher` in `package.json` before packaging and publishing.
 
+## GitHub Actions
+
+The repository release workflow packages the VSIX on every `v*` tag and attaches it to the GitHub Release. Marketplace publishing is gated by repository variables so release tags stay safe before tokens are configured.
+
+| Channel | Repository variable | Secret |
+|---|---|---|
+| Visual Studio Marketplace | `PUBLISH_VSCODE=true` | `VSCE_PAT` |
+| Open VSX | `PUBLISH_OPEN_VSX=true` | `OVSX_PAT` |
+
 ## Optional Open VSX
 
 Open VSX uses a separate namespace/token flow.
 
 ```bash
 cd packages/vscode
-npx ovsx publish /tmp/reqbook-vscode-0.1.0.vsix
+npm exec -- ovsx publish /tmp/reqbook-vscode-0.1.0.vsix -p "$OVSX_PAT"
 ```
 
 Do not commit generated `.vsix` artifacts or personal access tokens.

@@ -12,6 +12,49 @@ See the [Exit codes reference](/docs/reference/exit-codes) for a full list of co
 
 ---
 
+## Release automation
+
+This repository ships a tag-based release workflow at `.github/workflows/release.yml`. Push a tag like `v0.1.0` to build release binaries, package the VS Code extension, create a GitHub Release, and optionally publish to external package managers.
+
+Package-manager publishing is gated by GitHub repository variables. Leave a variable unset or set it to `false` to keep that channel disabled while still producing GitHub Release artifacts.
+
+### Required GitHub configuration
+
+| Channel | GitHub Secret | Repository Variable | Notes |
+|---|---|---|---|
+| GitHub Releases | none | none | Uses the built-in `GITHUB_TOKEN` with `contents: write`. |
+| GHCR Docker image | none | none | Uses the built-in `GITHUB_TOKEN` with `packages: write`; publishes `ghcr.io/<owner>/rqb:<tag>` and `latest`. |
+| crates.io | `CARGO_REGISTRY_TOKEN` | `PUBLISH_CRATES=true` | Token must be allowed to publish the `reqbook` crate. |
+| npm | `NPM_TOKEN` | `PUBLISH_NPM=true` | Token must publish the `reqbook` package; workflow uses npm provenance. |
+| Visual Studio Marketplace | `VSCE_PAT` | `PUBLISH_VSCODE=true` | PAT must manage the `reqbook` publisher. |
+| Open VSX | `OVSX_PAT` | `PUBLISH_OPEN_VSX=true` | Token must publish under the manifest publisher namespace. |
+| Homebrew tap | `HOMEBREW_TAP_TOKEN` | `PUBLISH_HOMEBREW=true` | Reserved for a tap update job; this repository does not update a tap yet. |
+
+Optional Homebrew variables for a future tap job:
+
+| Variable | Example | Purpose |
+|---|---|---|
+| `HOMEBREW_TAP_REPOSITORY` | `ngoclinh93qt/homebrew-tap` | Target tap repository. |
+| `HOMEBREW_FORMULA_NAME` | `rqb` | Formula file/name to update. |
+
+### Setting secrets and variables
+
+```bash
+gh secret set CARGO_REGISTRY_TOKEN
+gh secret set NPM_TOKEN
+gh secret set VSCE_PAT
+gh secret set OVSX_PAT
+
+gh variable set PUBLISH_CRATES --body true
+gh variable set PUBLISH_NPM --body true
+gh variable set PUBLISH_VSCODE --body true
+gh variable set PUBLISH_OPEN_VSX --body true
+```
+
+Do not store `RQB_*` runtime API credentials as release publishing secrets unless a CI test needs them. `RQB_*` values are for executing API specs, while the package-manager tokens above are for publishing artifacts.
+
+---
+
 ## GitHub Actions
 
 <Steps>

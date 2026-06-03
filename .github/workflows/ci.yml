@@ -60,3 +60,21 @@ jobs:
         run: cargo build --release --locked
       - name: Validate jsonplaceholder example
         run: ./target/release/rqb validate examples/jsonplaceholder/api-docs/
+
+  vscode-extension:
+    name: VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: packages/vscode/package-lock.json
+      - name: Test and package extension
+        run: |
+          cd packages/vscode
+          npm ci
+          npm test
+          npm run check
+          npm run package -- --out /tmp/reqbook-vscode.vsix --no-dependencies

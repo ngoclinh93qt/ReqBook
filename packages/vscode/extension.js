@@ -2,7 +2,7 @@ const cp = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
-const { detectReqbookSpec } = require("./detect");
+const { candidateReqbookBinaries, detectReqbookSpec } = require("./detect");
 
 let outputChannel;
 let resultPanel;
@@ -282,8 +282,8 @@ function isActiveDocument(document) {
 }
 
 async function runReqbook(args, apiDocsRoot) {
-  const rqbPath = config().get("rqbPath", "rqb");
   const cwd = projectRootFor(apiDocsRoot);
+  const rqbPath = await resolveReqbookBinary(cwd);
   return new Promise((resolve) => {
     cp.execFile(
       rqbPath,
@@ -306,6 +306,29 @@ async function runReqbook(args, apiDocsRoot) {
       }
     );
   });
+}
+
+async function resolveReqbookBinary(cwd) {
+  const configuredPath = config().get("rqbPath", "rqb");
+  const workspaceFolders = (vscode.workspace.workspaceFolders || []).map((folder) => folder.uri.fsPath);
+  const candidates = candidateReqbookBinaries({
+    configuredPath,
+    cwd,
+    workspaceFolders,
+    env: process.env,
+  });
+
+  for (const candidate of candidates) {
+    if (candidate === "rqb") continue;
+    if (await isExecutable(candidate)) {
+      if (configuredPath === "rqb") {
+        outputChannel?.appendLine(`Auto-detected rqb binary: ${candidate}`);
+      }
+      return candidate;
+    }
+  }
+
+  return configuredPath || "rqb";
 }
 
 function withProgress(title, task) {
@@ -508,6 +531,15 @@ async function readOptional(file) {
 async function exists(file) {
   try {
     await fs.promises.access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isExecutable(file) {
+  try {
+    await fs.promises.access(file, fs.constants.X_OK);
     return true;
   } catch {
     return false;

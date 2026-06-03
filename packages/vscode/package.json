@@ -147,7 +147,7 @@
         "reqbook.rqbPath": {
           "type": "string",
           "default": "rqb",
-          "description": "Path to the rqb binary used by the extension."
+          "description": "Optional path to the rqb binary. When left as rqb, the extension auto-detects common local and installed paths."
         },
         "reqbook.env": {
           "type": "string",
@@ -168,6 +168,7 @@
     }
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.6.0"
+    "@vscode/vsce": "^3.6.0",
+    "ovsx": "^1.0.0"
   }
 }
