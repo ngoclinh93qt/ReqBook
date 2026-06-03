@@ -1,5 +1,5 @@
-export function MadMark({ className = 'mad-mark' }: { className?: string }) {
+export function ReqbookMark({ className = 'rqb-mark' }: { className?: string }) {
   return (
-    <img className={className} src="/brand/mad-mark.svg" alt="" aria-hidden="true" />
+    <img className={className} src="/brand/rqb-mark.svg" alt="" aria-hidden="true" />
   );
 }

@@ -1,12 +1,28 @@
 {
-  "name": "markapidown-vscode",
-  "displayName": "MarkApiDown",
-  "description": "Preview, validate, run, and inspect MarkApiDown API specs from VS Code.",
+  "name": "reqbook-vscode",
+  "displayName": "Reqbook",
+  "description": "Preview, validate, run, and inspect Reqbook API specs from VS Code.",
   "version": "0.1.0",
-  "publisher": "markapidown",
+  "publisher": "reqbook",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngoclinh93qt/ReqBook.git",
+    "directory": "packages/vscode"
+  },
+  "homepage": "https://docs.markapidown.net/guides/vscode-extension",
+  "bugs": {
+    "url": "https://github.com/ngoclinh93qt/ReqBook/issues"
+  },
+  "icon": "icon.png",
+  "preview": true,
+  "qna": false,
   "files": [
+    "CHANGELOG.md",
+    "detect.js",
     "extension.js",
+    "icon.png",
+    "LICENSE",
     "README.md",
     "package.json"
   ],
@@ -17,103 +33,139 @@
     "Other",
     "Programming Languages"
   ],
+  "keywords": [
+    "api",
+    "markdown",
+    "testing",
+    "http",
+    "openapi",
+    "agent"
+  ],
+  "galleryBanner": {
+    "color": "#0f172a",
+    "theme": "dark"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Reqbook runs the local rqb binary and may execute HTTP requests from workspace specs."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Reqbook requires real workspace files and a local rqb binary."
+    }
+  },
   "activationEvents": [
     "onLanguage:markdown",
+    "workspaceContains:api-docs/reqbook.md",
     "workspaceContains:api-docs/mad.md",
-    "onCommand:markapidown.previewEndpoint",
-    "onCommand:markapidown.runEndpoint",
-    "onCommand:markapidown.validateFile",
-    "onCommand:markapidown.showContext"
+    "onCommand:reqbook.previewEndpoint",
+    "onCommand:reqbook.runSpec",
+    "onCommand:reqbook.runEndpoint",
+    "onCommand:reqbook.validateFile",
+    "onCommand:reqbook.showContext"
   ],
   "main": "./extension.js",
+  "scripts": {
+    "check": "node -c extension.js",
+    "test": "node --test test/*.test.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
   "contributes": {
     "commands": [
       {
-        "command": "markapidown.previewEndpoint",
-        "title": "MarkApiDown: Preview Endpoint"
+        "command": "reqbook.previewEndpoint",
+        "title": "Reqbook: Preview Endpoint"
       },
       {
-        "command": "markapidown.runEndpoint",
-        "title": "MarkApiDown: Run Endpoint"
+        "command": "reqbook.runSpec",
+        "title": "Reqbook: Run Spec"
       },
       {
-        "command": "markapidown.validateFile",
-        "title": "MarkApiDown: Validate Current File"
+        "command": "reqbook.validateFile",
+        "title": "Reqbook: Validate Current File"
       },
       {
-        "command": "markapidown.showContext",
-        "title": "MarkApiDown: Show Agent Context"
+        "command": "reqbook.showContext",
+        "title": "Reqbook: Show Agent Context"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "markapidown.runEndpoint",
-          "when": "resourceLangId == markdown",
+          "command": "reqbook.runSpec",
+          "when": "reqbook.runnableSpec && resourceLangId == markdown",
           "group": "navigation@80"
         },
         {
-          "command": "markapidown.previewEndpoint",
+          "command": "reqbook.previewEndpoint",
           "when": "resourceLangId == markdown",
           "group": "navigation@81"
         }
       ],
       "editor/context": [
         {
-          "command": "markapidown.validateFile",
+          "command": "reqbook.validateFile",
           "when": "resourceLangId == markdown",
-          "group": "markapidown@1"
+          "group": "reqbook@1"
         },
         {
-          "command": "markapidown.runEndpoint",
-          "when": "resourceLangId == markdown",
-          "group": "markapidown@2"
+          "command": "reqbook.runSpec",
+          "when": "reqbook.runnableSpec && resourceLangId == markdown",
+          "group": "reqbook@2"
         },
         {
-          "command": "markapidown.showContext",
+          "command": "reqbook.showContext",
           "when": "resourceLangId == markdown",
-          "group": "markapidown@3"
+          "group": "reqbook@3"
         }
       ],
       "commandPalette": [
         {
-          "command": "markapidown.previewEndpoint"
+          "command": "reqbook.previewEndpoint"
         },
         {
-          "command": "markapidown.runEndpoint"
+          "command": "reqbook.runSpec"
         },
         {
-          "command": "markapidown.validateFile"
+          "command": "reqbook.validateFile"
         },
         {
-          "command": "markapidown.showContext"
+          "command": "reqbook.showContext"
         }
       ]
     },
     "configuration": {
-      "title": "MarkApiDown",
+      "title": "Reqbook",
       "properties": {
-        "markapidown.madPath": {
+        "reqbook.rqbPath": {
           "type": "string",
-          "default": "mad",
-          "description": "Path to the mad binary used by the extension."
+          "default": "rqb",
+          "description": "Path to the rqb binary used by the extension."
         },
-        "markapidown.env": {
+        "reqbook.env": {
           "type": "string",
           "default": "dev",
-          "description": "Default MarkApiDown environment for run and context commands."
+          "description": "Default Reqbook environment for run and context commands."
         },
-        "markapidown.apiDocsRoot": {
+        "reqbook.apiDocsRoot": {
           "type": "string",
           "default": "",
           "description": "Optional api-docs root path. Relative paths are resolved from the workspace root."
         },
-        "markapidown.resultPanel": {
+        "reqbook.resultPanel": {
           "type": "boolean",
           "default": true,
-          "description": "Show command results in the MarkApiDown result panel."
+          "description": "Show command results in the Reqbook result panel."
         }
       }
     }
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.6.0"
   }
 }

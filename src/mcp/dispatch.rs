@@ -31,7 +31,7 @@ pub(super) async fn dispatch(req: McpRequest) -> String {
                     "resources": {}
                 },
                 "serverInfo": {
-                    "name": "mad",
+                    "name": "rqb",
                     "version": env!("CARGO_PKG_VERSION")
                 }
             }),
@@ -49,39 +49,39 @@ pub(super) async fn dispatch(req: McpRequest) -> String {
                 .cloned()
                 .unwrap_or(Value::Object(Default::default()));
             match name {
-                "mad_exec" => match handle_exec(&args).await {
+                "rqb_exec" => match handle_exec(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_flow" => match handle_flow(&args).await {
+                "rqb_flow" => match handle_flow(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_author" => match handle_author(&args) {
+                "rqb_author" => match handle_author(&args) {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_vars" => match handle_vars(&args).await {
+                "rqb_vars" => match handle_vars(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_search" => match handle_search(&args).await {
+                "rqb_search" => match handle_search(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_context" => match handle_context(&args) {
+                "rqb_context" => match handle_context(&args) {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_history" => match handle_history(&args).await {
+                "rqb_history" => match handle_history(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_session" => match handle_session(&args) {
+                "rqb_session" => match handle_session(&args) {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },
-                "mad_exec_batch" => match handle_exec_batch(&args).await {
+                "rqb_exec_batch" => match handle_exec_batch(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },

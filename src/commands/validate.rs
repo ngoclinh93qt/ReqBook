@@ -1,4 +1,4 @@
-//! `mad validate` command.
+//! `rqb validate` command.
 
 use std::{
     path::{Path, PathBuf},
@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::Result;
-use mark_api_down::parser::{self, parse_endpoint, parse_pipeline};
+use reqbook::parser::{self, parse_endpoint, parse_pipeline};
 
 use super::read_text;
 
@@ -53,7 +53,7 @@ pub(crate) fn validate_file(path: &Path) -> Result<()> {
         parser::parse_env_config(&source, path).map(|_| ())
     } else if path
         .file_name()
-        .is_some_and(|name| name == "mad.md" || name == "README.md")
+        .is_some_and(|name| name == "reqbook.md" || name == "mad.md" || name == "README.md")
     {
         Ok(())
     } else if path

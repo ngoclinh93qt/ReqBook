@@ -1,6 +1,6 @@
 //! Shared logic for ad-hoc (inline, file-free) HTTP requests.
 //!
-//! Used by both the `mad request` CLI command and the `POST /api/request`
+//! Used by both the `rqb request` CLI command and the `POST /api/request`
 //! REST endpoint so the construction and execution paths are identical.
 
 use std::{

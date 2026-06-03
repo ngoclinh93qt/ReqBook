@@ -3,6 +3,8 @@
 *.profraw
 *.DS_Store
 /web/node_modules/
+/packages/vscode/node_modules/
+*.vsix
 # web/dist is committed intentionally — rust-embed bundles it into the binary at build time
 /web/dist/
 !/web/dist/

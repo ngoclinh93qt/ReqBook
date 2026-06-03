@@ -1,4 +1,4 @@
-use mark_api_down::{engine, parser, ExecOpts};
+use reqbook::{engine, parser, ExecOpts};
 
 #[tokio::test]
 async fn executes_real_get_to_httpbin() {

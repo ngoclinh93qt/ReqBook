@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-MarkApiDown is preparing its first public release. Security fixes target the latest released version and the current `main` branch.
+Reqbook is preparing its first public release. Security fixes target the latest released version and the current `main` branch.
 
 ## Reporting a vulnerability
 
@@ -42,7 +42,7 @@ Out of scope:
 
 ## Security expectations
 
-- MarkApiDown should mask Authorization headers and known secret patterns.
+- Reqbook should mask Authorization headers and known secret patterns.
 - `api-docs/_shared/env.md` must not contain secrets.
 - `.env.local` should be gitignored and used for local sensitive values.
 - The web preview binds to `127.0.0.1` by default.

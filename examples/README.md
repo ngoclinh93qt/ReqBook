@@ -1,6 +1,6 @@
-# MarkApiDown examples
+# Reqbook examples
 
-Ready-to-run example projects. Each example is a complete MarkApiDown project with a full
+Ready-to-run example projects. Each example is a complete Reqbook project with a full
 `api-docs/` directory, environment config, and at least one pipeline.
 
 ## jsonplaceholder
@@ -18,19 +18,19 @@ REST API. No API key required. Demonstrates:
 cd examples/jsonplaceholder
 
 # Validate all specs
-mad validate api-docs/
+rqb validate api-docs/
 
 # Execute one endpoint (requires network access to jsonplaceholder.typicode.com)
-mad exec api-docs/apis/posts/get-post-by-id.md
+rqb exec api-docs/apis/posts/get-post-by-id.md
 
 # Execute the pipeline
-mad flow api-docs/pipelines/post-with-author.md
+rqb flow api-docs/pipelines/post-with-author.md
 
 # Open the web preview
-mad serve
+rqb serve
 
 # Dry-run without sending
-mad exec api-docs/apis/posts/create-post.md --dry-run
+rqb exec api-docs/apis/posts/create-post.md --dry-run
 ```
 
 ### Endpoints
@@ -49,21 +49,21 @@ Fetches post 1, captures the `userId` from the response, then fetches that
 user's full record. Run with:
 
 ```bash
-mad flow api-docs/pipelines/post-with-author.md
+rqb flow api-docs/pipelines/post-with-author.md
 ```
 
 ## agent-token-api
 
 A local fixture for the agent token benchmark. It includes a tiny Node.js API
-implementation and matching MarkApiDown specs so agents can be measured in two
+implementation and matching Reqbook specs so agents can be measured in two
 modes:
 
 - source-only discovery from `examples/agent-token-api/src/`
-- MarkApiDown-assisted discovery from `examples/agent-token-api/api-docs/`
+- Reqbook-assisted discovery from `examples/agent-token-api/api-docs/`
 
 ```bash
 cd examples/agent-token-api
-mad validate api-docs/
+rqb validate api-docs/
 npm start
 ```
 
@@ -75,10 +75,10 @@ captures `userId` and `authToken`.
 
 ```bash
 cd examples/saas-auth-api
-mad validate api-docs/
-mad mock api-docs --port 8080
-mad flow api-docs/flows/signup-login-profile.md
-mad serve
+rqb validate api-docs/
+rqb mock api-docs --port 8080
+rqb flow api-docs/flows/signup-login-profile.md
+rqb serve
 ```
 
 Use this example when testing PR-reviewable API docs, auth variables, and agent
@@ -87,14 +87,14 @@ prompts for "add a password reset API" style tasks.
 ## github-api-client
 
 A public API workspace for GitHub repository smoke checks. No token is required
-for the default public requests, but teams can add `MAD_GITHUB_TOKEN` locally if
+for the default public requests, but teams can add `RQB_GITHUB_TOKEN` locally if
 they want authenticated rate limits.
 
 ```bash
 cd examples/github-api-client
-mad validate api-docs/
-mad exec api-docs/apis/repos/get-repository.md
-mad flow api-docs/flows/repository-release-smoke.md
+rqb validate api-docs/
+rqb exec api-docs/apis/repos/get-repository.md
+rqb flow api-docs/flows/repository-release-smoke.md
 ```
 
 Use this example to show path variables, public API docs, and API testing for
@@ -107,9 +107,9 @@ mode from recorded expected responses.
 
 ```bash
 cd examples/ecommerce-checkout-flow
-mad validate api-docs/
-mad mock api-docs --port 4001
-mad flow api-docs/flows/cart-to-checkout.md
+rqb validate api-docs/
+rqb mock api-docs --port 4001
+rqb flow api-docs/flows/cart-to-checkout.md
 ```
 
 Use this example to demonstrate executable business workflows, captured cart and

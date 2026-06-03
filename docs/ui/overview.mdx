@@ -1,11 +1,11 @@
 ---
-title: "mad-ui overview"
-description: "The browser interface to MarkApiDown same binary as mad-cli, different interface."
+title: "rqb-ui overview"
+description: "The browser interface to Reqbook same binary as rqb-cli, different interface."
 ---
 
-## What is mad-ui?
+## What is rqb-ui?
 
-**mad-ui** is the browser interface to MarkApiDown, accessed via `mad serve`. It provides a visual environment for:
+**rqb-ui** is the browser interface to Reqbook, accessed via `rqb serve`. It provides a visual environment for:
 
 - Browsing and searching your API spec collection
 - Sending requests with interactive variable overrides
@@ -17,15 +17,15 @@ description: "The browser interface to MarkApiDown same binary as mad-cli, diffe
 ## Launch
 
 ```bash
-mad serve
+rqb serve
 # Opens at http://127.0.0.1:8080
 ```
 
-<img src="/images/ui-home.png" alt="mad-ui endpoint browser" />
+<img src="/images/ui-home.png" alt="rqb-ui endpoint browser" />
 
 Custom host/port:
 ```bash
-mad serve --host 0.0.0.0 --port 3000
+rqb serve --host 0.0.0.0 --port 3000
 ```
 
 ## Features
@@ -39,11 +39,11 @@ mad serve --host 0.0.0.0 --port 3000
 | Edit spec source | Endpoint page → Edit source |
 | Import from curl | Import curl button in top bar |
 | Scan project | Scan button in top bar |
-| Mock mode | `mad serve --mock` |
+| Mock mode | `rqb serve --mock` |
 
 ## Same binary two interfaces
 
 ```
-mad serve → opens mad-ui (this)
-mad exec → runs in the terminal (mad-cli)
+rqb serve → opens rqb-ui (this)
+rqb exec → runs in the terminal (rqb-cli)
 ```

@@ -1,4 +1,4 @@
-//! `mad check` command.
+//! `rqb check` command.
 
 use std::{
     path::{Path, PathBuf},
@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context as AnyhowContext, Result};
-use mark_api_down::{
+use reqbook::{
     engine::{self, EngineError, ExecOpts},
     parser::{parse_endpoint, parse_pipeline},
     pipeline::{self, PipelineOpts},
@@ -371,7 +371,7 @@ fn render_junit(summary: &CheckSummary) -> String {
         .filter(|item| item.status == CheckStatus::Fail)
         .count();
     let mut out = format!(
-        r#"<testsuite name="mad-check" tests="{}" failures="{}">"#,
+        r#"<testsuite name="rqb-check" tests="{}" failures="{}">"#,
         summary.items.len(),
         failures
     );
@@ -436,7 +436,7 @@ fn is_checkable_markdown(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
         return false;
     };
-    !matches!(name, "README.md" | "mad.md" | "env.md")
+    !matches!(name, "README.md" | "reqbook.md" | "mad.md" | "env.md")
         && !path
             .components()
             .any(|component| matches!(component.as_os_str().to_str(), Some("_shared")))

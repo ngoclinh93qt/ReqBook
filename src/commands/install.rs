@@ -1,4 +1,4 @@
-//! `mad install` and `mad skills` commands.
+//! `rqb install` and `rqb skills` commands.
 
 use std::path::Path;
 
@@ -12,7 +12,7 @@ pub(crate) async fn install(command: InstallCommand) -> Result<()> {
     {
         let _ = command;
         bail!(
-            "install support is not compiled into this binary\nFix: install MarkApiDown with default features."
+            "install support is not compiled into this binary\nFix: install Reqbook with default features."
         );
     }
 
@@ -20,13 +20,9 @@ pub(crate) async fn install(command: InstallCommand) -> Result<()> {
     match command {
         InstallCommand::Skills { name, agent } => {
             let installed = if let Some(skill_name) = name {
-                mark_api_down::installer::install_skill(
-                    Path::new("."),
-                    agent.as_deref(),
-                    &skill_name,
-                )?
+                reqbook::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
             } else {
-                mark_api_down::installer::install_skills(Path::new("."), agent.as_deref())?
+                reqbook::installer::install_skills(Path::new("."), agent.as_deref())?
             };
             for file in &installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
@@ -36,9 +32,9 @@ pub(crate) async fn install(command: InstallCommand) -> Result<()> {
         }
         InstallCommand::Slashcmd { name, agent } => {
             let installed = if let Some(slug) = name {
-                mark_api_down::installer::install_command(Path::new("."), agent.as_deref(), &slug)?
+                reqbook::installer::install_command(Path::new("."), agent.as_deref(), &slug)?
             } else {
-                mark_api_down::installer::install_commands(Path::new("."), agent.as_deref())?
+                reqbook::installer::install_commands(Path::new("."), agent.as_deref())?
             };
             for file in &installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
@@ -48,7 +44,7 @@ pub(crate) async fn install(command: InstallCommand) -> Result<()> {
         }
         InstallCommand::Mcp => install_mcp(),
         InstallCommand::List => {
-            for status in mark_api_down::installer::detect_agents(Path::new(".")) {
+            for status in reqbook::installer::detect_agents(Path::new(".")) {
                 println!(
                     "{}: {}",
                     status.agent.name(),
@@ -69,7 +65,7 @@ pub(crate) async fn skills(command: SkillsCommand) -> Result<()> {
     {
         let _ = command;
         bail!(
-            "install support is not compiled into this binary\nFix: install MarkApiDown with default features."
+            "install support is not compiled into this binary\nFix: install Reqbook with default features."
         );
     }
 
@@ -77,13 +73,9 @@ pub(crate) async fn skills(command: SkillsCommand) -> Result<()> {
     match command {
         SkillsCommand::Install { name, agent } => {
             let installed = if let Some(skill_name) = name {
-                mark_api_down::installer::install_skill(
-                    Path::new("."),
-                    agent.as_deref(),
-                    &skill_name,
-                )?
+                reqbook::installer::install_skill(Path::new("."), agent.as_deref(), &skill_name)?
             } else {
-                mark_api_down::installer::install_skills(Path::new("."), agent.as_deref())?
+                reqbook::installer::install_skills(Path::new("."), agent.as_deref())?
             };
             for file in &installed {
                 println!("installed {}: {}", file.agent.name(), file.path.display());
@@ -92,7 +84,7 @@ pub(crate) async fn skills(command: SkillsCommand) -> Result<()> {
             Ok(())
         }
         SkillsCommand::List => {
-            for status in mark_api_down::installer::detect_agents(Path::new(".")) {
+            for status in reqbook::installer::detect_agents(Path::new(".")) {
                 println!(
                     "{}: {}",
                     status.agent.name(),
@@ -107,13 +99,9 @@ pub(crate) async fn skills(command: SkillsCommand) -> Result<()> {
         }
         SkillsCommand::Uninstall { name, agent } => {
             let removed = if let Some(skill_name) = name {
-                mark_api_down::installer::uninstall_skill(
-                    Path::new("."),
-                    agent.as_deref(),
-                    &skill_name,
-                )?
+                reqbook::installer::uninstall_skill(Path::new("."), agent.as_deref(), &skill_name)?
             } else {
-                mark_api_down::installer::uninstall(Path::new("."), agent.as_deref())?
+                reqbook::installer::uninstall(Path::new("."), agent.as_deref())?
             };
             for path in &removed {
                 println!("removed {}", path.display());
@@ -126,9 +114,9 @@ pub(crate) async fn skills(command: SkillsCommand) -> Result<()> {
 
 #[cfg(feature = "install")]
 pub(crate) fn install_mcp() -> Result<()> {
-    println!("Registering MarkApiDown MCP server with Claude Code...");
+    println!("Registering Reqbook MCP server with Claude Code...");
     let status = std::process::Command::new("claude")
-        .args(["mcp", "add", "mad", "--", "mad", "mcp"])
+        .args(["mcp", "add", "rqb", "--", "rqb", "mcp"])
         .status();
     match status {
         Ok(s) if s.success() => {
@@ -136,13 +124,13 @@ pub(crate) fn install_mcp() -> Result<()> {
             Ok(())
         }
         Ok(_) => bail!(
-            "claude mcp add failed\nFix: run `claude mcp add mad -- mad mcp` manually."
+            "claude mcp add failed\nFix: run `claude mcp add rqb -- rqb mcp` manually."
         ),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => bail!(
-            "claude CLI not found\nFix: install Claude Code, then run `claude mcp add mad -- mad mcp`."
+            "claude CLI not found\nFix: install Claude Code, then run `claude mcp add rqb -- rqb mcp`."
         ),
         Err(e) => bail!(
-            "failed to run claude: {e}\nFix: run `claude mcp add mad -- mad mcp` manually."
+            "failed to run claude: {e}\nFix: run `claude mcp add rqb -- rqb mcp` manually."
         ),
     }
 }
@@ -150,6 +138,6 @@ pub(crate) fn install_mcp() -> Result<()> {
 #[cfg(not(feature = "install"))]
 pub(crate) fn install_mcp() -> Result<()> {
     bail!(
-        "install support is not compiled into this binary\nFix: install MarkApiDown with default features."
+        "install support is not compiled into this binary\nFix: install Reqbook with default features."
     )
 }

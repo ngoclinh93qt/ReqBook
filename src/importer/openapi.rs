@@ -27,7 +27,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
 
     for (path_key, path_item) in &paths {
         let raw_path = path_key.as_str().unwrap_or("/");
-        let mad_path = convert_path_params(raw_path);
+        let rqb_path = convert_path_params(raw_path);
 
         for method_str in HTTP_METHODS {
             let op = &path_item[method_str];
@@ -44,7 +44,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
                 .and_then(|t| t.as_str())
                 .map(resource_slug)
                 .unwrap_or_else(|| {
-                    mad_path
+                    rqb_path
                         .trim_start_matches('/')
                         .split('/')
                         .next()
@@ -57,7 +57,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
                 .as_str()
                 .map(sentence_case)
                 .or_else(|| op["operationId"].as_str().map(operation_id_title))
-                .unwrap_or_else(|| format!("{} {}", method_upper, mad_path));
+                .unwrap_or_else(|| format!("{} {}", method_upper, rqb_path));
 
             // Description: first line only
             let description = op["description"]
@@ -67,7 +67,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
                 .to_string();
 
             // Request block
-            let request_url = format!("{{{{baseUrl}}}}{mad_path}");
+            let request_url = format!("{{{{baseUrl}}}}{rqb_path}");
             let request = build_request_block(&method_upper, &request_url, op);
 
             // Expected response
@@ -79,7 +79,7 @@ pub fn import(source: &str) -> anyhow::Result<(String, Vec<ImportedEndpoint>)> {
             endpoints.push(ImportedEndpoint {
                 resource,
                 method: method_upper,
-                path: mad_path.clone(),
+                path: rqb_path.clone(),
                 title: title_str,
                 description,
                 request,

@@ -1,22 +1,22 @@
 ---
 title: "Web preview"
-description: "Use the MarkApiDown browser UI to browse, execute, tweak, edit, import, and connect markdown API specs."
+description: "Use the Reqbook browser UI to browse, execute, tweak, edit, import, and connect markdown API specs."
 icon: "desktop"
 ---
 
 # Browser UI for markdown API specs.
 
-`mad serve` starts a local browser workspace over the markdown files in `api-docs/`. It is designed to sit beside your editor and coding agent: agents can write files, you can inspect and run them visually, and everything stays in sync through the filesystem.
+`rqb serve` starts a local browser workspace over the markdown files in `api-docs/`. It is designed to sit beside your editor and coding agent: agents can write files, you can inspect and run them visually, and everything stays in sync through the filesystem.
 
 ```bash
-mad serve
+rqb serve
 # Preview: http://127.0.0.1:8080
 ```
 
-<img src="/images/ui-home.png" alt="mad-ui endpoint browser" />
+<img src="/images/ui-home.png" alt="rqb-ui endpoint browser" />
 
 <Note>
- MarkApiDown binds to `127.0.0.1` by default. Use `--host=0.0.0.0` only when you intentionally want to share the preview on your local network.
+ Reqbook binds to `127.0.0.1` by default. Use `--host=0.0.0.0` only when you intentionally want to share the preview on your local network.
 </Note>
 
 ---
@@ -39,7 +39,7 @@ The CLI is great for CI and automation. The UI is better when you are actively d
  Design workflows visually by connecting endpoint blocks, captures, and injections. The result is saved as `api-docs/flows/*.md`.
  </Card>
  <Card title="cURL import" icon="terminal">
- Paste a cURL command from DevTools and generate a MarkApiDown endpoint spec.
+ Paste a cURL command from DevTools and generate a Reqbook endpoint spec.
  </Card>
  <Card title="Agent review loop" icon="robot">
  Keep the UI open while your agent edits specs. Review and run the changed files immediately.
@@ -87,7 +87,7 @@ Use it to:
 The saved flow can then be run from either surface:
 
 ```bash
-mad flow api-docs/flows/checkout.md --env=dev
+rqb flow api-docs/flows/checkout.md --env=dev
 ```
 
 or from the browser UI with the Run flow action.
@@ -107,7 +107,7 @@ postId: 1
 ```
 ````
 
-Use `.env.local` or `MAD_*` for secrets. MarkApiDown masks auth values in UI responses and reports.
+Use `.env.local` or `RQB_*` for secrets. Reqbook masks auth values in UI responses and reports.
 
 ---
 
@@ -118,7 +118,7 @@ Use `.env.local` or `MAD_*` for secrets. MarkApiDown masks auth values in UI res
  Ask your agent to add endpoint specs or scan the project for missing routes.
  </Step>
  <Step title="UI refreshes from disk">
- Open `mad serve` and inspect the new files in the sidebar.
+ Open `rqb serve` and inspect the new files in the sidebar.
  </Step>
  <Step title="Run with temporary inputs">
  Fill runtime-only params and headers, click Run, and inspect the response.
@@ -135,7 +135,7 @@ Use `.env.local` or `MAD_*` for secrets. MarkApiDown masks auth values in UI res
 Start the preview with `--mock` when the real backend is unavailable during frontend development, on an airplane, or before the API exists:
 
 ```bash
-mad serve --mock
+rqb serve --mock
 ```
 
 In mock mode:
@@ -145,15 +145,15 @@ In mock mode:
 - A **mock** chip appears in the top navigation bar while mock mode is active.
 - Path parameters such as `/users/:id` are matched automatically any ID value returns the same recorded body.
 
-Mock mode reads the same `## Expected response` blocks that `mad mock` uses on the standalone mock server. Both features share the same source of truth.
+Mock mode reads the same `## Expected response` blocks that `rqb mock` uses on the standalone mock server. Both features share the same source of truth.
 
 <Tip>
- If your specs have empty `## Expected response` blocks (stub `{}`), run `/mad enrich` to enrich them with real field names, or execute against a live server once and copy the response body into the spec manually.
+ If your specs have empty `## Expected response` blocks (stub `{}`), run `/rqb enrich` to enrich them with real field names, or execute against a live server once and copy the response body into the spec manually.
 </Tip>
 
 ### Mock mode vs standalone mock server
 
-| | `mad serve --mock` | `mad mock` |
+| | `rqb serve --mock` | `rqb mock` |
 |---|---|---|
 | Use case | Interactive review in the browser | Frontend app points to a mock base URL |
 | Backend traffic | None | None |
@@ -165,9 +165,9 @@ Mock mode reads the same `## Expected response` blocks that `mad mock` uses on t
 ## Server flags
 
 ```bash
-mad serve --port=9000 --env=staging
-mad serve --mock
-mad serve /path/to/other-project
+rqb serve --port=9000 --env=staging
+rqb serve --mock
+rqb serve /path/to/other-project
 ```
 
 | Flag | Description |

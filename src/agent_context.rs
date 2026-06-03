@@ -102,7 +102,7 @@ fn render_endpoint(root: &Path, file: &Path, options: &AgentContextOptions) -> R
         out.push('\n');
     }
     out.push_str(&format!(
-        "Safe next command: mad exec {} --env {}\n",
+        "Safe next command: rqb exec {} --env {}\n",
         file.display(),
         options.env
     ));
@@ -143,7 +143,7 @@ fn render_flow(root: &Path, file: &Path, options: &AgentContextOptions) -> Resul
         }
     }
     out.push_str(&format!(
-        "Safe next command: mad flow {} --env {}\n",
+        "Safe next command: rqb flow {} --env {}\n",
         file.display(),
         options.env
     ));
@@ -324,7 +324,7 @@ fn is_context_file(path: &Path) -> bool {
         .and_then(|name| name.to_str())
         .unwrap_or("");
     path.extension().is_some_and(|ext| ext == "md")
-        && !matches!(name, "README.md" | "mad.md" | "env.md")
+        && !matches!(name, "README.md" | "reqbook.md" | "mad.md" | "env.md")
 }
 
 fn is_flow_file(path: &Path) -> bool {

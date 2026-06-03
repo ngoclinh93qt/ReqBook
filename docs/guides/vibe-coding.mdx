@@ -1,12 +1,12 @@
 ---
 title: "Vibe coding workflow"
-description: "Use MarkApiDown as the API memory and execution layer for coding agents."
+description: "Use Reqbook as the API memory and execution layer for coding agents."
 icon: "robot"
 ---
 
 # Make your coding agent API-aware.
 
-MarkApiDown is strongest when a coding agent is part of your API workflow. The agent can read source routes, create markdown specs, validate them, run requests, and build flows. You still keep control because every result is saved as reviewable markdown in the repo.
+Reqbook is strongest when a coding agent is part of your API workflow. The agent can read source routes, create markdown specs, validate them, run requests, and build flows. You still keep control because every result is saved as reviewable markdown in the repo.
 
 <Note>
  If you only want terminal commands, use the [CLI reference](/docs/reference/cli). If you want to inspect and run specs visually, use the [Web preview](/docs/guides/web-preview). This guide focuses on agent-first development.
@@ -17,9 +17,9 @@ MarkApiDown is strongest when a coding agent is part of your API workflow. The a
 ## Set up the project
 
 <Steps>
- <Step title="Initialise MarkApiDown">
+ <Step title="Initialise Reqbook">
  ```bash
- mad init --name=my-api --dev-url=http://localhost:8080 --yes
+ rqb init --name=my-api --dev-url=http://localhost:8080 --yes
  ```
 
  This creates `api-docs/`, an example endpoint, `_shared/env.md`, and `.gitignore` protection for `.env.local`.
@@ -27,29 +27,29 @@ MarkApiDown is strongest when a coding agent is part of your API workflow. The a
 
  <Step title="Install agent skills">
  ```bash
- mad skills install
+ rqb skills install
  ```
 
  Or target one agent:
 
  ```bash
- mad skills install --agent=claude-code
- mad skills install --agent=cursor
- mad skills install --agent=copilot
+ rqb skills install --agent=claude-code
+ rqb skills install --agent=cursor
+ rqb skills install --agent=copilot
  ```
  </Step>
 
  <Step title="Register MCP for Claude Code">
- MCP mode gives the agent structured MarkApiDown tools instead of asking it to parse terminal output.
+ MCP mode gives the agent structured Reqbook tools instead of asking it to parse terminal output.
 
  ```bash
- claude mcp add mad -- mad mcp
+ claude mcp add rqb -- rqb mcp
  ```
  </Step>
 
  <Step title="Open the UI beside your agent">
  ```bash
- mad serve
+ rqb serve
  ```
 
  Keep the browser preview open while your agent edits files. The UI reads the same markdown files and updates as they change.
@@ -60,17 +60,17 @@ MarkApiDown is strongest when a coding agent is part of your API workflow. The a
 
 ## Prompts that work well
 
-Use prompts that describe the API intent and let the MarkApiDown skill choose the correct operation.
+Use prompts that describe the API intent and let the Reqbook skill choose the correct operation.
 
 <CardGroup cols={2}>
  <Card title="Create one endpoint" icon="file-pen">
  ```text
- Add a MarkApiDown spec for GET /users/:userId. Use bearer auth and make userId a path param.
+ Add a Reqbook spec for GET /users/:userId. Use bearer auth and make userId a path param.
  ```
  </Card>
  <Card title="Scan existing routes" icon="magnifying-glass">
  ```text
- Scan this project for API routes and add missing MarkApiDown specs. Do not overwrite existing specs.
+ Scan this project for API routes and add missing Reqbook specs. Do not overwrite existing specs.
  ```
  </Card>
  <Card title="Run and debug" icon="play">
@@ -91,23 +91,23 @@ Use prompts that describe the API intent and let the MarkApiDown skill choose th
 
 When the skills are installed, the agent should follow this pattern:
 
-| Task | MarkApiDown surface | Expected behavior |
+| Task | Reqbook surface | Expected behavior |
 |---|---|---|
-| Add an endpoint | `mad_author` MCP tool | Create `api-docs/apis/<resource>/<method>-<slug>.md`, validate it, regenerate the index. |
-| Run one endpoint | `mad_exec` MCP tool | Resolve env variables, path params, and runtime vars; report status, duration, and diff. |
-| Create a workflow | `/mad flow` command | Save a markdown flow under `api-docs/flows/`. |
-| Run a workflow | `mad_flow` MCP tool | Execute steps, capture values, inject them downstream, and report the first failure. |
-| Review in browser | `mad serve` | Use the UI for request tweaks, response inspection, and visual flow editing. |
+| Add an endpoint | `rqb_author` MCP tool | Create `api-docs/apis/<resource>/<method>-<slug>.md`, validate it, regenerate the index. |
+| Run one endpoint | `rqb_exec` MCP tool | Resolve env variables, path params, and runtime vars; report status, duration, and diff. |
+| Create a workflow | `/rqb flow` command | Save a markdown flow under `api-docs/flows/`. |
+| Run a workflow | `rqb_flow` MCP tool | Execute steps, capture values, inject them downstream, and report the first failure. |
+| Review in browser | `rqb serve` | Use the UI for request tweaks, response inspection, and visual flow editing. |
 
 ---
 
 ## What stays under your control
 
 - Agents should not overwrite existing specs unless you explicitly ask for that exact file to be replaced.
-- Secrets belong in `.env.local` or `MAD_*`, not in markdown committed to the repo.
+- Secrets belong in `.env.local` or `RQB_*`, not in markdown committed to the repo.
 - The browser request builder can override params, headers, and body for one run without changing the markdown file.
 - Persistent changes happen only when the agent edits markdown or you use the UI edit mode and save.
-- `mad validate api-docs/` is the final safety check before commit.
+- `rqb validate api-docs/` is the final safety check before commit.
 
 ---
 
@@ -116,10 +116,10 @@ When the skills are installed, the agent should follow this pattern:
 ```text
 You: Scan this repo and add missing API specs.
 
-Agent: Uses MarkApiDown project scanner.
+Agent: Uses Reqbook project scanner.
 Agent: Creates api-docs/apis/orders/post-orders.md.
-Agent: Runs mad validate api-docs/.
-Agent: Runs mad index.
+Agent: Runs rqb validate api-docs/.
+Agent: Runs rqb index.
 
 You: Create a checkout flow from the order endpoints.
 
@@ -130,10 +130,10 @@ Agent: Validates the flow.
 
 You: Run it in dev.
 
-Agent: Runs mad flow api-docs/flows/checkout.md --env=dev.
+Agent: Runs rqb flow api-docs/flows/checkout.md --env=dev.
 Agent: Reports each step, captured values, and the first mismatch.
 ```
 
 <Tip>
- Keep `mad serve` open during this loop. It gives you a visual review layer while the agent edits markdown behind the scenes.
+ Keep `rqb serve` open during this loop. It gives you a visual review layer while the agent edits markdown behind the scenes.
 </Tip>

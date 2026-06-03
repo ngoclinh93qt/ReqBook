@@ -1,9 +1,9 @@
-//! `mad exec` and `mad flow` commands.
+//! `rqb exec` and `rqb flow` commands.
 
 use std::path::Path;
 
 use anyhow::Result;
-use mark_api_down::{
+use reqbook::{
     engine::{self, ExecOpts},
     parser::{parse_endpoint, parse_pipeline},
     pipeline::{self, PipelineOpts},

@@ -1,20 +1,20 @@
 # SaaS auth API example
 
-This example shows MarkApiDown as executable API documentation for an auth
+This example shows Reqbook as executable API documentation for an auth
 workflow. The specs are intentionally realistic enough for code review: create a
 user, log in, capture a token, and fetch the current profile.
 
 ```bash
-mad validate api-docs/
-mad mock api-docs --port 8080
-mad flow api-docs/flows/signup-login-profile.md
-mad serve
+rqb validate api-docs/
+rqb mock api-docs --port 8080
+rqb flow api-docs/flows/signup-login-profile.md
+rqb serve
 ```
 
 Agent prompt:
 
 ```text
-Use the MarkApiDown specs in examples/saas-auth-api/api-docs to add a password
+Use the Reqbook specs in examples/saas-auth-api/api-docs to add a password
 reset API. Keep request, expected response, assertions, and the onboarding flow
 reviewable in Markdown. Validate the specs before you finish.
 ```

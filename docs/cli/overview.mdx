@@ -1,11 +1,11 @@
 ---
-title: "mad-cli overview"
-description: "All MarkApiDown capabilities from the terminal same binary as mad-ui, different interface."
+title: "rqb-cli overview"
+description: "All Reqbook capabilities from the terminal same binary as rqb-ui, different interface."
 ---
 
-## What is mad-cli?
+## What is rqb-cli?
 
-**mad-cli** is the terminal interface to MarkApiDown. Every capability is accessible as a subcommand.
+**rqb-cli** is the terminal interface to Reqbook. Every capability is accessible as a subcommand.
 
 Use it for:
 - Scripted API testing and CI/CD pipelines
@@ -17,25 +17,25 @@ Use it for:
 
 | Command | What it does |
 |---------|-------------|
-| `mad init` | Scaffold a new collection in the current project |
-| `mad request <METHOD> <URL>` | Send an ad-hoc HTTP request |
-| `mad exec <file>` | Execute one endpoint spec |
-| `mad flow <file>` | Run a multi-step pipeline |
-| `mad validate <path>` | Validate endpoint or pipeline files |
-| `mad check <path>` | Run PR-focused contract checks and reports |
-| `mad context <target>` | Print compact API context for coding agents |
-| `mad import postman\|insomnia\|openapi\|collection\|http\|curl` | Import from another tool or local collection format |
-| `mad export openapi <path>` | Export markdown endpoint specs as OpenAPI |
-| `mad serve` | Launch mad-ui in a browser |
-| `mad mock` | Start a mock HTTP server |
-| `mad mcp` | Start MCP server for AI agent integration |
-| `mad doctor` | Diagnose project setup |
+| `rqb init` | Scaffold a new collection in the current project |
+| `rqb request <METHOD> <URL>` | Send an ad-hoc HTTP request |
+| `rqb exec <file>` | Execute one endpoint spec |
+| `rqb flow <file>` | Run a multi-step pipeline |
+| `rqb validate <path>` | Validate endpoint or pipeline files |
+| `rqb check <path>` | Run PR-focused contract checks and reports |
+| `rqb context <target>` | Print compact API context for coding agents |
+| `rqb import postman\|insomnia\|openapi\|collection\|http\|curl` | Import from another tool or local collection format |
+| `rqb export openapi <path>` | Export markdown endpoint specs as OpenAPI |
+| `rqb serve` | Launch rqb-ui in a browser |
+| `rqb mock` | Start a mock HTTP server |
+| `rqb mcp` | Start MCP server for AI agent integration |
+| `rqb doctor` | Diagnose project setup |
 
 ## Same binary two interfaces
 
 ```
-mad serve → opens mad-ui in your browser
-mad exec → runs in the terminal (mad-cli)
+rqb serve → opens rqb-ui in your browser
+rqb exec → runs in the terminal (rqb-cli)
 ```
 
 Both ship in one binary. There is no separate installation.

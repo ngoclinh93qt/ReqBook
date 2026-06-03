@@ -1,4 +1,4 @@
-//! Web preview server for the MarkApiDown API spec browser.
+//! Web preview server for the Reqbook API spec browser.
 //! Serves a React SPA (embedded via rust-embed) + JSON API endpoints.
 
 mod business;

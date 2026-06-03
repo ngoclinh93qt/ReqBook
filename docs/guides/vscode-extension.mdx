@@ -1,15 +1,15 @@
 ---
 title: "VS Code extension"
-description: "Preview, validate, run, and inspect MarkApiDown specs from VS Code."
+description: "Preview, validate, run, and inspect Reqbook specs from VS Code."
 icon: "code"
 ---
 
 # VS Code extension
 
-The MarkApiDown VS Code extension is the in-editor bridge for teams that write API specs directly in `api-docs/`. It keeps the workflow narrow: edit markdown in VS Code, call the `mad` binary for validation and execution, and keep the browser UI available for larger visual workflows.
+The Reqbook VS Code extension is the in-editor bridge for teams that write API specs directly in `api-docs/`. It keeps the workflow narrow: edit markdown in VS Code, call the `rqb` binary for validation and execution, and keep the browser UI available for larger visual workflows.
 
 <Note>
- The extension requires the `mad` binary. Install MarkApiDown first with Cargo, npm, Homebrew, or the shell installer, then make sure `mad version` works in a terminal.
+ The extension requires the `rqb` binary. Install Reqbook first with Cargo, npm, Homebrew, or the shell installer, then make sure `rqb version` works in a terminal.
 </Note>
 
 ---
@@ -20,12 +20,24 @@ Open an endpoint or flow markdown file, then run these commands from the Command
 
 | Command | What it does |
 |---|---|
-| `MarkApiDown: Preview Endpoint` | Opens a VS Code webview preview of the current markdown spec with action buttons. |
-| `MarkApiDown: Run Endpoint` | Saves the current file, runs `mad exec <file> --output json`, and shows a compact result panel. |
-| `MarkApiDown: Validate Current File` | Saves the current file, runs `mad validate <file>`, and shows validation output. |
-| `MarkApiDown: Show Agent Context` | Runs `mad context <file>` and shows the compact context that coding agents should use. |
+| `Reqbook: Preview Endpoint` | Opens a VS Code webview preview of the current markdown spec with action buttons. |
+| `Reqbook: Run Spec` | Saves the current file, runs `rqb exec` for endpoints or `rqb flow` for flows/pipelines, and shows a compact result panel. |
+| `Reqbook: Validate Current File` | Saves the current file, runs `rqb validate <file>`, and shows validation output. |
+| `Reqbook: Show Agent Context` | Runs `rqb context <file>` and shows the compact context that coding agents should use. |
 
-The result panel shows status, duration, request URL, response diff, structured assertions, and raw command output.
+The result panel shows endpoint status, duration, request URL, response diff, structured assertions, flow steps, captures, and raw command output.
+
+---
+
+## Auto-detect run buttons
+
+The extension detects runnable Reqbook files and shows Run controls only for those files:
+
+- Endpoint specs inside `api-docs/` with `method:` and `path:` frontmatter show `Run Endpoint`.
+- Flow and pipeline specs under `api-docs/flows/` or `api-docs/pipelines/` show `Run Flow`.
+- Non-runnable collection docs such as `api-docs/reqbook.md`, `README.md`, and `_shared/env.md` do not show Run controls.
+
+Runnable files get both an inline CodeLens button at the top of the editor and a Run button in the editor title bar.
 
 ---
 
@@ -46,17 +58,17 @@ This keeps authoring fast without adding a separate project config format.
 
 | Setting | Default | Description |
 |---|---|---|
-| `markapidown.madPath` | `mad` | Path to the `mad` binary. Use an absolute path if VS Code cannot find `mad` on its process `PATH`. |
-| `markapidown.env` | `dev` | Environment used for `Run Endpoint` and `Show Agent Context`. |
-| `markapidown.apiDocsRoot` | empty | Optional `api-docs` root override. Relative paths resolve from the workspace root. |
-| `markapidown.resultPanel` | `true` | Show command output in the MarkApiDown result panel. If disabled, output goes to the output channel. |
+| `reqbook.rqbPath` | `rqb` | Path to the `rqb` binary. Use an absolute path if VS Code cannot find `rqb` on its process `PATH`. |
+| `reqbook.env` | `dev` | Environment used for `Run Endpoint` and `Show Agent Context`. |
+| `reqbook.apiDocsRoot` | empty | Optional `api-docs` root override. Relative paths resolve from the workspace root. |
+| `reqbook.resultPanel` | `true` | Show command output in the Reqbook result panel. If disabled, output goes to the output channel. |
 
 Example workspace setting:
 
 ```json
 {
-  "markapidown.madPath": "/Users/you/.cargo/bin/mad",
-  "markapidown.env": "dev"
+  "reqbook.rqbPath": "/Users/you/.cargo/bin/rqb",
+  "reqbook.env": "dev"
 }
 ```
 
@@ -68,10 +80,31 @@ The extension source lives in `packages/vscode/`.
 
 ```bash
 cd packages/vscode
-npm pack --dry-run
+npm ci
+npm test
+npm run check
+npm run package -- --out /tmp/reqbook-vscode-0.1.0.vsix
+```
+
+Install a pre-release VSIX with:
+
+```bash
+code --install-extension /tmp/reqbook-vscode-0.1.0.vsix
 ```
 
 For local development, open the repository in VS Code, open `packages/vscode/extension.js`, and run the extension in an Extension Development Host. The extension has no runtime npm dependencies.
+
+---
+
+## Release checklist
+
+Before publishing to the Visual Studio Marketplace:
+
+- Confirm the Marketplace publisher matches the `publisher` field in `packages/vscode/package.json`.
+- Run `npm ci`, `npm test`, `npm run check`, and `npm run package` from `packages/vscode/`.
+- Install the generated VSIX and smoke test preview, run, validate, context, variable autocomplete, and a missing-`rqb` failure.
+- Confirm the released `rqb` binary version matches the extension docs.
+- Keep generated `.vsix` files and Marketplace tokens out of git.
 
 ---
 
@@ -80,8 +113,8 @@ For local development, open the repository in VS Code, open `packages/vscode/ext
 | Surface | Best for |
 |---|---|
 | VS Code extension | Fast edit-run-validate loops while authoring markdown specs. |
-| `mad serve` browser UI | Rich request editing, response inspection, flow canvas, and visual review. |
-| `mad-cli` | CI, scripts, PR checks, imports, exports, and automation. |
+| `rqb serve` browser UI | Rich request editing, response inspection, flow canvas, and visual review. |
+| `rqb-cli` | CI, scripts, PR checks, imports, exports, and automation. |
 | MCP / agent skills | Let coding agents discover, author, execute, and debug API specs. |
 
 The same markdown files power every surface.

@@ -4,7 +4,7 @@ Rules:
 - Do not edit files.
 - Do not start servers.
 - Do not call external network services.
-- Do not use MarkApiDown artifacts or commands.
+- Do not use Reqbook artifacts or commands.
 - Do not read any `api-docs/` directory, `docs/`, `README.md`, `BENCHMARKS.md`, `commands/`, `skills/`, or `skill-templates/`.
 - Use only implementation source files under `examples/agent-token-api/src/`.
 

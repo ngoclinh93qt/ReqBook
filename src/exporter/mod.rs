@@ -1,3 +1,3 @@
-//! Export MarkApiDown specs to external formats.
+//! Export Reqbook specs to external formats.
 
 pub mod openapi;

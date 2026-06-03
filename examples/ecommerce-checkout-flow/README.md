@@ -1,14 +1,14 @@
 # Ecommerce checkout flow example
 
 This example is a business workflow written as executable Markdown. It works
-well with `mad mock` because every endpoint includes a recorded expected
+well with `rqb mock` because every endpoint includes a recorded expected
 response.
 
 ```bash
-mad validate api-docs/
-mad mock api-docs --port 4001
-mad flow api-docs/flows/cart-to-checkout.md
-mad serve --mock
+rqb validate api-docs/
+rqb mock api-docs --port 4001
+rqb flow api-docs/flows/cart-to-checkout.md
+rqb serve --mock
 ```
 
 Agent prompt:

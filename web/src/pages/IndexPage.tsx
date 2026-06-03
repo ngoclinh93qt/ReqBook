@@ -31,8 +31,8 @@ export function IndexPage({ env, refreshKey }: { env: string; refreshKey: number
   // Re-read localStorage whenever an endpoint is run (from any page)
   useEffect(() => {
     const handler = () => setRunTick(t => t + 1);
-    window.addEventListener('mad:run-saved', handler);
-    return () => window.removeEventListener('mad:run-saved', handler);
+    window.addEventListener('rqb:run-saved', handler);
+    return () => window.removeEventListener('rqb:run-saved', handler);
   }, []);
 
   useEffect(() => {

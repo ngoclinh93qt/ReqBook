@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Reqbook app icon light">
+  <rect width="64" height="64" rx="14" fill="#fbfbfc"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" stroke="#e7e8ed" stroke-width="2"/>
+  <g stroke="#5b6cff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 18 L14 18 L14 46 L23 46"/>
+    <path d="M41 18 L50 18 L50 46 L41 46"/>
+  </g>
+  <circle cx="26" cy="32" r="2.43" fill="#5b6cff"/>
+  <circle cx="32" cy="32" r="4.59" fill="#5b6cff"/>
+  <circle cx="38" cy="32" r="2.43" fill="#5b6cff"/>
+</svg>

@@ -1,12 +1,12 @@
 ---
 title: "Slash commands"
-description: "Two /mad commands for Claude Code and Codex CLI — each handles a complex, multi-step task that benefits from LLM reasoning rather than a fixed script."
+description: "Two /rqb commands for Claude Code and Codex CLI — each handles a complex, multi-step task that benefits from LLM reasoning rather than a fixed script."
 icon: "terminal"
 ---
 
 ## Design philosophy
 
-Simple terminal operations — `mad init`, `mad serve`, `mad validate`, `mad exec` — work best when run directly. They are fast, composable, and don't need an agent in the loop.
+Simple terminal operations — `rqb init`, `rqb serve`, `rqb validate`, `rqb exec` — work best when run directly. They are fast, composable, and don't need an agent in the loop.
 
 Slash commands exist for tasks that are **genuinely complex**: where the right answer depends on understanding your codebase, your domain model, or the relationships between data — not just executing a formula.
 
@@ -15,17 +15,17 @@ Slash commands exist for tasks that are **genuinely complex**: where the right a
 ## Available commands
 
 <CardGroup cols={2}>
- <Card title="/mad" icon="magnifying-glass">
+ <Card title="/rqb" icon="magnifying-glass">
  Create specs, enrich expected responses, or build and run pipelines. Routes automatically based on what you pass.
  </Card>
- <Card title="/mad-debug" icon="bug">
+ <Card title="/rqb-debug" icon="bug">
  Diagnose a failing endpoint or pipeline across validation, execution, and diff.
  </Card>
 </CardGroup>
 
 ---
 
-## /mad
+## /rqb
 
 **When to use:** Creating new specs, enriching expected responses and tests, or building and running flow pipelines.
 
@@ -38,23 +38,23 @@ The command routes based on your argument:
 | `flow` or a flow description | Build or run a pipeline |
 
 ```
-/mad
-/mad src/routes/
-/mad enrich api-docs/apis/users/post-users.md
-/mad flow checkout: login, add items, place order, verify
-/mad api-docs/flows/checkout.md
+/rqb
+/rqb src/routes/
+/rqb enrich api-docs/apis/users/post-users.md
+/rqb flow checkout: login, add items, place order, verify
+/rqb api-docs/flows/checkout.md
 ```
 
 ### Scan mode
 
-**What makes it intelligent:** The agent doesn't just run `mad import project` and stop. When automatic discovery produces stubs, the agent reads your handler source code — request/response types, DTOs, model classes — and produces specs with real field names and semantically accurate example values. A `user.email` field becomes `"user@example.com"`, not `"string"`.
+**What makes it intelligent:** The agent doesn't just run `rqb import project` and stop. When automatic discovery produces stubs, the agent reads your handler source code — request/response types, DTOs, model classes — and produces specs with real field names and semantically accurate example values. A `user.email` field becomes `"user@example.com"`, not `"string"`.
 
 What the agent does:
-1. Tries `mad import project` first (OpenAPI or running server)
+1. Tries `rqb import project` first (OpenAPI or running server)
 2. If stubs are produced, reads handler source to enrich field shapes
 3. If nothing is detected, finds route files and reads full type definitions
-4. Creates specs via `mad_author` MCP tool (validates before writing, never overwrites)
-5. Runs `mad validate api-docs/` then `mad index`
+4. Creates specs via `rqb_author` MCP tool (validates before writing, never overwrites)
+5. Runs `rqb validate api-docs/` then `rqb index`
 
 ### Enrich mode
 
@@ -62,7 +62,7 @@ What the agent does:
 
 What the agent does:
 1. Reads the spec and its route handler
-2. Runs `mad_exec` with `infer_expected: true` if the server is up — uses the live response
+2. Runs `rqb_exec` with `infer_expected: true` if the server is up — uses the live response
 3. Writes real field values to `## Expected response`
 4. Adds `## Assertions`: at minimum `status` and one `body.<key>: exists`
 5. Adds `## Tests`: happy path + auth failure + one validation error
@@ -76,28 +76,28 @@ What the agent does when building:
 2. Maps the capture/inject chain before writing
 3. Identifies missing specs (offers to create them)
 4. Writes the pipeline file with meaningful assertions at each step
-5. Validates with `mad validate`
+5. Validates with `rqb validate`
 
 What the agent does when running:
-- Executes `mad_flow` MCP tool
+- Executes `rqb_flow` MCP tool
 - Reports each step's status, captured values (secrets masked), and first failure with diagnosis
 
 ---
 
-## /mad-debug
+## /rqb-debug
 
 **When to use:** An endpoint is returning an unexpected result, a spec diff is failing, or a pipeline is breaking at a specific step.
 
 ```
-/mad-debug GET /users/:id is returning 404
-/mad-debug the checkout flow fails at step 3
-/mad-debug api-docs/apis/orders/post-orders.md
+/rqb-debug GET /users/:id is returning 404
+/rqb-debug the checkout flow fails at step 3
+/rqb-debug api-docs/apis/orders/post-orders.md
 ```
 
 ### Single endpoint
 
 What the agent does:
-1. Locates the spec via `mad_search` MCP or `rg`
+1. Locates the spec via `rqb_search` MCP or `rg`
 2. Validates the spec structure
 3. Dry-runs to check what's being sent (baseUrl, auth, path params)
 4. Executes and interprets the result:
@@ -107,14 +107,14 @@ What the agent does:
 | `0` | Passed — response matched | No action needed |
 | `2` | Invalid spec | Fix frontmatter or `## Request` http block |
 | `4` | Network error | Check `baseUrl` in `_shared/env.md`, server running |
-| `5` | Secret in spec | Move value to `.env.local` or `MAD_*` |
+| `5` | Secret in spec | Move value to `.env.local` or `RQB_*` |
 | Response mismatch | API changed or regression | Update `## Expected response` or fix the API |
 
 ### Pipeline
 
 What the agent does:
 1. Reads all step files — checks order, capture expressions, inject names, referenced specs
-2. Runs the full flow via `mad_flow` MCP
+2. Runs the full flow via `rqb_flow` MCP
 3. Identifies the first failing step
 4. Debugs that step in isolation with captured values from prior steps injected as `--var`
 
@@ -124,13 +124,13 @@ What the agent does:
 
 | What you want to do | Command |
 |---|---|
-| Initialize a new project | `mad init --name my-api --dev-url http://localhost:3000` |
-| Start the web preview | `mad serve` |
-| Start the mock server | `mad mock api-docs/` |
-| Run one endpoint spec | `mad exec api-docs/apis/users/get-user.md` |
-| Validate all specs | `mad validate api-docs/` |
-| Register MCP server | `claude mcp add mad -- mad mcp` |
-| Import a curl command | `mad import curl` |
+| Initialize a new project | `rqb init --name my-api --dev-url http://localhost:3000` |
+| Start the web preview | `rqb serve` |
+| Start the mock server | `rqb mock api-docs/` |
+| Run one endpoint spec | `rqb exec api-docs/apis/users/get-user.md` |
+| Validate all specs | `rqb validate api-docs/` |
+| Register MCP server | `claude mcp add rqb -- rqb mcp` |
+| Import a curl command | `rqb import curl` |
 
 ---
 

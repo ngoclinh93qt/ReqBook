@@ -1,6 +1,6 @@
-# Contributing to MarkApiDown
+# Contributing to Reqbook
 
-Thanks for helping improve MarkApiDown. This project is still moving quickly, so small, focused changes are easiest to review.
+Thanks for helping improve Reqbook. This project is still moving quickly, so small, focused changes are easiest to review.
 
 ## Development setup
 
@@ -11,8 +11,8 @@ Requirements:
 - npm
 
 ```bash
-git clone https://github.com/ngoclinh93qt/MarkApiDown.git
-cd mad
+git clone https://github.com/ngoclinh93qt/ReqBook.git
+cd rqb
 cargo build
 cd web && npm ci && npm run build
 ```

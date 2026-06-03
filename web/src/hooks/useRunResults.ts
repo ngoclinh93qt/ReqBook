@@ -5,7 +5,7 @@ export interface StoredRun {
   at: number;
 }
 
-const storageKey = (relPath: string) => `mad:run:${relPath}`;
+const storageKey = (relPath: string) => `rqb:run:${relPath}`;
 
 export function getStoredRun(relPath: string): StoredRun | null {
   try {
@@ -28,7 +28,7 @@ export function saveRun(
       at: Date.now(),
     };
     localStorage.setItem(storageKey(relPath), JSON.stringify(stored));
-    window.dispatchEvent(new CustomEvent('mad:run-saved', { detail: { relPath } }));
+    window.dispatchEvent(new CustomEvent('rqb:run-saved', { detail: { relPath } }));
   } catch {
     // localStorage unavailable
   }

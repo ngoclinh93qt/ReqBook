@@ -1,15 +1,15 @@
-# MarkApiDown brand assets
+# Reqbook brand assets
 
-Source: `/Users/linh/Downloads/mad/MarkApiDown logo.html`.
+Source: `/Users/linh/Downloads/rqb/Reqbook logo.html`.
 
-- `mad-mark.svg` — primary bracket + three-dot mark.
-- `mad-mark-mono.svg` — `currentColor` mark for UI components.
-- `mad-mark-inverse.svg` — light mark for dark surfaces.
-- `mad-wordmark.svg` — light-background horizontal lockup.
-- `mad-wordmark-dark.svg` — dark-background horizontal lockup.
-- `mad-app-icon.svg` — dark rounded app/favicon tile.
-- `mad-app-icon-light.svg` — light rounded app tile.
-- `mad-social-card.svg` — social/docs preview card.
+- `rqb-mark.svg` — primary bracket + three-dot mark.
+- `rqb-mark-mono.svg` — `currentColor` mark for UI components.
+- `rqb-mark-inverse.svg` — light mark for dark surfaces.
+- `rqb-wordmark.svg` — light-background horizontal lockup.
+- `rqb-wordmark-dark.svg` — dark-background horizontal lockup.
+- `rqb-app-icon.svg` — dark rounded app/favicon tile.
+- `rqb-app-icon-light.svg` — light rounded app tile.
+- `rqb-social-card.svg` — social/docs preview card.
 
 Primary color: `#5b6cff`.
 Dark foreground: `#ecedf1`.

@@ -1,4 +1,4 @@
-//! Public API for embedding MarkApiDown.
+//! Public API for embedding Reqbook.
 
 pub mod adhoc;
 pub mod agent_context;

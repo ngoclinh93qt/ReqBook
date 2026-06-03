@@ -14,7 +14,7 @@ pub(super) struct Session {
 }
 
 pub(super) fn session_path() -> std::path::PathBuf {
-    std::env::temp_dir().join("mad-session.json")
+    std::env::temp_dir().join("rqb-session.json")
 }
 
 pub(super) fn read_session() -> Session {

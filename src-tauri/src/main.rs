@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    mad_desktop_lib::run();
+    rqb_desktop_lib::run();
 }

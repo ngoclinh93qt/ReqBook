@@ -114,7 +114,7 @@ export function RequestPage({ env, varsData: _varsData }: {
       setResultTab('response');
       if (res.saved_path) {
         setSaveMsg(`Saved: ${res.saved_path}`);
-        window.dispatchEvent(new CustomEvent('mad:endpoint-created'));
+        window.dispatchEvent(new CustomEvent('rqb:endpoint-created'));
       }
     } catch (e) {
       setError(String(e));

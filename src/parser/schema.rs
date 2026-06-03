@@ -1,4 +1,4 @@
-//! Data model types for MarkApiDown specs.
+//! Data model types for Reqbook specs.
 
 use std::collections::BTreeMap;
 
@@ -70,7 +70,7 @@ pub enum AssertionOp {
 pub struct EndpointSchema {
     /// Resource group, usually matching the containing folder.
     pub resource: String,
-    /// Protocol. MarkApiDown v1.0 executes HTTP only.
+    /// Protocol. Reqbook v1.0 executes HTTP only.
     pub protocol: Protocol,
     /// HTTP method.
     pub method: HttpMethod,

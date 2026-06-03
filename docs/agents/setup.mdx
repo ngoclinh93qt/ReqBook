@@ -8,10 +8,10 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 
 <CardGroup cols={2}>
  <Card title="Skills" icon="book-open">
- A single markdown playbook that teaches agents the MarkApiDown spec format, file layout, and how to choose the right approach for each task. All agents get the skill.
+ A single markdown playbook that teaches agents the Reqbook spec format, file layout, and how to choose the right approach for each task. All agents get the skill.
  </Card>
  <Card title="Slash commands" icon="terminal">
- Two `/mad` commands for Claude Code and Codex CLI: `/mad` for creating, enriching, and building flows; `/mad-debug` for diagnosing failures.
+ Two `/rqb` commands for Claude Code and Codex CLI: `/rqb` for creating, enriching, and building flows; `/rqb-debug` for diagnosing failures.
  </Card>
  <Card title="MCP server" icon="plug">
  Structured tools for Claude Code: exec, flow, author, and more. Agents get typed results without parsing shell output.
@@ -30,7 +30,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  Run the installer from the root of your project. It auto-detects which agents are present and writes the correct files for each.
 
  ```bash
- mad skills install
+ rqb skills install
  ```
 
  The command writes the skill and (for Claude Code / Codex CLI) slash commands to the directories each agent reads.
@@ -38,17 +38,17 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 
  <Step title="Verify">
  ```bash
- mad skills list
+ rqb skills list
  ```
 
  Example output:
 
  ```
- claude-code detected .claude/skills/mad/SKILL.md
-                       .claude/commands/mad.md
-                       .claude/commands/mad-debug.md
- cursor     detected   .cursor/rules/mad.mdc
- copilot    detected   .github/instructions/mad.instructions.md
+ claude-code detected .claude/skills/rqb/SKILL.md
+                       .claude/commands/rqb.md
+                       .claude/commands/rqb-debug.md
+ cursor     detected   .cursor/rules/rqb.mdc
+ copilot    detected   .github/instructions/rqb.instructions.md
  ```
  </Step>
 
@@ -56,7 +56,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  The MCP server gives Claude Code structured access to spec execution, pipelines, and authoring — no terminal output parsing.
 
  ```bash
- claude mcp add mad -- mad mcp
+ claude mcp add rqb -- rqb mcp
  ```
 
  Verify:
@@ -74,43 +74,43 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 <CodeGroup>
 
 ```bash Claude Code
-mad skills install --agent=claude-code
+rqb skills install --agent=claude-code
 # Installs: 1 skill + 2 slash commands
-# Locations: .claude/skills/mad/, .claude/commands/
+# Locations: .claude/skills/rqb/, .claude/commands/
 ```
 
 ```bash Codex CLI
-mad skills install --agent=codex-cli
+rqb skills install --agent=codex-cli
 # Installs: 1 skill + 2 slash commands
-# Locations: ~/.codex/skills/mad/, ~/.codex/commands/
+# Locations: ~/.codex/skills/rqb/, ~/.codex/commands/
 ```
 
 ```bash Cursor
-mad skills install --agent=cursor
+rqb skills install --agent=cursor
 # Installs: 1 skill as .mdc rule
 # Location: .cursor/rules/
 ```
 
 ```bash GitHub Copilot
-mad skills install --agent=copilot
+rqb skills install --agent=copilot
 # Installs: 1 skill as .instructions.md
 # Location: .github/instructions/
 ```
 
 ```bash Antigravity
-mad skills install --agent=antigravity
+rqb skills install --agent=antigravity
 # Installs: 1 skill
 # Location: .agents/skills/
 ```
 
 ```bash OpenCode
-mad skills install --agent=opencode
+rqb skills install --agent=opencode
 # Installs: 1 skill
 # Location: .opencode/skills/
 ```
 
 ```bash Windsurf
-mad skills install --agent=windsurf
+rqb skills install --agent=windsurf
 # Installs: 1 skill as a rule
 # Location: .windsurf/rules/
 ```
@@ -133,18 +133,18 @@ mad skills install --agent=windsurf
 
 ## Keep skills current
 
-After upgrading MarkApiDown, check whether installed skills match the current binary:
+After upgrading Reqbook, check whether installed skills match the current binary:
 
 ```bash
-mad doctor
+rqb doctor
 ```
 
 To update stale skills automatically:
 
 ```bash
-mad doctor --fix
+rqb doctor --fix
 ```
 
 <Warning>
- Stale skills are the most common cause of agents missing new commands or writing files in unexpected ways. Run `mad doctor --fix` after every MarkApiDown upgrade.
+ Stale skills are the most common cause of agents missing new commands or writing files in unexpected ways. Run `rqb doctor --fix` after every Reqbook upgrade.
 </Warning>

@@ -2,26 +2,52 @@ const cp = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
+const { detectReqbookSpec } = require("./detect");
 
 let outputChannel;
 let resultPanel;
+let contextUpdateSeq = 0;
 
 function activate(context) {
-  outputChannel = vscode.window.createOutputChannel("MarkApiDown");
+  outputChannel = vscode.window.createOutputChannel("Reqbook");
+  const codeLensProvider = new ReqbookCodeLensProvider();
 
   context.subscriptions.push(
     outputChannel,
-    vscode.commands.registerCommand("markapidown.previewEndpoint", previewEndpoint),
-    vscode.commands.registerCommand("markapidown.runEndpoint", runEndpoint),
-    vscode.commands.registerCommand("markapidown.validateFile", validateFile),
-    vscode.commands.registerCommand("markapidown.showContext", showContext),
+    codeLensProvider,
+    vscode.languages.registerCodeLensProvider([{ language: "markdown", scheme: "file" }], codeLensProvider),
+    vscode.commands.registerCommand("reqbook.previewEndpoint", previewEndpoint),
+    vscode.commands.registerCommand("reqbook.runSpec", runSpec),
+    vscode.commands.registerCommand("reqbook.runEndpoint", runEndpoint),
+    vscode.commands.registerCommand("reqbook.validateFile", validateFile),
+    vscode.commands.registerCommand("reqbook.showContext", showContext),
     vscode.languages.registerCompletionItemProvider(
       [{ language: "markdown", scheme: "file" }],
       new VariableCompletionProvider(),
       "{",
       ":"
-    )
+    ),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      refreshRunnableContext(editor);
+      codeLensProvider.refresh();
+    }),
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (event.document.languageId !== "markdown") return;
+      codeLensProvider.refresh();
+      if (isActiveDocument(event.document)) {
+        refreshRunnableContext(vscode.window.activeTextEditor);
+      }
+    }),
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      if (document.languageId !== "markdown") return;
+      codeLensProvider.refresh();
+      if (isActiveDocument(document)) {
+        refreshRunnableContext(vscode.window.activeTextEditor);
+      }
+    })
   );
+
+  refreshRunnableContext(vscode.window.activeTextEditor);
 }
 
 function deactivate() {}
@@ -31,21 +57,23 @@ async function previewEndpoint(uri) {
   if (!doc) return;
   const file = doc.uri.fsPath;
   const root = await findApiDocsRoot(file);
+  const spec = await detectRunnableDocument(doc);
   const variables = await collectVariables(file);
 
   const panel = vscode.window.createWebviewPanel(
-    "markapidown.preview",
-    `MarkApiDown Preview: ${path.basename(file)}`,
+    "reqbook.preview",
+    `Reqbook Preview: ${path.basename(file)}`,
     vscode.ViewColumn.Beside,
     { enableCommandUris: true }
   );
 
-  const runLink = commandUri("markapidown.runEndpoint", file);
-  const validateLink = commandUri("markapidown.validateFile", file);
-  const contextLink = commandUri("markapidown.showContext", file);
+  const runLink = spec ? commandUri("reqbook.runSpec", file) : undefined;
+  const validateLink = commandUri("reqbook.validateFile", file);
+  const contextLink = commandUri("reqbook.showContext", file);
   panel.webview.html = renderPreviewHtml({
     file,
     root,
+    spec,
     source: doc.getText(),
     variables,
     runLink,
@@ -55,23 +83,38 @@ async function previewEndpoint(uri) {
 }
 
 async function runEndpoint(uri) {
+  return runSpec(uri);
+}
+
+async function runSpec(uri) {
   const doc = await resolveDocument(uri);
   if (!doc) return;
   if (!(await ensureSaved(doc))) return;
   const file = doc.uri.fsPath;
-  const root = await findApiDocsRoot(file);
-  const env = config().get("env", "dev");
+  const spec = await detectRunnableDocument(doc);
+  if (!spec) {
+    vscode.window.showWarningMessage("Open a Reqbook endpoint or flow file first.");
+    return;
+  }
 
-  const result = await withProgress(`Running ${path.basename(file)}`, () =>
-    runMad(["exec", file, "--env", env, "--output", "json"], root)
+  const root = spec.root;
+  const env = config().get("env", "dev");
+  const isFlow = spec.kind === "flow";
+  const title = isFlow ? "Run flow" : "Run endpoint";
+  const args = isFlow
+    ? ["flow", file, "--env", env, "--output", "json"]
+    : ["exec", file, "--env", env, "--output", "json"];
+
+  const result = await withProgress(`Running ${isFlow ? "flow" : "endpoint"} ${path.basename(file)}`, () =>
+    runReqbook(args, root)
   );
 
   outputResult(result);
-  showCommandResult("Run endpoint", file, result, "run");
+  showCommandResult(title, file, result, isFlow ? "flow" : "run");
   if (result.code === 0) {
-    vscode.window.showInformationMessage("MarkApiDown endpoint run completed.");
+    vscode.window.showInformationMessage(`Reqbook ${isFlow ? "flow" : "endpoint"} run completed.`);
   } else {
-    vscode.window.showWarningMessage("MarkApiDown endpoint run failed. See result panel.");
+    vscode.window.showWarningMessage(`Reqbook ${isFlow ? "flow" : "endpoint"} run failed. See result panel.`);
   }
 }
 
@@ -83,15 +126,15 @@ async function validateFile(uri) {
   const root = await findApiDocsRoot(file);
 
   const result = await withProgress(`Validating ${path.basename(file)}`, () =>
-    runMad(["validate", file], root)
+    runReqbook(["validate", file], root)
   );
 
   outputResult(result);
   showCommandResult("Validate file", file, result, "validate");
   if (result.code === 0) {
-    vscode.window.showInformationMessage("MarkApiDown validation passed.");
+    vscode.window.showInformationMessage("Reqbook validation passed.");
   } else {
-    vscode.window.showWarningMessage("MarkApiDown validation failed. See result panel.");
+    vscode.window.showWarningMessage("Reqbook validation failed. See result panel.");
   }
 }
 
@@ -104,7 +147,7 @@ async function showContext(uri) {
   const env = config().get("env", "dev");
 
   const result = await withProgress(`Loading context for ${path.basename(file)}`, () =>
-    runMad(["context", file, "--root", root, "--env", env], root)
+    runReqbook(["context", file, "--root", root, "--env", env], root)
   );
 
   outputResult(result);
@@ -130,13 +173,42 @@ class VariableCompletionProvider {
     const variables = await collectVariables(document.uri.fsPath);
     return variables.map((entry) => {
       const item = new vscode.CompletionItem(entry.name, vscode.CompletionItemKind.Variable);
-      item.detail = `MarkApiDown ${entry.sources.join(", ")}`;
+      item.detail = `Reqbook ${entry.sources.join(", ")}`;
       item.documentation = new vscode.MarkdownString(
         `Variable from ${entry.sources.map((s) => `\`${s}\``).join(", ")}.`
       );
       item.insertText = entry.name;
       return item;
     });
+  }
+}
+
+class ReqbookCodeLensProvider {
+  constructor() {
+    this._onDidChangeCodeLenses = new vscode.EventEmitter();
+    this.onDidChangeCodeLenses = this._onDidChangeCodeLenses.event;
+  }
+
+  refresh() {
+    this._onDidChangeCodeLenses.fire();
+  }
+
+  dispose() {
+    this._onDidChangeCodeLenses.dispose();
+  }
+
+  async provideCodeLenses(document) {
+    const spec = await detectRunnableDocument(document);
+    if (!spec) return [];
+
+    const title = spec.kind === "flow" ? "$(play) Run Flow" : "$(play) Run Endpoint";
+    return [
+      new vscode.CodeLens(new vscode.Range(0, 0, 0, 0), {
+        title,
+        command: "reqbook.runSpec",
+        arguments: [document.uri],
+      }),
+    ];
   }
 }
 
@@ -149,11 +221,11 @@ async function resolveDocument(uri) {
   }
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    vscode.window.showWarningMessage("Open a MarkApiDown markdown file first.");
+    vscode.window.showWarningMessage("Open a Reqbook markdown file first.");
     return undefined;
   }
   if (editor.document.languageId !== "markdown") {
-    vscode.window.showWarningMessage("MarkApiDown commands run on markdown spec files.");
+    vscode.window.showWarningMessage("Reqbook commands run on markdown spec files.");
     return undefined;
   }
   return editor.document;
@@ -163,21 +235,58 @@ async function ensureSaved(doc) {
   if (!doc.isDirty) return true;
   const saved = await doc.save();
   if (!saved) {
-    vscode.window.showWarningMessage("Save the current file before running MarkApiDown.");
+    vscode.window.showWarningMessage("Save the current file before running Reqbook.");
   }
   return saved;
 }
 
 function config() {
-  return vscode.workspace.getConfiguration("markapidown");
+  return vscode.workspace.getConfiguration("reqbook");
 }
 
-async function runMad(args, apiDocsRoot) {
-  const madPath = config().get("madPath", "mad");
+async function detectRunnableDocument(document) {
+  if (!document || document.languageId !== "markdown" || document.uri.scheme !== "file" || !document.uri.fsPath) {
+    return undefined;
+  }
+
+  const file = document.uri.fsPath;
+  const root = await findApiDocsRoot(file);
+  if (!(await hasReqbookManifest(root))) {
+    return undefined;
+  }
+
+  const spec = detectReqbookSpec({
+    filePath: file,
+    source: document.getText(),
+    apiDocsRoot: root,
+  });
+
+  return spec ? { ...spec, root } : undefined;
+}
+
+async function updateRunnableContext(editor) {
+  const seq = ++contextUpdateSeq;
+  const spec = editor ? await detectRunnableDocument(editor.document) : undefined;
+  if (seq !== contextUpdateSeq) return;
+  await vscode.commands.executeCommand("setContext", "reqbook.runnableSpec", Boolean(spec));
+}
+
+function refreshRunnableContext(editor) {
+  updateRunnableContext(editor).catch((error) => {
+    outputChannel?.appendLine(`Failed to update Reqbook editor context: ${error.message || error}`);
+  });
+}
+
+function isActiveDocument(document) {
+  return vscode.window.activeTextEditor?.document.uri.toString() === document.uri.toString();
+}
+
+async function runReqbook(args, apiDocsRoot) {
+  const rqbPath = config().get("rqbPath", "rqb");
   const cwd = projectRootFor(apiDocsRoot);
   return new Promise((resolve) => {
     cp.execFile(
-      madPath,
+      rqbPath,
       args,
       {
         cwd,
@@ -187,7 +296,7 @@ async function runMad(args, apiDocsRoot) {
       },
       (error, stdout, stderr) => {
         resolve({
-          command: `${madPath} ${args.map(shellQuote).join(" ")}`,
+          command: `${rqbPath} ${args.map(shellQuote).join(" ")}`,
           code: error ? (typeof error.code === "number" ? error.code : 127) : 0,
           stdout: stdout || "",
           stderr: stderr || "",
@@ -228,8 +337,8 @@ function showCommandResult(title, file, result, kind) {
 
   if (!resultPanel) {
     resultPanel = vscode.window.createWebviewPanel(
-      "markapidown.results",
-      "MarkApiDown Results",
+      "reqbook.results",
+      "Reqbook Results",
       vscode.ViewColumn.Beside,
       {}
     );
@@ -238,7 +347,7 @@ function showCommandResult(title, file, result, kind) {
     });
   }
 
-  resultPanel.title = `MarkApiDown: ${title}`;
+  resultPanel.title = `Reqbook: ${title}`;
   resultPanel.webview.html = renderResultHtml({ title, file, result, kind });
   resultPanel.reveal(vscode.ViewColumn.Beside);
 }
@@ -333,12 +442,17 @@ async function findApiDocsRoot(file) {
     if (await exists(configuredPath)) return configuredPath;
   }
 
-  let current = fs.statSync(file).isDirectory() ? file : path.dirname(file);
+  let current;
+  try {
+    current = fs.statSync(file).isDirectory() ? file : path.dirname(file);
+  } catch {
+    current = path.dirname(file);
+  }
   while (true) {
-    if (path.basename(current) === "api-docs" && (await exists(path.join(current, "mad.md")))) {
+    if (path.basename(current) === "api-docs" && (await hasReqbookManifest(current))) {
       return current;
     }
-    if (await exists(path.join(current, "api-docs", "mad.md"))) {
+    if (await hasReqbookManifest(path.join(current, "api-docs"))) {
       return path.join(current, "api-docs");
     }
     const parent = path.dirname(current);
@@ -346,7 +460,7 @@ async function findApiDocsRoot(file) {
     current = parent;
   }
 
-  if (workspaceFolder && (await exists(path.join(workspaceFolder, "api-docs", "mad.md")))) {
+  if (workspaceFolder && (await hasReqbookManifest(path.join(workspaceFolder, "api-docs")))) {
     return path.join(workspaceFolder, "api-docs");
   }
 
@@ -400,15 +514,18 @@ function envNameToVar(name) {
   return lower.replace(/_([a-z0-9])/g, (_, ch) => ch.toUpperCase());
 }
 
-function renderPreviewHtml({ file, root, source, variables, runLink, validateLink, contextLink }) {
+function renderPreviewHtml({ file, root, spec, source, variables, runLink, validateLink, contextLink }) {
   const variableBadges = variables.length
     ? variables
         .map((v) => `<span class="badge">${escapeHtml(v.name)} <small>${escapeHtml(v.sources.join(", "))}</small></span>`)
         .join("")
     : `<span class="muted">No variables found.</span>`;
+  const runButton = runLink
+    ? `<a class="button" href="${runLink}">${spec.kind === "flow" ? "Run Flow" : "Run Endpoint"}</a>`
+    : "";
 
   return htmlPage(
-    "MarkApiDown Preview",
+    "Reqbook Preview",
     `
     <header>
       <div>
@@ -416,7 +533,7 @@ function renderPreviewHtml({ file, root, source, variables, runLink, validateLin
         <p>${escapeHtml(path.relative(projectRootFor(root), file))}</p>
       </div>
       <nav>
-        <a class="button" href="${runLink}">Run</a>
+        ${runButton}
         <a class="button" href="${validateLink}">Validate</a>
         <a class="button" href="${contextLink}">Context</a>
       </nav>
@@ -450,6 +567,17 @@ function renderResultHtml({ title, file, result, kind }) {
         ${renderDiff(parsed.diff)}
         ${renderAssertions(assertions)}
       </section>`;
+  } else if (kind === "flow" && parsed) {
+    const steps = Array.isArray(parsed.steps) ? parsed.steps : [];
+    summary = `
+      <section class="panel">
+        <h2>${parsed.passed ? "Passed" : "Failed"}</h2>
+        <dl>
+          <dt>Steps</dt><dd>${escapeHtml(String(steps.length))}</dd>
+          <dt>Captures</dt><dd>${escapeHtml(String(Object.keys(parsed.captures || {}).length))}</dd>
+        </dl>
+        ${renderFlowSteps(steps)}
+      </section>`;
   } else if (kind === "context") {
     summary = `<section class="panel"><h2>Context</h2><pre>${escapeHtml(result.stdout || result.stderr || result.error)}</pre></section>`;
   } else {
@@ -457,7 +585,7 @@ function renderResultHtml({ title, file, result, kind }) {
   }
 
   return htmlPage(
-    `MarkApiDown ${title}`,
+    `Reqbook ${title}`,
     `
     <header>
       <div>
@@ -477,6 +605,25 @@ function renderResultHtml({ title, file, result, kind }) {
     </section>
     `
   );
+}
+
+function renderFlowSteps(steps) {
+  if (!steps.length) return "";
+  return `
+    <h3>Steps</h3>
+    <table>
+      <thead><tr><th>Step</th><th>Endpoint</th><th>Passed</th><th>Status / Error</th></tr></thead>
+      <tbody>
+        ${steps
+          .map((step) => {
+            const execution = step.execution || {};
+            const passed = step.error ? false : execution.diff?.passed !== false;
+            const status = step.error || execution.response?.status || "";
+            return `<tr><td>${escapeHtml(step.name || "")}</td><td>${escapeHtml(step.endpoint || "")}</td><td>${passed ? "yes" : "no"}</td><td>${escapeHtml(status)}</td></tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>`;
 }
 
 function renderDiff(diff) {
@@ -612,6 +759,10 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+async function hasReqbookManifest(apiDocsRoot) {
+  return (await exists(path.join(apiDocsRoot, "reqbook.md"))) || (await exists(path.join(apiDocsRoot, "mad.md")));
 }
 
 module.exports = {

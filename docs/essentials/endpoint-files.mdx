@@ -1,6 +1,6 @@
 ---
 title: "Endpoint files"
-description: "Every MarkApiDown endpoint is a markdown file with a YAML frontmatter header, a Request block, and an Expected response block."
+description: "Every Reqbook endpoint is a markdown file with a YAML frontmatter header, a Request block, and an Expected response block."
 icon: "file-lines"
 ---
 
@@ -16,7 +16,7 @@ An endpoint file is a `.md` file that serves as both documentation and an execut
  Agent skills use this structure to create specs safely and validate them before reporting back.
  </Card>
  <Card title="Terminal and CI" icon="terminal">
- `mad exec` and `mad validate` read the same markdown file for automation.
+ `rqb exec` and `rqb validate` read the same markdown file for automation.
  </Card>
 </CardGroup>
 
@@ -73,7 +73,7 @@ retry:
 | `response.ignore` | no | string[] | Strict-mode paths to ignore, such as `body.id` | `[]` |
 
 <Note>
- Unknown frontmatter keys produce a warning and are ignored. This forward-compatible behavior means future MarkApiDown versions can introduce new fields without breaking existing spec files.
+ Unknown frontmatter keys produce a warning and are ignored. This forward-compatible behavior means future Reqbook versions can introduce new fields without breaking existing spec files.
 </Note>
 
 ---
@@ -112,7 +112,7 @@ Accept: application/json
 
 ## The Expected response block
 
-`## Expected response` must contain exactly one `http` fenced code block. MarkApiDown diffs the actual response against this block after every execution.
+`## Expected response` must contain exactly one `http` fenced code block. Reqbook diffs the actual response against this block after every execution.
 
 ### Comparison behavior
 
@@ -180,14 +180,14 @@ Content-Type: application/json
 ````
 
 <Note>
- the current MarkApiDown release executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
+ the current Reqbook release executes only the single `## Expected response` block. Error responses are reference examples for humans, the web preview source view, and AI agents.
 </Note>
 
 ---
 
 ## The Assertions block (optional)
 
-`## Assertions` contains structured rules that MarkApiDown evaluates after each execution. Results appear in `mad_exec` output as `assertion_results`.
+`## Assertions` contains structured rules that Reqbook evaluates after each execution. Results appear in `rqb_exec` output as `assertion_results`.
 
 ````markdown
 ## Assertions
@@ -227,14 +227,14 @@ Paths follow the format `status`, `body.<field>.<nested>`, or `headers.<name>`.
 ````
 
 <Note>
- MarkApiDown does not execute `agent-task` code. The block is read by AI agents as instructions.
+ Reqbook does not execute `agent-task` code. The block is read by AI agents as instructions.
 </Note>
 
 ---
 
 ## Notes section (optional)
 
-`## Notes` is free-form markdown for team context: rate limits, edge cases, links to related endpoints, and migration notes. The MarkApiDown parser ignores this section entirely.
+`## Notes` is free-form markdown for team context: rate limits, edge cases, links to related endpoints, and migration notes. The Reqbook parser ignores this section entirely.
 
 ---
 
@@ -304,7 +304,7 @@ Use the UI while developing and the CLI when you need automation.
 <Tabs>
  <Tab title="Web UI">
  ```bash
- mad serve
+ rqb serve
  ```
 
  Open the endpoint, fill runtime-only params or headers, click Run, and inspect the response panel. The markdown file changes only when you enter edit mode and save.
@@ -312,13 +312,13 @@ Use the UI while developing and the CLI when you need automation.
  <Tab title="CLI">
  ```bash
  # Basic execution
- mad exec api-docs/apis/users/get-user-by-id.md
+ rqb exec api-docs/apis/users/get-user-by-id.md
 
  # With environment and variable override
- mad exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
+ rqb exec api-docs/apis/users/get-user-by-id.md --env=staging --var id=usr_456
 
  # Dry run print the resolved request without sending
- mad exec api-docs/apis/users/get-user-by-id.md --dry-run
+ rqb exec api-docs/apis/users/get-user-by-id.md --dry-run
  ```
  </Tab>
 </Tabs>

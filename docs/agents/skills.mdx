@@ -1,13 +1,13 @@
 ---
 title: "Skills reference"
-description: "A single SKILL.md playbook installed for every supported agent — teaches the MarkApiDown spec format, file layout, MCP tools, and when to use each command."
+description: "A single SKILL.md playbook installed for every supported agent — teaches the Reqbook spec format, file layout, MCP tools, and when to use each command."
 icon: "book-open"
 ---
 
-Skills are markdown playbooks embedded in the MarkApiDown binary. When installed, agents read them from their config directories and apply them automatically when a user prompt matches a known intent — you do not need to mention MarkApiDown explicitly.
+Skills are markdown playbooks embedded in the Reqbook binary. When installed, agents read them from their config directories and apply them automatically when a user prompt matches a known intent — you do not need to mention Reqbook explicitly.
 
-<Card title="mad" icon="book-open">
-Covers the full MarkApiDown workflow: project layout, endpoint spec format, Assertions operators, pipeline capture patterns, MCP tool reference, and routing rules for when to use each slash command.
+<Card title="rqb" icon="book-open">
+Covers the full Reqbook workflow: project layout, endpoint spec format, Assertions operators, pipeline capture patterns, MCP tool reference, and routing rules for when to use each slash command.
 </Card>
 
 ---
@@ -15,15 +15,15 @@ Covers the full MarkApiDown workflow: project layout, endpoint spec format, Asse
 ## Install
 
 ```bash
-mad skills install
+rqb skills install
 ```
 
 This writes the skill to every supported agent's config directory. To target one agent:
 
 ```bash
-mad skills install --agent=cursor
-mad skills install --agent=copilot
-mad skills install --agent=claude-code
+rqb skills install --agent=cursor
+rqb skills install --agent=copilot
+rqb skills install --agent=claude-code
 ```
 
 ---
@@ -34,7 +34,7 @@ mad skills install --agent=claude-code
 
 ```
 api-docs/
-├── mad.md              # project config (name, default-env, timeouts)
+├── reqbook.md              # project config (name, default-env, timeouts)
 ├── _shared/env.md          # base URLs and variables per environment
 ├── apis/<resource>/<method>-<slug>.md   # one file per endpoint
 └── flows/<name>.md         # multi-step pipelines
@@ -73,10 +73,10 @@ The skill routes the agent to the right tool or command based on the situation:
 
 | Situation | Action |
 |---|---|
-| Create or update specs | `/mad` |
-| Debug a failing endpoint or pipeline | `/mad-debug` |
-| Execute a spec | `mad_exec` MCP tool |
-| Run a pipeline | `mad_flow` MCP tool |
+| Create or update specs | `/rqb` |
+| Debug a failing endpoint or pipeline | `/rqb-debug` |
+| Execute a spec | `rqb_exec` MCP tool |
+| Run a pipeline | `rqb_flow` MCP tool |
 
 ---
 
@@ -84,12 +84,12 @@ The skill routes the agent to the right tool or command based on the situation:
 
 | Agent | Skill format | Path |
 |---|---|---|
-| Claude Code | `SKILL.md` | `.claude/skills/mad/SKILL.md` |
-| Cursor | `.mdc` | `.cursor/rules/mad.mdc` |
-| GitHub Copilot | `.instructions.md` | `.github/instructions/mad.instructions.md` |
-| Codex CLI | `SKILL.md` | `.codex/skills/mad/SKILL.md` |
-| Antigravity | `SKILL.md` | `.antigravity/skills/mad/SKILL.md` |
-| OpenCode | `SKILL.md` | `.opencode/skills/mad/SKILL.md` |
-| Windsurf | `.md` (rule) | `.windsurf/rules/mad.md` |
+| Claude Code | `SKILL.md` | `.claude/skills/rqb/SKILL.md` |
+| Cursor | `.mdc` | `.cursor/rules/rqb.mdc` |
+| GitHub Copilot | `.instructions.md` | `.github/instructions/rqb.instructions.md` |
+| Codex CLI | `SKILL.md` | `.codex/skills/rqb/SKILL.md` |
+| Antigravity | `SKILL.md` | `.antigravity/skills/rqb/SKILL.md` |
+| OpenCode | `SKILL.md` | `.opencode/skills/rqb/SKILL.md` |
+| Windsurf | `.md` (rule) | `.windsurf/rules/reqbook.md` |
 
 All agents receive the same skill content — only the file format differs.

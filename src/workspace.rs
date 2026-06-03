@@ -1,10 +1,10 @@
 //! Workspace and collection root detection.
 //!
-//! A "collection" is an `api-docs/` directory with a `mad.md` manifest.
+//! A "collection" is an `api-docs/` directory with a `reqbook.md` manifest.
 //! Resolution priority:
 //!   1. Explicit `--config` path (unchanged from prior behaviour).
 //!   2. Git repo root: `git rev-parse --show-toplevel` → `<root>/api-docs/`.
-//!   3. Global default: `~/.mad/workspace/default/api-docs/`.
+//!   3. Global default: `~/.rqb/workspace/default/api-docs/`.
 
 use std::{
     fs,
@@ -28,21 +28,21 @@ pub fn collection_root(explicit_config: Option<&Path>) -> PathBuf {
     global_default_dir()
 }
 
-/// `~/.mad/workspace/default/api-docs/`   used when not in a git repo.
+/// `~/.rqb/workspace/default/api-docs/`   used when not in a git repo.
 pub fn global_default_dir() -> PathBuf {
-    home_dir().join(".mad/workspace/default/api-docs")
+    home_dir().join(".rqb/workspace/default/api-docs")
 }
 
-/// `~/.mad/workspace/scratch/api-docs/`   unsaved ad-hoc requests.
+/// `~/.rqb/workspace/scratch/api-docs/`   unsaved ad-hoc requests.
 pub fn scratch_dir() -> PathBuf {
-    home_dir().join(".mad/workspace/scratch/api-docs")
+    home_dir().join(".rqb/workspace/scratch/api-docs")
 }
 
-/// Ensure the scratch workspace exists and has a minimal `mad.md`.
+/// Ensure the scratch workspace exists and has a minimal `reqbook.md`.
 pub fn ensure_scratch_workspace() -> std::io::Result<PathBuf> {
     let dir = scratch_dir();
     std::fs::create_dir_all(dir.join("apis/scratch"))?;
-    let config = dir.join("mad.md");
+    let config = dir.join("reqbook.md");
     if !config.exists() {
         std::fs::write(
             &config,
@@ -78,9 +78,9 @@ pub struct WorkspaceEntry {
     pub last_opened: Option<String>,
 }
 
-/// All named workspaces under `~/.mad/workspace/*/api-docs/`.
+/// All named workspaces under `~/.rqb/workspace/*/api-docs/`.
 pub fn list_all_workspaces() -> Vec<WorkspaceEntry> {
-    let base = home_dir().join(".mad/workspace");
+    let base = home_dir().join(".rqb/workspace");
     let mut entries = Vec::new();
     let Ok(dir) = fs::read_dir(&base) else {
         return entries;
@@ -101,9 +101,9 @@ pub fn list_all_workspaces() -> Vec<WorkspaceEntry> {
     entries
 }
 
-/// Load recent workspaces from `~/.mad/workspaces-history.json`.
+/// Load recent workspaces from `~/.rqb/workspaces-history.json`.
 pub fn load_history() -> Vec<WorkspaceEntry> {
-    let path = home_dir().join(".mad/workspaces-history.json");
+    let path = home_dir().join(".rqb/workspaces-history.json");
     let Ok(data) = fs::read_to_string(&path) else {
         return Vec::new();
     };
@@ -123,7 +123,7 @@ pub fn save_to_history(path: &Path, name: &str) {
         },
     );
     entries.truncate(10);
-    let hist = home_dir().join(".mad/workspaces-history.json");
+    let hist = home_dir().join(".rqb/workspaces-history.json");
     if let Some(parent) = hist.parent() {
         let _ = fs::create_dir_all(parent);
     }
@@ -132,7 +132,7 @@ pub fn save_to_history(path: &Path, name: &str) {
     }
 }
 
-/// Non-interactive workspace scaffold — equivalent to `mad init --yes`.
+/// Non-interactive workspace scaffold — equivalent to `rqb init --yes`.
 ///
 /// `dir` is the project root (parent of `api-docs/`). Creates the standard
 /// directory structure without interactive prompts.
@@ -141,7 +141,7 @@ pub fn init_workspace_dir(dir: &Path, name: &str) -> Result<()> {
     fs::create_dir_all(collection.join("_shared"))?;
     fs::create_dir_all(collection.join("apis/posts"))?;
     fs::create_dir_all(collection.join("flows"))?;
-    write_if_new(&collection.join("mad.md"), &project_config(name))?;
+    write_if_new(&collection.join("reqbook.md"), &project_config(name))?;
     write_if_new(
         &collection.join("_shared/env.md"),
         "# Environments\n\n## dev\n\n```yaml\nbaseUrl: http://localhost:8080\npostId: 1\n```\n",
@@ -205,14 +205,13 @@ Content-Type: application/json
 ```
 "#;
 
-/// Read the workspace name from `<root>/api-docs/mad.md`.
+/// Read the workspace name from `<root>/api-docs/reqbook.md`.
 pub fn workspace_name(root: &Path) -> Option<String> {
     workspace_name_from_dir(&root.join("api-docs"))
 }
 
 fn workspace_name_from_dir(api_docs: &Path) -> Option<String> {
-    let mad_md = api_docs.join("mad.md");
-    let content = fs::read_to_string(mad_md).ok()?;
+    let content = read_project_manifest(api_docs)?;
     // Extract `name:` from YAML frontmatter
     for line in content.lines() {
         if let Some(rest) = line.strip_prefix("name:") {
@@ -220,6 +219,15 @@ fn workspace_name_from_dir(api_docs: &Path) -> Option<String> {
             if !n.is_empty() {
                 return Some(n);
             }
+        }
+    }
+    None
+}
+
+fn read_project_manifest(api_docs: &Path) -> Option<String> {
+    for filename in ["reqbook.md", "mad.md"] {
+        if let Ok(content) = fs::read_to_string(api_docs.join(filename)) {
+            return Some(content);
         }
     }
     None

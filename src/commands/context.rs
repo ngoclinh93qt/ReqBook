@@ -1,7 +1,7 @@
-//! `mad context` command.
+//! `rqb context` command.
 
 use anyhow::Result;
-use mark_api_down::agent_context::{self, AgentContextOptions};
+use reqbook::agent_context::{self, AgentContextOptions};
 
 use crate::ContextArgs;
 
@@ -10,7 +10,7 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
         [] => None,
         [single] => Some(single.clone()),
         [kind, value] if matches!(kind.as_str(), "flow" | "endpoint") => Some(value.clone()),
-        _ => anyhow::bail!("mad context accepts <target> or flow <name>"),
+        _ => anyhow::bail!("rqb context accepts <target> or flow <name>"),
     };
     let rendered = agent_context::render(AgentContextOptions {
         root: args.root,

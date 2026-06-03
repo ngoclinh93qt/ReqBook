@@ -1,40 +1,40 @@
 ---
-title: "mad request"
+title: "rqb request"
 description: "Send an ad-hoc HTTP request from the terminal without creating a spec file first."
 ---
 
 ## Overview
 
-`mad request` lets you fire off any HTTP request from the terminal no spec file needed. It feels like `curl` but with automatic variable resolution and optional spec saving.
+`rqb request` lets you fire off any HTTP request from the terminal no spec file needed. It feels like `curl` but with automatic variable resolution and optional spec saving.
 
 ## Usage
 
 ```bash
-mad request <METHOD> <URL> [options]
+rqb request <METHOD> <URL> [options]
 ```
 
 ## Examples
 
 ```bash
 # Simple GET
-mad request GET https://api.example.com/users
+rqb request GET https://api.example.com/users
 
 # POST with JSON body
-mad request POST https://api.example.com/users \
+rqb request POST https://api.example.com/users \
  -H "Content-Type: application/json" \
  -d '{"name":"Ada Lovelace"}'
 
 # Use variables from env.md
-mad request GET https://api.example.com/users/{{userId}} --var userId=42
+rqb request GET https://api.example.com/users/{{userId}} --var userId=42
 
 # Dry-run (print resolved request, don't send)
-mad request GET https://api.example.com/users --dry-run
+rqb request GET https://api.example.com/users --dry-run
 
 # Save result as a spec file
-mad request GET https://api.example.com/users --save api-docs/apis/users/get-users.md
+rqb request GET https://api.example.com/users --save api-docs/apis/users/get-users.md
 
 # Auto-save to current collection
-mad request GET https://api.example.com/users --save
+rqb request GET https://api.example.com/users --save
 ```
 
 ## Default output
@@ -64,4 +64,4 @@ Add `--verbose` for the full diff view.
 ## Workspace behaviour
 
 - **Inside a git repo**: the collection is at `<repo-root>/api-docs/`. Auto-saved requests go to `<repo-root>/api-docs/apis/scratch/`.
-- **Outside a git repo**: the collection is at `~/.mad/workspace/default/api-docs/`. Unsaved requests go to `~/.mad/workspace/scratch/api-docs/`.
+- **Outside a git repo**: the collection is at `~/.rqb/workspace/default/api-docs/`. Unsaved requests go to `~/.rqb/workspace/scratch/api-docs/`.

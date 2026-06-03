@@ -24,8 +24,8 @@ pub(super) fn tools_list_result() -> Value {
     json!({
         "tools": [
             {
-                "name": "mad_exec",
-                "description": "Execute a MarkApiDown endpoint spec and return the HTTP result.",
+                "name": "rqb_exec",
+                "description": "Execute a Reqbook endpoint spec and return the HTTP result.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -63,8 +63,8 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_flow",
-                "description": "Execute a MarkApiDown pipeline and return per-step results.",
+                "name": "rqb_flow",
+                "description": "Execute a Reqbook pipeline and return per-step results.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -85,8 +85,8 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_author",
-                "description": "Create a new MarkApiDown endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.\n\nRequired frontmatter fields: resource, protocol (http), method (GET/POST/PUT/PATCH/DELETE), path (/res/:param), version (1).\nRequired sections in order: ## Request (```http block), ## Expected response (```http block).\nOptional sections: ## Error responses (reference only, not executed), ## Assertions (structured rules), ## Tests (```agent-task block), ## Notes.\nVariables use {{name}} syntax in http blocks. Path params use :param in the path field and URL.\nSee api-docs/_shared/env.md for available environments and variable names.",
+                "name": "rqb_author",
+                "description": "Create a new Reqbook endpoint spec file. Validates the content before writing. Refuses to overwrite unless overwrite: true.\n\nRequired frontmatter fields: resource, protocol (http), method (GET/POST/PUT/PATCH/DELETE), path (/res/:param), version (1).\nRequired sections in order: ## Request (```http block), ## Expected response (```http block).\nOptional sections: ## Error responses (reference only, not executed), ## Assertions (structured rules), ## Tests (```agent-task block), ## Notes.\nVariables use {{name}} syntax in http blocks. Path params use :param in the path field and URL.\nSee api-docs/_shared/env.md for available environments and variable names.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -107,7 +107,7 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_vars",
+                "name": "rqb_vars",
                 "description": "Show which variables a spec requires and which are resolved in the current env.",
                 "inputSchema": {
                     "type": "object",
@@ -125,7 +125,7 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_search",
+                "name": "rqb_search",
                 "description": "Search endpoint specs by method, path, tag, or text.",
                 "inputSchema": {
                     "type": "object",
@@ -151,7 +151,7 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_context",
+                "name": "rqb_context",
                 "description": "Return compact deterministic API context for an endpoint, flow, or changed specs.",
                 "inputSchema": {
                     "type": "object",
@@ -185,7 +185,7 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_history",
+                "name": "rqb_history",
                 "description": "Return recent execution history for a spec.",
                 "inputSchema": {
                     "type": "object",
@@ -203,7 +203,7 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_session",
+                "name": "rqb_session",
                 "description": "Get or set the session context (env + vars) used as defaults by exec/flow.",
                 "inputSchema": {
                     "type": "object",
@@ -227,7 +227,7 @@ pub(super) fn tools_list_result() -> Value {
                 }
             },
             {
-                "name": "mad_exec_batch",
+                "name": "rqb_exec_batch",
                 "description": "Execute multiple endpoint specs sequentially and return a summary.",
                 "inputSchema": {
                     "type": "object",
@@ -670,8 +670,10 @@ pub(super) async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
     }
 
     for (k, v) in std::env::vars() {
-        if let Some(stripped) = k.strip_prefix("MAD_") {
-            context.insert(SourceKind::OsEnv, stripped, v);
+        if let Some(stripped) = k.strip_prefix("RQB_") {
+            context.insert(SourceKind::OsEnv, env_name_to_var(stripped), v);
+        } else if let Some(stripped) = k.strip_prefix("MAD_") {
+            context.insert(SourceKind::OsEnv, env_name_to_var(stripped), v);
         }
     }
 
@@ -714,6 +716,22 @@ pub(super) async fn handle_vars(args: &Value) -> Result<Value, (i32, String)> {
 
     let text = serde_json::to_string_pretty(&result).map_err(|e| (-32000, e.to_string()))?;
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+}
+
+fn env_name_to_var(name: &str) -> String {
+    let mut parts = name.split('_').filter(|part| !part.is_empty());
+    let Some(first) = parts.next() else {
+        return String::new();
+    };
+    let mut out = first.to_ascii_lowercase();
+    for part in parts {
+        let mut chars = part.chars();
+        if let Some(first) = chars.next() {
+            out.push(first.to_ascii_uppercase());
+            out.push_str(&chars.as_str().to_ascii_lowercase());
+        }
+    }
+    out
 }
 
 pub(super) async fn handle_search(args: &Value) -> Result<Value, (i32, String)> {

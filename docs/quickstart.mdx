@@ -1,16 +1,16 @@
 ---
 title: "Quickstart"
-description: "Install MarkApiDown, open the web UI, and run your first agent-friendly API spec."
+description: "Install Reqbook, open the web UI, and run your first agent-friendly API spec."
 icon: "rocket"
 ---
 
 # Quickstart
 
-This path is for a developer who wants MarkApiDown working with a coding agent and a browser UI in a few minutes. The terminal is still there for automation, but it is not the only interface.
+This path is for a developer who wants Reqbook working with a coding agent and a browser UI in a few minutes. The terminal is still there for automation, but it is not the only interface.
 
 ---
 
-## 1. Install MarkApiDown
+## 1. Install Reqbook
 
 <Tabs>
  <Tab title="Shell installer">
@@ -20,12 +20,12 @@ This path is for a developer who wants MarkApiDown working with a coding agent a
  </Tab>
  <Tab title="Cargo">
  ```bash
- cargo install mark-api-down
+ cargo install reqbook
  ```
  </Tab>
  <Tab title="npm wrapper">
  ```bash
- npm install -g mark-api-down
+ npm install -g reqbook
  ```
  </Tab>
 </Tabs>
@@ -33,7 +33,7 @@ This path is for a developer who wants MarkApiDown working with a coding agent a
 Verify the install:
 
 ```bash
-mad version
+rqb version
 ```
 
 ---
@@ -42,15 +42,15 @@ mad version
 
 ```bash
 mkdir my-api && cd my-api
-mad init --name=my-api --dev-url=https://jsonplaceholder.typicode.com --yes
+rqb init --name=my-api --dev-url=https://jsonplaceholder.typicode.com --yes
 ```
 
-MarkApiDown creates:
+Reqbook creates:
 
 ```text
 api-docs/
 ├── README.md
-├── mad.md
+├── reqbook.md
 ├── _shared/
 │ └── env.md
 ├── apis/
@@ -67,12 +67,12 @@ The generated endpoint uses JSONPlaceholder, so it can run immediately.
 ## 3. Open the web UI
 
 ```bash
-mad serve
+rqb serve
 ```
 
 Open `http://127.0.0.1:8080`.
 
-<img src="/images/ui-home.png" alt="mad-ui endpoint browser" />
+<img src="/images/ui-home.png" alt="rqb-ui endpoint browser" />
 
 Use the browser UI to:
 
@@ -93,7 +93,7 @@ Use the browser UI to:
 ## 4. Run the same spec from the terminal
 
 ```bash
-mad exec api-docs/apis/posts/get-posts.md --env=dev
+rqb exec api-docs/apis/posts/get-posts.md --env=dev
 ```
 
 Expected output:
@@ -107,7 +107,7 @@ duration: 180ms
 Dry-run shows the resolved request without sending it:
 
 ```bash
-mad exec api-docs/apis/posts/get-posts.md --env=dev --dry-run
+rqb exec api-docs/apis/posts/get-posts.md --env=dev --dry-run
 ```
 
 ```text
@@ -123,21 +123,21 @@ headers:
 ## 5. Install agent skills
 
 ```bash
-mad skills install
+rqb skills install
 ```
 
 Or choose one agent:
 
 ```bash
-mad skills install --agent=claude-code
-mad skills install --agent=cursor
-mad skills install --agent=copilot
+rqb skills install --agent=claude-code
+rqb skills install --agent=cursor
+rqb skills install --agent=copilot
 ```
 
 Now you can ask your coding agent:
 
 ```text
-Add a MarkApiDown spec for GET /users/:userId and validate it.
+Add a Reqbook spec for GET /users/:userId and validate it.
 ```
 
 Or:
@@ -151,7 +151,7 @@ Create a flow that gets a post, captures userId, then gets that user.
 ## 6. Validate before commit
 
 ```bash
-mad validate api-docs/
+rqb validate api-docs/
 ```
 
 Commit the markdown files, not hidden app state.
@@ -171,6 +171,6 @@ Commit the markdown files, not hidden app state.
  Learn the browser UI: request tweaks, mock mode, cURL import, flow canvas.
  </Card>
  <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
- Patterns for using MarkApiDown as the API layer in your agent loop.
+ Patterns for using Reqbook as the API layer in your agent loop.
  </Card>
 </CardGroup>

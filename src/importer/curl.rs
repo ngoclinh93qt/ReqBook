@@ -1,7 +1,7 @@
-//! Import a raw `curl` command as a MarkApiDown endpoint spec.
+//! Import a raw `curl` command as a Reqbook endpoint spec.
 //!
 //! Handles multi-line `curl` commands pasted from browser DevTools →
-//! "Copy as cURL (bash)" and converts them into clean MarkApiDown endpoint files.
+//! "Copy as cURL (bash)" and converts them into clean Reqbook endpoint files.
 
 use std::collections::BTreeMap;
 

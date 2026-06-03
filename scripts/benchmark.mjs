@@ -6,9 +6,9 @@ import os from 'node:os';
 import path from 'node:path';
 
 const root = process.cwd();
-const bin = process.env.MAD_BENCH_BIN || path.join(root, 'target', 'release', process.platform === 'win32' ? 'mad.exe' : 'mad');
-const iterations = Number(process.env.MAD_BENCH_ITERATIONS || 30);
-const port = Number(process.env.MAD_BENCH_PORT || 7799);
+const bin = process.env.RQB_BENCH_BIN || path.join(root, 'target', 'release', process.platform === 'win32' ? 'rqb.exe' : 'rqb');
+const iterations = Number(process.env.RQB_BENCH_ITERATIONS || 30);
+const port = Number(process.env.RQB_BENCH_PORT || 7799);
 
 function fail(message) {
   console.error(message);
@@ -115,20 +115,20 @@ if (!existsSync(bin)) {
 run('version check', bin, ['version']);
 
 const binarySize = statSync(bin).size;
-const help = measureCommand('mad --help', ['--help']);
-const validateFile = measureCommand('mad validate endpoint', ['validate', 'examples/jsonplaceholder/api-docs/posts/get-post-by-id.md']);
-const validateProject = measureCommand('mad validate collection', ['validate', 'examples/jsonplaceholder/api-docs/']);
+const help = measureCommand('rqb --help', ['--help']);
+const validateFile = measureCommand('rqb validate endpoint', ['validate', 'examples/jsonplaceholder/api-docs/posts/get-post-by-id.md']);
+const validateProject = measureCommand('rqb validate collection', ['validate', 'examples/jsonplaceholder/api-docs/']);
 const webFirstResponse = await measureWebFirstResponse();
 
 const rows = [
   ['Default binary size', '< 10 MiB', fmtBytes(binarySize), 'release binary'],
-  ['Cold start, `mad --help` mean', '< 20 ms', fmtMs(help.mean), `${iterations} runs; p95 ${fmtMs(help.p95)}`],
+  ['Cold start, `rqb --help` mean', '< 20 ms', fmtMs(help.mean), `${iterations} runs; p95 ${fmtMs(help.p95)}`],
   ['Validate one endpoint mean', '< 25 ms', fmtMs(validateFile.mean), `${iterations} runs; p95 ${fmtMs(validateFile.p95)}`],
   ['Validate example collection mean', '< 100 ms', fmtMs(validateProject.mean), `${iterations} runs; p95 ${fmtMs(validateProject.p95)}`],
   ['Web first response', '< 100 ms', fmtMs(webFirstResponse), `localhost:${port}`],
 ];
 
-console.log(`# MarkApiDown benchmark results\n`);
+console.log(`# Reqbook benchmark results\n`);
 console.log(`Date: ${new Date().toISOString()}`);
 console.log(`Machine: ${os.type()} ${os.release()} ${os.arch()}`);
 console.log(`Binary: ${bin}\n`);

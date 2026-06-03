@@ -6,7 +6,7 @@ use crate::resolver::ensure_no_secret;
 
 use super::{parse_url, resource_slug, sentence_case, ImportedEndpoint};
 
-/// Parse a `.http` file into MarkApiDown endpoints.
+/// Parse a `.http` file into Reqbook endpoints.
 pub fn import(source: &str) -> Result<(String, Vec<ImportedEndpoint>)> {
     ensure_no_secret(source, ".http request file")?;
     let mut endpoints = Vec::new();

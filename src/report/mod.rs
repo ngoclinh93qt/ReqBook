@@ -110,7 +110,7 @@ impl Reporter for MarkdownReporter {
             "diff": result.diff,
         });
         Ok(format!(
-            "# MarkApiDown execution\n\n- Method: `{}`\n- URL: `{}`\n- Duration: `{}` ms\n\n```json\n{}\n```",
+            "# Reqbook execution\n\n- Method: `{}`\n- URL: `{}`\n- Duration: `{}` ms\n\n```json\n{}\n```",
             result.request.method,
             result.request.url,
             result.duration_ms,

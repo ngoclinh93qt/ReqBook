@@ -241,7 +241,7 @@ fn collect_existing_keys(dir: &Path, keys: &mut std::collections::HashSet<(Strin
                 .unwrap_or_default();
             if matches!(
                 name,
-                "README.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
+                "README.md" | "reqbook.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
             ) {
                 continue;
             }
@@ -361,7 +361,7 @@ fn collect_recursive(api_docs: &Path, dir: &Path, groups: &mut BTreeMap<String, 
                 .unwrap_or_default();
             if matches!(
                 name,
-                "README.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
+                "README.md" | "reqbook.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
             ) {
                 continue;
             }
@@ -393,7 +393,7 @@ fn collect_recursive(api_docs: &Path, dir: &Path, groups: &mut BTreeMap<String, 
 }
 
 fn read_project_name(api_docs: &Path) -> Option<String> {
-    let source = fs::read_to_string(api_docs.join("mad.md")).ok()?;
+    let source = read_project_manifest(api_docs)?;
     let rest = source.strip_prefix("---\n")?;
     for line in rest.lines() {
         if line == "---" {
@@ -401,6 +401,15 @@ fn read_project_name(api_docs: &Path) -> Option<String> {
         }
         if let Some(name) = line.strip_prefix("name: ") {
             return Some(name.trim().to_string());
+        }
+    }
+    None
+}
+
+fn read_project_manifest(api_docs: &Path) -> Option<String> {
+    for filename in ["reqbook.md", "mad.md"] {
+        if let Ok(source) = fs::read_to_string(api_docs.join(filename)) {
+            return Some(source);
         }
     }
     None

@@ -1,4 +1,4 @@
-//! Markdown parsing for MarkApiDown specs.
+//! Markdown parsing for Reqbook specs.
 
 mod schema;
 
@@ -64,7 +64,7 @@ pub enum ParseError {
         fix: String,
     },
     /// Secret detected in versioned markdown.
-    #[error("{path}: possible secret detected\nFix: move this value to .env.local or MAD_* environment variables.")]
+    #[error("{path}: possible secret detected\nFix: move this value to .env.local or RQB_* environment variables.")]
     SecretDetected {
         /// File path.
         path: String,

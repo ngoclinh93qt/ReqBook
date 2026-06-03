@@ -1,12 +1,12 @@
 [package]
-name = "mark-api-down"
+name = "reqbook"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "Apache-2.0"
-authors = ["MarkApiDown contributors"]
-description = "Executable Markdown API specs for humans, CI, and coding agents."
-repository = "https://github.com/ngoclinh93qt/MarkApiDown"
+authors = ["ngoclinh93qt"]
+description = "Reqbook is executable API documentation for humans, CI, and coding agents."
+repository = "https://github.com/ngoclinh93qt/ReqBook"
 homepage = "https://markapidown.net"
 documentation = "https://docs.markapidown.net"
 readme = "README.md"
@@ -30,11 +30,11 @@ exclude = [
 ]
 
 [lib]
-name = "mark_api_down"
+name = "reqbook"
 path = "src/lib.rs"
 
 [[bin]]
-name = "mad"
+name = "rqb"
 path = "src/main.rs"
 
 [features]
@@ -109,7 +109,7 @@ targets = [
   "x86_64-pc-windows-msvc",
 ]
 install-path = "~/.local/bin"
-tap = "mark-api-down/homebrew-tap"
+tap = "reqbook/homebrew-tap"
 publish-jobs = ["homebrew"]
 pr-run-mode = "plan"
 allow-dirty = ["ci"]

@@ -23,7 +23,7 @@ pub enum SourceKind {
     OsEnv,
 }
 
-/// Resolution context with MarkApiDown priority ordering.
+/// Resolution context with Reqbook priority ordering.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Context {
     pipeline: BTreeMap<String, String>,
@@ -82,7 +82,7 @@ impl Context {
 #[derive(Debug, Error)]
 pub enum ResolveError {
     /// A variable is missing.
-    #[error("unresolved variable \"{name}\"\nFix: define {name} in .env.local, pass --var {name}=..., or set MAD_{env_name}.")]
+    #[error("unresolved variable \"{name}\"\nFix: define {name} in .env.local, pass --var {name}=..., or set RQB_{env_name}.")]
     MissingVariable {
         /// Variable name.
         name: String,
@@ -90,13 +90,13 @@ pub enum ResolveError {
         env_name: String,
     },
     /// A nested variable remains after resolution.
-    #[error("nested variable remained after resolution: {name}\nFix: define final values directly; MarkApiDown v1.0 does not recursively resolve variables.")]
+    #[error("nested variable remained after resolution: {name}\nFix: define final values directly; Reqbook v1.0 does not recursively resolve variables.")]
     NestedVariable {
         /// Variable name.
         name: String,
     },
     /// Secret was detected in a non-secret source.
-    #[error("possible secret detected in {location}\nFix: move this value to .env.local or MAD_* environment variables.")]
+    #[error("possible secret detected in {location}\nFix: move this value to .env.local or RQB_* environment variables.")]
     SecretDetected {
         /// Source name.
         location: String,

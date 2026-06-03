@@ -5,13 +5,13 @@ description: "Agent-native across 6 coding tools, visual debugger, fast CLI, you
 
 # Agent-native across 6 coding tools, visual debugger, fast CLI, your entire API lives in plain markdown.
 
-MarkApiDown stores API work as plain markdown files. Send ad-hoc requests from the terminal or browser. Design API contracts. Validate them in CI. Your coding agent can read, write, and run everything. No hosted workspace, no proprietary format just files in your repo.
+Reqbook stores API work as plain markdown files. Send ad-hoc requests from the terminal or browser. Design API contracts. Validate them in CI. Your coding agent can read, write, and run everything. No hosted workspace, no proprietary format just files in your repo.
 
 <CardGroup cols={3}>
- <Card title="mad-cli" icon="terminal" href="/docs/cli/overview">
- Terminal interface: `mad request`, `mad exec`, `mad flow`, and more.
+ <Card title="rqb-cli" icon="terminal" href="/docs/cli/overview">
+ Terminal interface: `rqb request`, `rqb exec`, `rqb flow`, and more.
  </Card>
- <Card title="mad-ui" icon="desktop" href="/docs/ui/overview">
+ <Card title="rqb-ui" icon="desktop" href="/docs/ui/overview">
  Browser interface: New Request panel, endpoint runner, flow canvas.
  </Card>
  <Card title="Agent integration" icon="robot" href="/docs/guides/ai-agents">
@@ -21,7 +21,7 @@ MarkApiDown stores API work as plain markdown files. Send ad-hoc requests from t
 
 <CardGroup cols={2}>
  <Card title="Quickstart" icon="rocket" href="/docs/quickstart">
- Install MarkApiDown, create a project, and execute your first request in under five minutes.
+ Install Reqbook, create a project, and execute your first request in under five minutes.
  </Card>
  <Card title="Agent integration" icon="robot" href="/docs/guides/ai-agents">
  Install skills and MCP tools so Claude Code, Cursor, Copilot, and others can work with specs directly.
@@ -30,7 +30,7 @@ MarkApiDown stores API work as plain markdown files. Send ad-hoc requests from t
  Browse specs, tune parameters, send requests, inspect responses, and edit markdown all in the browser.
  </Card>
  <Card title="Vibe coding guide" icon="wand-magic-sparkles" href="/docs/guides/vibe-coding">
- Use MarkApiDown in your agent loop: document routes, run endpoints, build flows, and review changes.
+ Use Reqbook in your agent loop: document routes, run endpoints, build flows, and review changes.
  </Card>
 </CardGroup>
 
@@ -42,7 +42,7 @@ Every API operation lives in a markdown file:
 
 ```
 api-docs/
-├── mad.md # Project config and defaults
+├── reqbook.md # Project config and defaults
 ├── _shared/
 │ └── env.md # Base URLs and environment variables
 ├── apis/
@@ -59,10 +59,10 @@ The same files are used by:
 
 | Surface | What it does |
 |---|---|
-| `mad exec` | Sends the HTTP request and diffs the response |
-| `mad serve` | Renders a browser UI for interactive testing |
-| `mad mock` | Serves recorded responses without a live backend |
-| `mad flow` | Runs a pipeline, captures values, injects them into later steps |
+| `rqb exec` | Sends the HTTP request and diffs the response |
+| `rqb serve` | Renders a browser UI for interactive testing |
+| `rqb mock` | Serves recorded responses without a live backend |
+| `rqb flow` | Runs a pipeline, captures values, injects them into later steps |
 | Agent skills | Teaches agents the format, file layout, and how to validate changes |
 | MCP tools | Lets Claude Code list, read, validate, execute, and author specs without shell parsing |
 | CI | Validates all specs and exits non-zero on any failure |
@@ -76,17 +76,17 @@ The same files are used by:
  Ask your agent to document a route, import from curl, or scan the project for missing specs:
 
  ```text
- Scan this project for API routes and add missing MarkApiDown specs.
+ Scan this project for API routes and add missing Reqbook specs.
  ```
 
  ```text
- Document POST /orders and make it runnable in MarkApiDown.
+ Document POST /orders and make it runnable in Reqbook.
  ```
  </Step>
 
  <Step title="Review in the browser UI">
  ```bash
- mad serve
+ rqb serve
  # → Preview: http://127.0.0.1:8080
  ```
 
@@ -105,7 +105,7 @@ The same files are used by:
 
  <Step title="Commit reviewable markdown">
  ```bash
- mad validate api-docs/
+ rqb validate api-docs/
  ```
 
  Specs are ordinary markdown. Every change is reviewable, diffable, and revertable in your PR.
@@ -114,20 +114,20 @@ The same files are used by:
 
 ---
 
-## Without MarkApiDown, agents work blind
+## Without Reqbook, agents work blind
 
-When an agent needs to test an API endpoint without MarkApiDown, it reads router files, middleware, env config, constructs a `curl` command, parses raw stdout, and throws everything away. The next session starts from zero.
+When an agent needs to test an API endpoint without Reqbook, it reads router files, middleware, env config, constructs a `curl` command, parses raw stdout, and throws everything away. The next session starts from zero.
 
-| Task | Without MarkApiDown | With MarkApiDown |
+| Task | Without Reqbook | With Reqbook |
 |---|---|---|
-| Test one endpoint | Read source files, construct curl, parse stdout | `mad_exec spec.md` structured result |
-| Debug multi-step flow | Write a temp script, manually chain requests, no trace on failure | `mad_flow pipeline.md` per-step state, captured values |
-| Detect a regression | Only after a bug report | `mad check` or `mad validate` in CI fails before merge |
-| Agent discovers APIs | Scan broad source and docs manually | `mad context` and `mad_search` return compact API context |
+| Test one endpoint | Read source files, construct curl, parse stdout | `rqb_exec spec.md` structured result |
+| Debug multi-step flow | Write a temp script, manually chain requests, no trace on failure | `rqb_flow pipeline.md` per-step state, captured values |
+| Detect a regression | Only after a bug report | `rqb check` or `rqb validate` in CI fails before merge |
+| Agent discovers APIs | Scan broad source and docs manually | `rqb context` and `rqb_search` return compact API context |
 | Share tests with team | "Send me the curl" | Commit markdown, review in PR |
-| Mock backend | Run live server or hardcode | `mad mock` from recorded responses |
+| Mock backend | Run live server or hardcode | `rqb mock` from recorded responses |
 
-The setup cost is five minutes (`mad init`). After that, API docs, tests, CI checks, mock responses, and agent context come from the same reviewable markdown files.
+The setup cost is five minutes (`rqb init`). After that, API docs, tests, CI checks, mock responses, and agent context come from the same reviewable markdown files.
 
 ---
 
@@ -135,7 +135,7 @@ The setup cost is five minutes (`mad init`). After that, API docs, tests, CI che
 
 <CardGroup cols={2}>
  <Card title="Agents need file-based tools" icon="robot">
- GUI tools store state in app databases or proprietary formats. Agents cannot read or write them reliably. MarkApiDown specs are plain markdown any agent can read, create, and edit them.
+ GUI tools store state in app databases or proprietary formats. Agents cannot read or write them reliably. Reqbook specs are plain markdown any agent can read, create, and edit them.
  </Card>
  <Card title="Everything stays in the repo" icon="code-branch">
  Specs live in `api-docs/` alongside your code. Every API change goes through code review. No "export to share" step, no drift between the tool and the repo.
@@ -148,7 +148,7 @@ The setup cost is five minutes (`mad init`). After that, API docs, tests, CI che
  </Card>
 </CardGroup>
 
-Postman is the right choice when a team wants a broad hosted API platform with collaboration, monitoring, and governance. Bruno is the right choice when a team primarily wants a mature Git-native desktop API client. Hurl is the right choice when a team wants a fast plain-text HTTP test runner in CI. MarkApiDown is for teams that want API docs in the repo to be readable, executable, reviewable in PRs, runnable in CI, and directly usable by coding agents.
+Postman is the right choice when a team wants a broad hosted API platform with collaboration, monitoring, and governance. Bruno is the right choice when a team primarily wants a mature Git-native desktop API client. Hurl is the right choice when a team wants a fast plain-text HTTP test runner in CI. Reqbook is for teams that want API docs in the repo to be readable, executable, reviewable in PRs, runnable in CI, and directly usable by coding agents.
 
 ---
 
@@ -162,6 +162,6 @@ Postman is the right choice when a team wants a broad hosted API platform with c
  Install skills, slash commands, and MCP for Claude Code.
  </Card>
  <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
- Start `mad serve` and explore the browser UI.
+ Start `rqb serve` and explore the browser UI.
  </Card>
 </CardGroup>

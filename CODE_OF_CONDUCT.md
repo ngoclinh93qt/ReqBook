@@ -1,6 +1,6 @@
 # Code of conduct
 
-MarkApiDown follows the Contributor Covenant Code of Conduct, version 2.1.
+Reqbook follows the Contributor Covenant Code of Conduct, version 2.1.
 
 ## Our pledge
 

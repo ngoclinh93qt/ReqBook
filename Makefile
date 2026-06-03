@@ -29,14 +29,14 @@ bench-agent-token:
 
 bench-size:
 	cargo build --release --locked
-	ls -lh target/release/mad
+	ls -lh target/release/rqb
 
 bench-size-minimal:
 	cargo build --release --locked --no-default-features --features minimal
-	ls -lh target/release/mad
+	ls -lh target/release/rqb
 
 bench-cold-start:
-	hyperfine --warmup 5 './target/release/mad --help'
+	hyperfine --warmup 5 './target/release/rqb --help'
 
 bench-web:
 	cargo run --release -- serve --port 7700 --host 127.0.0.1

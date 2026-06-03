@@ -14,7 +14,7 @@ use crate::{
     resolver::{mask, resolve, Context, ResolveError},
 };
 
-/// HTTP client type used by MarkApiDown.
+/// HTTP client type used by Reqbook.
 pub type Client = reqwest::Client;
 
 /// Execution options.

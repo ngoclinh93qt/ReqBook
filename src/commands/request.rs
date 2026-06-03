@@ -1,9 +1,9 @@
-//! `mad request` command — send ad-hoc HTTP requests without a spec file.
+//! `rqb request` command — send ad-hoc HTTP requests without a spec file.
 
 use std::path::Path;
 
 use anyhow::Result;
-use mark_api_down::{
+use reqbook::{
     adhoc::{self, AdHocParams},
     engine::{self, ExecOpts},
 };
@@ -38,7 +38,7 @@ pub(crate) async fn run(args: RequestArgs, collection: &Path) -> Result<()> {
 
     let endpoint = adhoc::build_endpoint(&params)?;
     let context = {
-        let dummy = collection.join("mad.md");
+        let dummy = collection.join("reqbook.md");
         execution_context(&dummy, &args.env, &args.vars)?
     };
     let execution = engine::execute(

@@ -120,7 +120,7 @@ export function WorkspaceSwitcher({
       await api.openWorkspace(path);
       const ws = workspaces.find(w => w.path === path);
       if (ws) setCurrent(ws);
-      window.dispatchEvent(new CustomEvent('mad:workspace-switched'));
+      window.dispatchEvent(new CustomEvent('rqb:workspace-switched'));
       navigate('/');
     } catch {}
     setOpen(false);
@@ -205,8 +205,8 @@ export function Sidebar({ runTick, workspaceTick, onNewRequest }: {
   }, [workspaceTick]);
 
   useEffect(() => {
-    window.addEventListener('mad:endpoint-created', refreshEndpoints);
-    return () => window.removeEventListener('mad:endpoint-created', refreshEndpoints);
+    window.addEventListener('rqb:endpoint-created', refreshEndpoints);
+    return () => window.removeEventListener('rqb:endpoint-created', refreshEndpoints);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

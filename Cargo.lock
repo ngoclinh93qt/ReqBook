@@ -2223,53 +2223,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
-name = "mad-desktop"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "mark-api-down",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tokio",
-]
-
-[[package]]
-name = "mark-api-down"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "clap",
- "clap_complete",
- "criterion",
- "dialoguer",
- "dirs 5.0.1",
- "http",
- "mime_guess",
- "owo-colors",
- "pretty_assertions",
- "pulldown-cmark",
- "regex",
- "reqwest 0.12.28",
- "rust-embed",
- "serde",
- "serde_json",
- "serde_json_path",
- "serde_yaml",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-subscriber",
- "walkdir",
- "wiremock",
-]
-
-[[package]]
 name = "markup5ever"
 version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3234,6 +3187,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "reqbook"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "clap",
+ "clap_complete",
+ "criterion",
+ "dialoguer",
+ "dirs 5.0.1",
+ "http",
+ "mime_guess",
+ "owo-colors",
+ "pretty_assertions",
+ "pulldown-cmark",
+ "regex",
+ "reqwest 0.12.28",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "serde_json_path",
+ "serde_yaml",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+ "wiremock",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3341,6 +3327,20 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rqb-desktop"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqbook",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tokio",
 ]
 
 [[package]]

@@ -41,7 +41,7 @@ pub fn export(root: &Path) -> Result<Value> {
     let mut root_doc = json!({
         "openapi": "3.0.3",
         "info": {
-            "title": project_name(root).unwrap_or_else(|| "MarkApiDown API".to_string()),
+            "title": project_name(root).unwrap_or_else(|| "Reqbook API".to_string()),
             "version": "1.0.0"
         },
         "paths": Value::Object(paths)
@@ -100,7 +100,10 @@ fn collect_endpoint_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
             }
         } else if path.extension().is_some_and(|ext| ext == "md") {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
-            if !matches!(name.as_ref(), "README.md" | "mad.md" | "env.md") {
+            if !matches!(
+                name.as_ref(),
+                "README.md" | "reqbook.md" | "mad.md" | "env.md"
+            ) {
                 out.push(path);
             }
         }
@@ -246,13 +249,22 @@ fn operation_id(method: &str, path: &str, title: &str) -> String {
 }
 
 fn project_name(root: &Path) -> Option<String> {
-    let source = std::fs::read_to_string(root.join("mad.md")).ok()?;
+    let source = read_project_manifest(root)?;
     for line in source.lines() {
         if let Some(name) = line.strip_prefix("name:") {
             let name = name.trim().trim_matches('"').trim_matches('\'');
             if !name.is_empty() {
                 return Some(name.to_string());
             }
+        }
+    }
+    None
+}
+
+fn read_project_manifest(root: &Path) -> Option<String> {
+    for filename in ["reqbook.md", "mad.md"] {
+        if let Ok(source) = std::fs::read_to_string(root.join(filename)) {
+            return Some(source);
         }
     }
     None

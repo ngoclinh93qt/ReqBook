@@ -1,21 +1,21 @@
 #!/usr/bin/env sh
 set -eu
 
-REPO="${MAD_REPO:-ngoclinh93qt/MarkApiDown}"
-BIN_NAME="mad"
-INSTALL_DIR="${MAD_INSTALL_DIR:-}"
+REPO="${RQB_REPO:-${MAD_REPO:-ngoclinh93qt/ReqBook}}"
+BIN_NAME="rqb"
+INSTALL_DIR="${RQB_INSTALL_DIR:-${MAD_INSTALL_DIR:-}}"
 VERSION="latest"
 
 usage() {
   cat <<'EOF'
-Install MarkApiDown.
+Install Reqbook.
 
 Usage:
   install.sh [--version=<tag>]
 
 Environment:
-  MAD_REPO         GitHub repo, default ngoclinh93qt/MarkApiDown
-  MAD_INSTALL_DIR  Install directory override
+  RQB_REPO         GitHub repo, default ngoclinh93qt/ReqBook
+  RQB_INSTALL_DIR  Install directory override
 EOF
 }
 
@@ -54,7 +54,7 @@ case "$arch" in
 esac
 
 target="${arch_slug}-${os_slug}"
-archive="mad-${target}.tar.xz"
+archive="rqb-${target}.tar.xz"
 
 if [ "$VERSION" = "latest" ]; then
   base_url="https://github.com/${REPO}/releases/latest/download"
@@ -70,7 +70,7 @@ if [ -z "$INSTALL_DIR" ]; then
   fi
 fi
 
-tmp="${TMPDIR:-/tmp}/mad-install.$$"
+tmp="${TMPDIR:-/tmp}/rqb-install.$$"
 mkdir -p "$tmp"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 

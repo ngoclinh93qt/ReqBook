@@ -15,18 +15,18 @@ import { BrandMark, Sidebar, StatusBar, WorkspaceSwitcher } from './Sidebar';
 export function App() {
   return (
     <BrowserRouter>
-      <MadShell />
+      <ReqbookShell />
     </BrowserRouter>
   );
 }
 
-function MadShell() {
+function ReqbookShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const { vars: browserVars, save: saveBrowserVars } = useBrowserVars();
   const [varsData, setVarsData] = useState<VarsData | null>(null);
   const [env, setEnv] = useState('dev');
-  const [theme, setTheme] = useState(() => localStorage.getItem('mad-theme') ?? 'light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('rqb-theme') ?? 'light');
   const [mockMode, setMockMode] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
   const [envModalOpen, setEnvModalOpen] = useState(false);
@@ -40,7 +40,7 @@ function MadShell() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('mad-theme', theme);
+    localStorage.setItem('rqb-theme', theme);
   }, [theme]);
 
   useEffect(() => {
@@ -52,15 +52,15 @@ function MadShell() {
       setMockMode(data.mock_mode ?? false);
     }).catch(() => {});
     const handler = () => setRunTick(t => t + 1);
-    window.addEventListener('mad:run-saved', handler);
+    window.addEventListener('rqb:run-saved', handler);
     const onEndpointCreated = () => refreshWorkspaceData();
     const onWorkspaceSwitched = () => refreshWorkspaceData();
-    window.addEventListener('mad:endpoint-created', onEndpointCreated);
-    window.addEventListener('mad:workspace-switched', onWorkspaceSwitched);
+    window.addEventListener('rqb:endpoint-created', onEndpointCreated);
+    window.addEventListener('rqb:workspace-switched', onWorkspaceSwitched);
     return () => {
-      window.removeEventListener('mad:run-saved', handler);
-      window.removeEventListener('mad:endpoint-created', onEndpointCreated);
-      window.removeEventListener('mad:workspace-switched', onWorkspaceSwitched);
+      window.removeEventListener('rqb:run-saved', handler);
+      window.removeEventListener('rqb:endpoint-created', onEndpointCreated);
+      window.removeEventListener('rqb:workspace-switched', onWorkspaceSwitched);
     };
   }, []);
 
@@ -223,7 +223,7 @@ function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, e
     <header className="topbar">
       <button className="brand" onClick={onHome}>
         <span className="brand-mark"><BrandMark size={20} color="var(--accent)" /></span>
-        <span className="brand-name">MarkApiDown</span>
+        <span className="brand-name">Reqbook</span>
       </button>
       <span className="topbar-div" />
       <WorkspaceSwitcher compact workspaceTick={workspaceTick} onNavigateHome={onHome} />

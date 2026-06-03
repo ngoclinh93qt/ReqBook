@@ -1,4 +1,4 @@
-//! `mad doctor` command — diagnose project setup.
+//! `rqb doctor` command — diagnose project setup.
 
 use std::{fs, io::Write, path::Path};
 
@@ -8,8 +8,8 @@ use owo_colors::OwoColorize;
 use super::validate::{markdown_files, validate_file};
 
 pub(crate) fn run(args: crate::DoctorArgs, collection: &Path) -> Result<()> {
-    let sha = env!("MAD_BUILD_SHA");
-    println!("MarkApiDown {} ({})", env!("CARGO_PKG_VERSION"), sha);
+    let sha = env!("RQB_BUILD_SHA");
+    println!("Reqbook {} ({})", env!("CARGO_PKG_VERSION"), sha);
     println!();
     println!("Project");
     println!("  Collection: {}", collection.display());
@@ -48,14 +48,14 @@ pub(crate) fn run(args: crate::DoctorArgs, collection: &Path) -> Result<()> {
 
 #[cfg(feature = "install")]
 fn check_skills_freshness(fix: bool) {
-    use mark_api_down::installer::Agent;
+    use reqbook::installer::Agent;
 
     let skill_dir = Path::new(".claude/skills");
     if !skill_dir.exists() {
         return;
     }
 
-    let embedded: &[(&str, &str)] = &[("mad", include_str!("../../skills/mad/SKILL.md"))];
+    let embedded: &[(&str, &str)] = &[("rqb", include_str!("../../skills/rqb/SKILL.md"))];
 
     let mut stale: Vec<&str> = Vec::new();
     for (name, expected) in embedded {
@@ -70,10 +70,9 @@ fn check_skills_freshness(fix: bool) {
         println!("  {} Skills up-to-date", "✓".green());
     } else {
         println!("  {} Skills out-of-date: {}", "✗".red(), stale.join(", "));
-        println!("  Fix: run `mad install skills` to update installed skills.");
+        println!("  Fix: run `rqb install skills` to update installed skills.");
         if fix {
-            match mark_api_down::installer::install(Path::new("."), Some(Agent::ClaudeCode.name()))
-            {
+            match reqbook::installer::install(Path::new("."), Some(Agent::ClaudeCode.name())) {
                 Ok(files) => {
                     for f in &files {
                         println!("  reinstalled: {}", f.path.display());

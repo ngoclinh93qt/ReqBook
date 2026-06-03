@@ -1,26 +1,26 @@
 ---
 title: "Configuration reference"
-description: "Project config (mad.md), environment config (env.md), auth modes, retry policy, and the web preview settings."
+description: "Project config (reqbook.md), environment config (env.md), auth modes, retry policy, and the web preview settings."
 icon: "gear"
 ---
 
-## Project config: `api-docs/mad.md`
+## Project config: `api-docs/reqbook.md`
 
-`api-docs/mad.md` is the project configuration file. It uses YAML frontmatter and structured YAML code blocks inside named markdown sections.
+`api-docs/reqbook.md` is the project configuration file. It uses YAML frontmatter and structured YAML code blocks inside named markdown sections.
 
 ### Frontmatter fields
 
 | Field | Required | Type | Description |
 |---|---|---|---|
 | `name` | yes | string | Project name shown in the CLI, web preview, reports, and generated index. |
-| `version` | yes | integer | MarkApiDown spec format version. Must be `1` for the current spec format. |
+| `version` | yes | integer | Reqbook spec format version. Must be `1` for the current spec format. |
 | `default-env` | yes | string | Environment used when a command is run without `--env`. |
 
 Unknown frontmatter keys produce a warning and are ignored, allowing future versions to add fields without breaking older clients.
 
 ### Complete example
 
-```yaml filename="api-docs/mad.md"
+```yaml filename="api-docs/reqbook.md"
 ---
 name: my-api
 version: 1
@@ -70,7 +70,7 @@ If `## Defaults` is absent, the built-in defaults are used for every endpoint.
 
 ### ## Web preview section
 
-The `## Web preview` code block controls `mad serve`. CLI flags (`--port`, `--host`) override these values.
+The `## Web preview` code block controls `rqb serve`. CLI flags (`--port`, `--host`) override these values.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
@@ -85,34 +85,34 @@ The `## Web preview` code block controls `mad serve`. CLI flags (`--port`, `--ho
 plugins: []
 ```
 
-the current MarkApiDown release does not execute plugins. The `## Plugins` section is reserved for future use. Keep it as an empty list or omit the section entirely.
+the current Reqbook release does not execute plugins. The `## Plugins` section is reserved for future use. Keep it as an empty list or omit the section entirely.
 
 ### ## Notes section
 
-Free-form prose, checklists, or team conventions. The MarkApiDown parser ignores this section entirely. Use it for anything that should live alongside the config but not affect execution.
+Free-form prose, checklists, or team conventions. The Reqbook parser ignores this section entirely. Use it for anything that should live alongside the config but not affect execution.
 
 ---
 
 ## Auth modes
 
-Set the auth mode in `mad.md`'s `## Defaults` section (project-wide) or in individual endpoint frontmatter (per-endpoint override).
+Set the auth mode in `reqbook.md`'s `## Defaults` section (project-wide) or in individual endpoint frontmatter (per-endpoint override).
 
 | Mode | Description |
 |---|---|
 | `none` | No `Authorization` header added. This is the built-in default. |
 | `bearer` | Adds `Authorization: Bearer {{authToken}}`. Requires `authToken` to be resolved from any variable source. |
 | `basic` | Adds `Authorization: Basic <base64(username:password)>`. Requires both `username` and `password` variables. |
-| `custom` | The request block must include the `Authorization` header explicitly. MarkApiDown does not inject anything. |
+| `custom` | The request block must include the `Authorization` header explicitly. Reqbook does not inject anything. |
 
 <Tip>
-Set a project-wide default in `mad.md`'s `## Defaults` block, then override per-endpoint with `auth:` in the endpoint's frontmatter. The endpoint value always wins.
+Set a project-wide default in `reqbook.md`'s `## Defaults` block, then override per-endpoint with `auth:` in the endpoint's frontmatter. The endpoint value always wins.
 </Tip>
 
 ---
 
 ## Retry policy
 
-Configure retries in `mad.md`'s `## Defaults` section or in individual endpoint frontmatter.
+Configure retries in `reqbook.md`'s `## Defaults` section or in individual endpoint frontmatter.
 
 ```yaml
 retry:
@@ -154,10 +154,10 @@ userId: 456
 baseUrl: https://api.example.com
 ```
 
-The environment name passed to `--env` must match one of these headings exactly. If the heading is missing, MarkApiDown exits with code `2`.
+The environment name passed to `--env` must match one of these headings exactly. If the heading is missing, Reqbook exits with code `2`.
 
 <Warning>
-Do not put secrets in `env.md`. Tokens, passwords, and private keys must go in `.env.local` or `MAD_*` environment variables. The parser enforces this at validation time and exits with code `5` if a secret pattern is detected.
+Do not put secrets in `env.md`. Tokens, passwords, and private keys must go in `.env.local` or `RQB_*` environment variables. The parser enforces this at validation time and exits with code `5` if a secret pattern is detected.
 </Warning>
 
 ---
@@ -173,12 +173,12 @@ When the same variable name is defined in more than one source, the highest-prio
 | 3 | Endpoint frontmatter | `userId: 42` in the endpoint's YAML block |
 | 4 | `_shared/env.md` for the selected env | `## dev` block with `userId: 123` |
 | 5 | `.env.local` | `authToken=local-dev-token` |
-| 6 (lowest) | OS environment variables (`MAD_*`) | `MAD_USER_ID=99` |
+| 6 (lowest) | OS environment variables (`RQB_*`) | `RQB_USER_ID=99` |
 
-OS environment variables are stripped of the `MAD_` prefix and converted to lower camel case:
+OS environment variables are stripped of the `RQB_` prefix and converted to lower camel case:
 
-| OS variable | MarkApiDown variable |
+| OS variable | Reqbook variable |
 |---|---|
-| `MAD_AUTH_TOKEN` | `authToken` |
-| `MAD_BASE_URL` | `baseUrl` |
-| `MAD_USER_ID` | `userId` |
+| `RQB_AUTH_TOKEN` | `authToken` |
+| `RQB_BASE_URL` | `baseUrl` |
+| `RQB_USER_ID` | `userId` |

@@ -5,8 +5,8 @@ COPY . .
 RUN cargo build --release --no-default-features --features minimal --locked
 
 FROM alpine:3.20
-RUN addgroup -S mad && adduser -S mad -G mad
-COPY --from=builder /src/target/release/mad /usr/local/bin/mad
-USER mad
+RUN addgroup -S rqb && adduser -S rqb -G rqb
+COPY --from=builder /src/target/release/rqb /usr/local/bin/rqb
+USER rqb
 WORKDIR /work
-ENTRYPOINT ["mad"]
+ENTRYPOINT ["rqb"]

@@ -1,10 +1,10 @@
-# mark-api-down
+# reqbook
 
-Thin npm wrapper for the MarkApiDown Rust binary.
+Thin npm wrapper for the Reqbook Rust binary.
 
 ```bash
-npx mark-api-down@latest version
-npx mark-api-down@latest validate api-docs/
+npx reqbook@latest version
+npx reqbook@latest validate api-docs/
 ```
 
-The wrapper downloads the matching binary from GitHub Releases on first run and caches it in `~/.cache/mark-api-down/`.
+The wrapper downloads the matching binary from GitHub Releases on first run and caches it in `~/.cache/reqbook/`.

@@ -1,12 +1,12 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "MarkApiDown",
+  "name": "Reqbook",
   "logo": {
-    "light": "/images/mad-app-icon.svg",
-    "dark": "/images/mad-app-icon.svg"
+    "light": "/images/rqb-app-icon.svg",
+    "dark": "/images/rqb-app-icon.svg"
   },
-  "favicon": "/images/mad-app-icon.svg",
+  "favicon": "/images/rqb-app-icon.svg",
   "colors": {
     "primary": "#5b6cff",
     "light": "#7c8cff",
@@ -16,7 +16,7 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/ngoclinh93qt/MarkApiDown"
+        "href": "https://github.com/ngoclinh93qt/ReqBook"
       }
     ],
     "primary": {
@@ -60,7 +60,7 @@
         ]
       },
       {
-        "tab": "mad-cli",
+        "tab": "rqb-cli",
         "groups": [
           {
             "group": "Terminal interface",
@@ -78,7 +78,7 @@
         ]
       },
       {
-        "tab": "mad-ui",
+        "tab": "rqb-ui",
         "groups": [
           {
             "group": "Browser interface",
@@ -133,23 +133,23 @@
       {
         "anchor": "GitHub",
         "icon": "github",
-        "href": "https://github.com/ngoclinh93qt/MarkApiDown"
+        "href": "https://github.com/ngoclinh93qt/ReqBook"
       },
       {
         "anchor": "Changelog",
         "icon": "list",
-        "href": "https://github.com/ngoclinh93qt/MarkApiDown/releases"
+        "href": "https://github.com/ngoclinh93qt/ReqBook/releases"
       },
       {
         "anchor": "Community",
         "icon": "discord",
-        "href": "https://github.com/ngoclinh93qt/MarkApiDown/discussions"
+        "href": "https://github.com/ngoclinh93qt/ReqBook/discussions"
       }
     ]
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/ngoclinh93qt/MarkApiDown"
+      "github": "https://github.com/ngoclinh93qt/ReqBook"
     }
   }
 }

@@ -1,4 +1,4 @@
-//! `mad init` command — scaffold a new api-docs directory.
+//! `rqb init` command — scaffold a new api-docs directory.
 
 use std::{fs, io::Write, path::Path};
 
@@ -130,7 +130,7 @@ pub(crate) fn run(args: crate::InitArgs, collection: &Path) -> Result<()> {
     fs::create_dir_all(collection.join("_shared"))?;
     fs::create_dir_all(collection.join("apis/posts"))?;
     fs::create_dir_all(collection.join("flows"))?;
-    write_new(&collection.join("mad.md"), &project_config(&name))?;
+    write_new(&collection.join("reqbook.md"), &project_config(&name))?;
     write_new(&collection.join("_shared/env.md"), &env_config(&dev_url))?;
     write_new(
         &collection.join("apis/posts/get-posts.md"),
@@ -139,7 +139,7 @@ pub(crate) fn run(args: crate::InitArgs, collection: &Path) -> Result<()> {
     ensure_gitignore_has_env_local()?;
     regenerate_index(collection)?;
 
-    println!("{} Created mad.md (project config)", "✓".green());
+    println!("{} Created reqbook.md (project config)", "✓".green());
     println!("{} Created api-docs/ with 1 example", "✓".green());
     Ok(())
 }

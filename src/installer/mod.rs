@@ -8,7 +8,7 @@ use std::{
 use serde::Deserialize;
 use thiserror::Error;
 
-const MAD: &str = include_str!("../../skills/mad/SKILL.md");
+const RQB: &str = include_str!("../../skills/rqb/SKILL.md");
 
 // ─── Slash-command definitions ────────────────────────────────────────────────
 
@@ -19,15 +19,15 @@ struct CommandDef {
     content: &'static str,
 }
 
-/// All MarkApiDown slash commands, in order.
+/// All Reqbook slash commands, in order.
 const COMMANDS: &[CommandDef] = &[
     CommandDef {
-        slug: "mad",
-        content: include_str!("../../commands/mad.md"),
+        slug: "rqb",
+        content: include_str!("../../commands/rqb.md"),
     },
     CommandDef {
-        slug: "mad-debug",
-        content: include_str!("../../commands/mad-debug.md"),
+        slug: "rqb-debug",
+        content: include_str!("../../commands/rqb-debug.md"),
     },
 ];
 
@@ -137,13 +137,13 @@ pub enum InstallError {
         source: serde_yaml::Error,
     },
     /// Unknown skill name.
-    #[error("unknown skill \"{name}\". Available skills: mad")]
+    #[error("unknown skill \"{name}\". Available skills: rqb")]
     UnknownSkill {
         /// Name provided by the user.
         name: String,
     },
     /// Unknown slash command slug.
-    #[error("unknown command \"{name}\". Available commands: mad, mad-debug")]
+    #[error("unknown command \"{name}\". Available commands: rqb, rqb-debug")]
     UnknownCommand {
         /// Slug provided by the user.
         name: String,
@@ -196,7 +196,7 @@ pub fn detect_agents(root: &Path) -> Vec<AgentStatus> {
     .collect()
 }
 
-/// Install all MarkApiDown skills **and slash commands** for one explicit agent or
+/// Install all Reqbook skills **and slash commands** for one explicit agent or
 /// all detected agents.
 pub fn install(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, InstallError> {
     let agents = resolve_agents(root, agent)?;
@@ -312,7 +312,7 @@ pub fn install_command(
     Ok(installed)
 }
 
-/// Remove installed MarkApiDown skills and slash commands.
+/// Remove installed Reqbook skills and slash commands.
 pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, InstallError> {
     let agents = if let Some(agent) = agent {
         vec![
@@ -429,7 +429,7 @@ fn resolve_agents(root: &Path, agent: Option<&str>) -> Result<Vec<Agent>, Instal
 }
 
 fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
-    [MAD].into_iter().map(parse_skill).collect()
+    [RQB].into_iter().map(parse_skill).collect()
 }
 
 fn parse_skill(source: &'static str) -> Result<SkillSource, InstallError> {
@@ -535,10 +535,10 @@ mod tests {
         let mut installed = install(dir.path(), Some("cursor")).unwrap();
         installed.extend(install(dir.path(), Some("copilot")).unwrap());
         assert_eq!(installed.len(), 2); // 1 skill each
-        let cursor = fs::read_to_string(dir.path().join(".cursor/rules/mad.mdc")).unwrap();
+        let cursor = fs::read_to_string(dir.path().join(".cursor/rules/rqb.mdc")).unwrap();
         assert!(cursor.contains("alwaysApply: false"));
         let copilot =
-            fs::read_to_string(dir.path().join(".github/instructions/mad.instructions.md"))
+            fs::read_to_string(dir.path().join(".github/instructions/rqb.instructions.md"))
                 .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
     }
@@ -552,7 +552,7 @@ mod tests {
         // 1 skill + 2 commands = 3
         assert_eq!(installed.len(), 3);
 
-        for slug in &["mad", "mad-debug"] {
+        for slug in &["rqb", "rqb-debug"] {
             let path = dir.path().join(format!(".claude/commands/{slug}.md"));
             assert!(path.exists(), "{slug} command not created");
             let content = fs::read_to_string(&path).unwrap();
@@ -562,8 +562,8 @@ mod tests {
             );
         }
 
-        let skill = dir.path().join(".claude/skills/mad/SKILL.md");
-        assert!(skill.exists(), "mad skill not created");
+        let skill = dir.path().join(".claude/skills/rqb/SKILL.md");
+        assert!(skill.exists(), "rqb skill not created");
     }
 
     #[test]
@@ -588,17 +588,17 @@ mod tests {
     fn install_single_command_by_slug() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
-        let installed = install_command(dir.path(), Some("claude-code"), "mad").unwrap();
+        let installed = install_command(dir.path(), Some("claude-code"), "rqb").unwrap();
         assert_eq!(installed.len(), 1);
-        assert!(dir.path().join(".claude/commands/mad.md").exists());
-        assert!(!dir.path().join(".claude/commands/mad-debug.md").exists());
+        assert!(dir.path().join(".claude/commands/rqb.md").exists());
+        assert!(!dir.path().join(".claude/commands/rqb-debug.md").exists());
     }
 
     #[test]
     fn install_single_command_unknown_slug_errors() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".claude")).unwrap();
-        let result = install_command(dir.path(), Some("claude-code"), "mad-nonexistent");
+        let result = install_command(dir.path(), Some("claude-code"), "rqb-nonexistent");
         assert!(matches!(result, Err(InstallError::UnknownCommand { .. })));
     }
 
@@ -608,7 +608,7 @@ mod tests {
         fs::create_dir(dir.path().join(".claude")).unwrap();
         install(dir.path(), Some("claude-code")).unwrap();
 
-        let cmd = dir.path().join(".claude/commands/mad.md");
+        let cmd = dir.path().join(".claude/commands/rqb.md");
         assert!(cmd.exists());
 
         uninstall(dir.path(), Some("claude-code")).unwrap();

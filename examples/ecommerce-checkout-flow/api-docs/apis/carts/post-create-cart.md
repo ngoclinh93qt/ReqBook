@@ -57,4 +57,4 @@ Content-Type: application/json
 
 ## Notes
 
-This response is also what `mad mock` serves in local demos.
+This response is also what `rqb mock` serves in local demos.

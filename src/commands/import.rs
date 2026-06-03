@@ -1,4 +1,4 @@
-//! `mad import` command.
+//! `rqb import` command.
 
 use std::{io::Read, path::Path};
 
@@ -12,30 +12,30 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
         ImportCommand::Postman { file } => run_file_import(
             &file,
             "Postman collection",
-            mark_api_down::importer::postman::import,
+            reqbook::importer::postman::import,
             collection,
         ),
         ImportCommand::Insomnia { file } => run_file_import(
             &file,
             "Insomnia export",
-            mark_api_down::importer::insomnia::import,
+            reqbook::importer::insomnia::import,
             collection,
         ),
         ImportCommand::Openapi { file } => run_file_import(
             &file,
             "OpenAPI spec",
-            mark_api_down::importer::openapi::import,
+            reqbook::importer::openapi::import,
             collection,
         ),
         ImportCommand::Collection { path } => {
-            let (name, endpoints) = mark_api_down::importer::collection::import_dir(&path)
+            let (name, endpoints) = reqbook::importer::collection::import_dir(&path)
                 .with_context(|| format!("{}: invalid API client collection", path.display()))?;
             write_imported(&name, &path, &endpoints, collection)
         }
         ImportCommand::Http { file } => run_file_import(
             &file,
             ".http request file",
-            mark_api_down::importer::http_file::import,
+            reqbook::importer::http_file::import,
             collection,
         ),
         ImportCommand::Curl { file } => {
@@ -50,13 +50,13 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
                 }
             };
             let (name, endpoints) =
-                mark_api_down::importer::curl::import(&source).context("invalid curl command")?;
+                reqbook::importer::curl::import(&source).context("invalid curl command")?;
             if endpoints.is_empty() {
                 println!("no endpoints parsed");
                 return Ok(());
             }
             let parent = collection.parent().unwrap_or(Path::new("."));
-            let written = mark_api_down::importer::write_endpoints(parent, &endpoints)?;
+            let written = reqbook::importer::write_endpoints(parent, &endpoints)?;
             println!("imported from {name}");
             for path in &written {
                 println!("  created {}", path.display());
@@ -68,8 +68,8 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
             Ok(())
         }
         ImportCommand::Project { path, port, url } => {
-            use mark_api_down::importer::project::{smart_import, ImportSource};
             use owo_colors::OwoColorize;
+            use reqbook::importer::project::{smart_import, ImportSource};
 
             let root = path.unwrap_or_else(|| Path::new(".").to_path_buf());
             let started = std::time::Instant::now();
@@ -106,12 +106,12 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
                             println!();
                             println!("  Tip: export a full spec without starting a server:");
                             println!("    {}", fw.export_cmd);
-                            println!("  Then: mad import openapi openapi.json");
+                            println!("  Then: rqb import openapi openapi.json");
                             println!();
                         } else {
                             println!();
                             println!("  Tip: start your dev server and re-run:");
-                            println!("    mad import project --port <PORT>");
+                            println!("    rqb import project --port <PORT>");
                             println!();
                         }
                     }
@@ -125,7 +125,7 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
             }
 
             let parent = collection.parent().unwrap_or(Path::new("."));
-            let written = mark_api_down::importer::write_endpoints(parent, &endpoints)?;
+            let written = reqbook::importer::write_endpoints(parent, &endpoints)?;
             println!(
                 "imported {}   {} route(s) found ({}ms)",
                 name,
@@ -145,7 +145,7 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
                 let env_path = collection.join("_shared/env.md");
                 println!(
                     "Next: set baseUrl in {}, \
-                     then run `mad validate {}`",
+                     then run `rqb validate {}`",
                     env_path.display(),
                     collection.display()
                 );
@@ -158,7 +158,7 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
 fn run_file_import(
     file: &Path,
     kind: &str,
-    parse: impl Fn(&str) -> anyhow::Result<(String, Vec<mark_api_down::importer::ImportedEndpoint>)>,
+    parse: impl Fn(&str) -> anyhow::Result<(String, Vec<reqbook::importer::ImportedEndpoint>)>,
     collection: &Path,
 ) -> Result<()> {
     let source = read_text(file, &format!("reading {kind}"))?;
@@ -170,7 +170,7 @@ fn run_file_import(
 fn write_imported(
     name: &str,
     source_path: &Path,
-    endpoints: &[mark_api_down::importer::ImportedEndpoint],
+    endpoints: &[reqbook::importer::ImportedEndpoint],
     collection: &Path,
 ) -> Result<()> {
     if endpoints.is_empty() {
@@ -178,7 +178,7 @@ fn write_imported(
         return Ok(());
     }
     let parent = collection.parent().unwrap_or(Path::new("."));
-    let written = mark_api_down::importer::write_endpoints(parent, endpoints)?;
+    let written = reqbook::importer::write_endpoints(parent, endpoints)?;
     println!("imported from {} ({})", name, source_path.display());
     for path in &written {
         println!("  created {}", path.display());

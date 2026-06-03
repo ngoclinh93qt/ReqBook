@@ -1,6 +1,6 @@
 ---
 title: "CLI reference"
-description: "Complete reference for all mad subcommands, flags, and exit codes."
+description: "Complete reference for all rqb subcommands, flags, and exit codes."
 icon: "terminal"
 ---
 
@@ -10,7 +10,7 @@ Every subcommand accepts these flags. They must be placed before the subcommand 
 
 | Flag | Type | Description |
 |---|---|---|
-| `--config <path>` | path | Path to `api-docs/mad.md`. Overrides the default discovery. |
+| `--config <path>` | path | Path to `api-docs/reqbook.md`. Overrides the default discovery. |
 | `--no-color` | bool | Disable ANSI color in output. Also respected if `NO_COLOR` is set in the environment. |
 | `-v`, `--verbose` | bool | Enable verbose diagnostic output. |
 
@@ -18,7 +18,7 @@ Every subcommand accepts these flags. They must be placed before the subcommand 
 
 ## Exit codes
 
-MarkApiDown returns stable exit codes you can reliably test for in CI scripts. See the [Exit codes reference](/docs/reference/exit-codes) for CI usage examples.
+Reqbook returns stable exit codes you can reliably test for in CI scripts. See the [Exit codes reference](/docs/reference/exit-codes) for CI usage examples.
 
 | Code | Name | Meaning |
 |---|---|---|
@@ -31,60 +31,60 @@ MarkApiDown returns stable exit codes you can reliably test for in CI scripts. S
 
 ---
 
-## mad init
+## rqb init
 
 Scaffold a new `api-docs/` project in the current directory.
 
 ```bash
-mad init [--name=<name>] [--dev-url=<url>] [--yes]
+rqb init [--name=<name>] [--dev-url=<url>] [--yes]
 ```
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--name` | string | interactive | Project name written into `mad.md`. |
+| `--name` | string | interactive | Project name written into `reqbook.md`. |
 | `--dev-url` | string | interactive | Base URL written into `_shared/env.md` for the `dev` environment. |
 | `--yes` | bool | `false` | Accept all defaults without interactive prompts. |
 
-Without `--yes`, MarkApiDown prompts for any missing values. `--yes` uses `my-api` and `http://localhost:8080` as defaults when no flags are provided.
+Without `--yes`, Reqbook prompts for any missing values. `--yes` uses `my-api` and `http://localhost:8080` as defaults when no flags are provided.
 
 <Note>
-`mad init` does not overwrite existing files. If a file already exists, it exits with an error naming the conflicting file. It also appends `.env.local` to `.gitignore` if not already present.
+`rqb init` does not overwrite existing files. If a file already exists, it exits with an error naming the conflicting file. It also appends `.env.local` to `.gitignore` if not already present.
 </Note>
 
 **Examples**
 
 ```bash
 # Interactive
-mad init
+rqb init
 
 # Non-interactive
-mad init --name=payments-api --dev-url=http://localhost:3000
+rqb init --name=payments-api --dev-url=http://localhost:3000
 
 # Accept all defaults in CI
-mad init --yes
+rqb init --yes
 ```
 
 **Exit codes**: `0` on success, `3` on filesystem error.
 
 ---
 
-## mad validate
+## rqb validate
 
 Validate one endpoint file, one pipeline file, or all markdown files under a directory.
 
 ```bash
-mad validate <path>
+rqb validate <path>
 ```
 
 | Argument | Description |
 |---|---|
 | `<path>` | File or directory to validate. |
 
-MarkApiDown classifies each file by location and name:
+Reqbook classifies each file by location and name:
 
 - Files named `env.md` → validated as environment config.
 - Files under `flows/` → validated as pipeline files.
-- `mad.md` and `README.md` → checked for frontmatter only.
+- `reqbook.md` and `README.md` → checked for frontmatter only.
 - All other `.md` files → validated as endpoint files.
 
 Each error message includes the file path, line number when known, and a suggested fix.
@@ -93,22 +93,22 @@ Each error message includes the file path, line number when known, and a suggest
 
 ```bash
 # Validate the entire project
-mad validate api-docs/
+rqb validate api-docs/
 
 # Validate a single endpoint file
-mad validate api-docs/apis/users/get-user-by-id.md
+rqb validate api-docs/apis/users/get-user-by-id.md
 ```
 
 **Exit codes**: `0` if all files are valid, `2` if any spec is invalid, `5` if a secret is detected.
 
 ---
 
-## mad exec
+## rqb exec
 
 Execute one endpoint file and compare the actual response against the expected response.
 
 ```bash
-mad exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-run] [--timeout=<ms>] [--strict-assertions]
+rqb exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-run] [--timeout=<ms>] [--strict-assertions]
 ```
 
 | Flag | Type | Default | Description |
@@ -122,40 +122,40 @@ mad exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-run]
 | `--strict-assertions` | bool | `false` | Treat failing `## Assertions` rules as execution failures. |
 
 <Note>
-When `--env=prod` is used in an interactive terminal, MarkApiDown prompts for confirmation before sending the request. Pass `--yes` (global flag) to skip the prompt in CI.
+When `--env=prod` is used in an interactive terminal, Reqbook prompts for confirmation before sending the request. Pass `--yes` (global flag) to skip the prompt in CI.
 </Note>
 
-If a referenced variable is not resolved from any source, MarkApiDown exits with code `2` before making any network request, and prints a suggested fix naming the variable and where to define it.
+If a referenced variable is not resolved from any source, Reqbook exits with code `2` before making any network request, and prints a suggested fix naming the variable and where to define it.
 
 **Examples**
 
 ```bash
 # Basic execution against the dev environment
-mad exec api-docs/apis/users/get-user-by-id.md
+rqb exec api-docs/apis/users/get-user-by-id.md
 
 # Override environment and inject a variable
-mad exec api-docs/apis/users/get-user-by-id.md --env=staging --var userId=42
+rqb exec api-docs/apis/users/get-user-by-id.md --env=staging --var userId=42
 
 # JUnit XML output for CI test reporters
-mad exec api-docs/apis/users/get-user-by-id.md --output=junit > results.xml
+rqb exec api-docs/apis/users/get-user-by-id.md --output=junit > results.xml
 
 # Dry run inspect the resolved request without sending
-mad exec api-docs/apis/users/create-user.md --dry-run --var email=test@example.com
+rqb exec api-docs/apis/users/create-user.md --dry-run --var email=test@example.com
 
 # Override the timeout for a slow endpoint
-mad exec api-docs/apis/users/get-user-by-id.md --timeout=10000
+rqb exec api-docs/apis/users/get-user-by-id.md --timeout=10000
 ```
 
 **Exit codes**: `0` response matches, `1` assertion fails, `2` invalid spec, `3` engine error, `4` network error, `5` secret detected.
 
 ---
 
-## mad flow
+## rqb flow
 
 Execute a pipeline file. Steps run sequentially by default, with optional parallelism.
 
 ```bash
-mad flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel] [--no-parallel] [--timeout=<ms>] [--strict-assertions]
+rqb flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel] [--no-parallel] [--timeout=<ms>] [--strict-assertions]
 ```
 
 | Flag | Type | Default | Description |
@@ -177,55 +177,55 @@ mad flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel
 
 ```bash
 # Run a pipeline against staging
-mad flow api-docs/flows/user-onboarding.md --env=staging
+rqb flow api-docs/flows/user-onboarding.md --env=staging
 
 # Force sequential execution for debugging
-mad flow api-docs/flows/user-onboarding.md --no-parallel
+rqb flow api-docs/flows/user-onboarding.md --no-parallel
 
 # JSON output for programmatic consumption
-mad flow api-docs/flows/user-onboarding.md --output=json
+rqb flow api-docs/flows/user-onboarding.md --output=json
 ```
 
 **Exit codes**: `0` all steps pass (or `continue-on-error` is set), `1` any step fails, `2` pipeline spec invalid, `3` engine error, `4` network error.
 
 ---
 
-## mad index
+## rqb index
 
 Regenerate `api-docs/README.md` from the current set of markdown files under `api-docs/`.
 
 ```bash
-mad index
+rqb index
 ```
 
-No flags. The generated file contains a linked list of all markdown files grouped by resource. Do not edit `api-docs/README.md` by hand it is overwritten on every `mad index` run.
+No flags. The generated file contains a linked list of all markdown files grouped by resource. Do not edit `api-docs/README.md` by hand it is overwritten on every `rqb index` run.
 
 <Note>
-`mad index` is run automatically by `mad init` and by all `mad import` subcommands. Run it manually only if you added or renamed files after an import.
+`rqb index` is run automatically by `rqb init` and by all `rqb import` subcommands. Run it manually only if you added or renamed files after an import.
 </Note>
 
 **Example**
 
 ```bash
-mad index
+rqb index
 ```
 
 **Exit codes**: `0` on success, `3` on filesystem error.
 
 ---
 
-## mad import
+## rqb import
 
-Convert an existing API spec file into MarkApiDown markdown endpoint files. All subcommands write endpoint files under `api-docs/`, then run `mad index` automatically. Complex logic (pre-request scripts, dynamic variables, JavaScript assertions) is imported as `agent-task` blocks for manual review.
+Convert an existing API spec file into Reqbook markdown endpoint files. All subcommands write endpoint files under `api-docs/`, then run `rqb index` automatically. Complex logic (pre-request scripts, dynamic variables, JavaScript assertions) is imported as `agent-task` blocks for manual review.
 
-**After any import**: run `mad validate api-docs/` and move any secrets to `.env.local`. See the [Migration guide](/docs/guides/migration) for per-tool concept mapping and post-import checklists.
+**After any import**: run `rqb validate api-docs/` and move any secrets to `.env.local`. See the [Migration guide](/docs/guides/migration) for per-tool concept mapping and post-import checklists.
 
-### mad import postman
+### rqb import postman
 
 Import a Postman Collection v2.1 JSON export.
 
 ```bash
-mad import postman <file>
+rqb import postman <file>
 ```
 
 | Argument | Description |
@@ -233,15 +233,15 @@ mad import postman <file>
 | `<file>` | Path to a Postman Collection v2.1 JSON file. |
 
 ```bash
-mad import postman my-collection.json
+rqb import postman my-collection.json
 ```
 
-### mad import insomnia
+### rqb import insomnia
 
 Import an Insomnia v4 JSON export.
 
 ```bash
-mad import insomnia <file>
+rqb import insomnia <file>
 ```
 
 | Argument | Description |
@@ -249,15 +249,15 @@ mad import insomnia <file>
 | `<file>` | Path to an Insomnia v4 JSON export file. |
 
 ```bash
-mad import insomnia insomnia_export.json
+rqb import insomnia insomnia_export.json
 ```
 
-### mad import openapi
+### rqb import openapi
 
 Import an OpenAPI 3.x spec in YAML or JSON format.
 
 ```bash
-mad import openapi <file>
+rqb import openapi <file>
 ```
 
 | Argument | Description |
@@ -265,32 +265,32 @@ mad import openapi <file>
 | `<file>` | Path to an OpenAPI 3.x YAML or JSON file. |
 
 ```bash
-mad import openapi openapi.yaml
-mad import openapi openapi.json
+rqb import openapi openapi.yaml
+rqb import openapi openapi.json
 ```
 
-### mad import collection
+### rqb import collection
 
 Import a local API client collection directory.
 
 ```bash
-mad import collection ./local-client-collection
+rqb import collection ./local-client-collection
 ```
 
-### mad import http
+### rqb import http
 
 Import a `.http` / REST Client request file.
 
 ```bash
-mad import http ./requests.http
+rqb import http ./requests.http
 ```
 
-### mad import curl
+### rqb import curl
 
-Import a single cURL command as a MarkApiDown endpoint file.
+Import a single cURL command as a Reqbook endpoint file.
 
 ```bash
-mad import curl [--file=<path>]
+rqb import curl [--file=<path>]
 ```
 
 | Flag | Description |
@@ -299,23 +299,23 @@ mad import curl [--file=<path>]
 
 ```bash
 # From clipboard (macOS)
-pbpaste | mad import curl
+pbpaste | rqb import curl
 
 # From a file
-mad import curl --file=request.curl
+rqb import curl --file=request.curl
 ```
 
 **Exit codes (all import subcommands)**: `0` on success, `2` if the input file is not a valid spec for that tool, `3` on filesystem error.
 
 ---
 
-## mad export openapi
+## rqb export openapi
 
 Export endpoint specs as OpenAPI 3.x YAML or JSON.
 
 ```bash
-mad export openapi api-docs/ --out openapi.generated.yaml
-mad export openapi api-docs/ --json --out openapi.generated.json
+rqb export openapi api-docs/ --out openapi.generated.yaml
+rqb export openapi api-docs/ --json --out openapi.generated.json
 ```
 
 | Flag | Description |
@@ -325,15 +325,15 @@ mad export openapi api-docs/ --json --out openapi.generated.json
 
 ---
 
-## mad check
+## rqb check
 
 Run PR-focused contract checks for endpoint and flow specs.
 
 ```bash
-mad check api-docs/ --changed-from origin/main --report markdown
-mad check api-docs/ --changed-from origin/main --report github
-mad check api-docs/ --report junit
-mad check api-docs/ --report json
+rqb check api-docs/ --changed-from origin/main --report markdown
+rqb check api-docs/ --changed-from origin/main --report github
+rqb check api-docs/ --report junit
+rqb check api-docs/ --report json
 ```
 
 | Flag | Description |
@@ -344,14 +344,14 @@ mad check api-docs/ --report json
 
 ---
 
-## mad context
+## rqb context
 
 Print compact deterministic API context for coding agents.
 
 ```bash
-mad context users.create
-mad context flow signup-login-profile
-mad context --changed-from origin/main
+rqb context users.create
+rqb context flow signup-login-profile
+rqb context --changed-from origin/main
 ```
 
 | Flag | Description |
@@ -363,16 +363,16 @@ mad context --changed-from origin/main
 
 ---
 
-## mad skills
+## rqb skills
 
-Install, list, or remove MarkApiDown skill files for AI coding agents. Skills are embedded in the binary no network access required.
+Install, list, or remove Reqbook skill files for AI coding agents. Skills are embedded in the binary no network access required.
 
-### mad skills install
+### rqb skills install
 
-Install MarkApiDown skill files into detected AI agent config directories.
+Install Reqbook skill files into detected AI agent config directories.
 
 ```bash
-mad skills install [--agent=<name>]
+rqb skills install [--agent=<name>]
 ```
 
 | Flag | Type | Description |
@@ -381,46 +381,46 @@ mad skills install [--agent=<name>]
 
 Supported agent names: `claude-code`, `cursor`, `copilot`, `codex-cli`, `antigravity`, `opencode`.
 
-MarkApiDown detects agents by checking for their config directories (`.claude/`, `.cursor/`, `.github/`, etc.).
+Reqbook detects agents by checking for their config directories (`.claude/`, `.cursor/`, `.github/`, etc.).
 
 ```bash
 # Install for all detected agents
-mad skills install
+rqb skills install
 
 # Install only for Claude Code
-mad skills install --agent=claude-code
+rqb skills install --agent=claude-code
 
 # Install only for Cursor
-mad skills install --agent=cursor
+rqb skills install --agent=cursor
 ```
 
 <Tip>
-After upgrading MarkApiDown, run `mad doctor --fix` to update installed skills to the new binary version automatically.
+After upgrading Reqbook, run `rqb doctor --fix` to update installed skills to the new binary version automatically.
 </Tip>
 
-### mad skills list
+### rqb skills list
 
-List detected AI agents and whether MarkApiDown skills are installed and up-to-date for each.
+List detected AI agents and whether Reqbook skills are installed and up-to-date for each.
 
 ```bash
-mad skills list
+rqb skills list
 ```
 
 No flags.
 
 ```bash
-mad skills list
+rqb skills list
 # claude-code: detected, skills up-to-date
 # cursor: not detected
 # copilot: not detected
 ```
 
-### mad skills uninstall
+### rqb skills uninstall
 
-Remove installed MarkApiDown skill files.
+Remove installed Reqbook skill files.
 
 ```bash
-mad skills uninstall [--agent=<name>]
+rqb skills uninstall [--agent=<name>]
 ```
 
 | Flag | Type | Description |
@@ -428,24 +428,24 @@ mad skills uninstall [--agent=<name>]
 | `--agent` | string | Uninstall skills for a specific agent only. Uninstalls for all agents if omitted. |
 
 ```bash
-mad skills uninstall --agent=claude-code
+rqb skills uninstall --agent=claude-code
 ```
 
 **Exit codes (all skills subcommands)**: `0` on success, `3` on filesystem error.
 
 ---
 
-## mad serve
+## rqb serve
 
 Start the local web preview server.
 
 ```bash
-mad serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
+rqb serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
 ```
 
 | Flag / Argument | Type | Default | Description |
 |---|---|---|---|
-| `<path>` | path | `.` (current directory) | Root directory of the MarkApiDown project. |
+| `<path>` | path | `.` (current directory) | Root directory of the Reqbook project. |
 | `--port` | integer | `8080` | TCP port to listen on. |
 | `--host` | string | `127.0.0.1` | Host to bind to. Use `0.0.0.0` to expose on the local network (a warning is printed). |
 | `--env` | string | `dev` | Environment used when executing endpoints from the preview UI. |
@@ -454,29 +454,29 @@ mad serve [<path>] [--port=8080] [--host=127.0.0.1] [--env=<env>] [--mock]
 The web preview reads the same markdown files as the CLI. No build step is required. The server watches for file changes and refreshes connected browsers automatically.
 
 ```bash
-mad serve
-mad serve --port=9000 --env=staging
-mad serve --mock
-mad serve /path/to/other-project
+rqb serve
+rqb serve --port=9000 --env=staging
+rqb serve --mock
+rqb serve /path/to/other-project
 ```
 
 **Exit codes**: `0` on clean shutdown (Ctrl-C), `3` on startup error.
 
 ---
 
-## mad doctor
+## rqb doctor
 
 Check the project environment for common setup problems.
 
 ```bash
-mad doctor [--fix]
+rqb doctor [--fix]
 ```
 
 | Flag | Type | Description |
 |---|---|---|
 | `--fix` | bool | Automatically apply safe fixes. |
 
-`mad doctor` checks:
+`rqb doctor` checks:
 
 - Whether `api-docs/` exists.
 - Whether `.env.local` is listed in `.gitignore`.
@@ -488,29 +488,29 @@ mad doctor [--fix]
 `--fix` applies safe fixes automatically: adds `.env.local` to `.gitignore` if missing, and reinstalls stale skills.
 
 <Note>
-Run `mad doctor` as the first debugging step when `mad exec`, `mad validate`, or an AI agent skill behaves unexpectedly.
+Run `rqb doctor` as the first debugging step when `rqb exec`, `rqb validate`, or an AI agent skill behaves unexpectedly.
 </Note>
 
 ```bash
-mad doctor
-mad doctor --fix
+rqb doctor
+rqb doctor --fix
 ```
 
 **Exit codes**: `0` if all checks pass, `1` if any check fails.
 
 ---
 
-## mad mock
+## rqb mock
 
 Start a mock HTTP server that replays recorded expected responses.
 
 ```bash
-mad mock [<path>] [--port=4001] [--latency=<ms>]
+rqb mock [<path>] [--port=4001] [--latency=<ms>]
 ```
 
 | Flag / Argument | Type | Default | Description |
 |---|---|---|---|
-| `<path>` | path | `.` (current directory) | Root directory of the MarkApiDown project. |
+| `<path>` | path | `.` (current directory) | Root directory of the Reqbook project. |
 | `--port` | integer | `4001` | TCP port to listen on. |
 | `--latency` | integer | `0` | Simulated response latency in milliseconds. |
 
@@ -518,49 +518,49 @@ The mock server reads `## Expected response` blocks from your endpoint files and
 
 ```bash
 # Start mock server on default port
-mad mock
+rqb mock
 
 # Simulate network latency
-mad mock --port=4001 --latency=200
+rqb mock --port=4001 --latency=200
 ```
 
 ---
 
-## mad mcp
+## rqb mcp
 
-Start a Model Context Protocol server that exposes MarkApiDown tools to AI agents.
+Start a Model Context Protocol server that exposes Reqbook tools to AI agents.
 
 ```bash
-mad mcp
+rqb mcp
 ```
 
 No flags. The MCP server exposes the following tools to any MCP-compatible AI agent:
 
 | Tool | Description |
 |---|---|
-| `mad_exec` | Execute an endpoint spec |
-| `mad_flow` | Run a pipeline |
-| `mad_validate` | Validate specs in a file or directory |
-| `mad_list_specs` | List all endpoint specs with method and path |
-| `mad_read_spec` | Read the full content of a spec file |
-| `mad_author` | Create or update a spec file |
+| `rqb_exec` | Execute an endpoint spec |
+| `rqb_flow` | Run a pipeline |
+| `rqb_validate` | Validate specs in a file or directory |
+| `rqb_list_specs` | List all endpoint specs with method and path |
+| `rqb_read_spec` | Read the full content of a spec file |
+| `rqb_author` | Create or update a spec file |
 
 Register with Claude Code:
 
 ```bash
-claude mcp add mad -- mad mcp
+claude mcp add rqb -- rqb mcp
 ```
 
 See [AI agent integration](/docs/guides/ai-agents) for full setup and usage details.
 
 ---
 
-## mad completion
+## rqb completion
 
 Print a shell completion script to stdout.
 
 ```bash
-mad completion <shell>
+rqb completion <shell>
 ```
 
 | Argument | Description |
@@ -570,17 +570,17 @@ mad completion <shell>
 <CodeGroup>
 
 ```bash Bash
-mad completion bash >> ~/.bash_completion
+rqb completion bash >> ~/.bash_completion
 ```
 
 ```bash Zsh
-mad completion zsh > ~/.zfunc/_mad
+rqb completion zsh > ~/.zfunc/_mad
 echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
 autoload -Uz compinit && compinit
 ```
 
 ```bash Fish
-mad completion fish > ~/.config/fish/completions/mad.fish
+rqb completion fish > ~/.config/fish/completions/rqb.fish
 ```
 
 </CodeGroup>
@@ -589,18 +589,18 @@ mad completion fish > ~/.config/fish/completions/mad.fish
 
 ---
 
-## mad version
+## rqb version
 
-Print the installed version of MarkApiDown and exit.
+Print the installed version of Reqbook and exit.
 
 ```bash
-mad version
+rqb version
 ```
 
 No flags.
 
 ```bash
-mad version
+rqb version
 # 0.1.0
 ```
 

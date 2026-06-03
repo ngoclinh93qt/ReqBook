@@ -1,7 +1,7 @@
 ---
 type: pipeline
 name: agent-release-checkout-flow
-description: Created in MarkApiDown web canvas
+description: Created in Reqbook web canvas
 continue-on-error: false
 parallel: false
 ---

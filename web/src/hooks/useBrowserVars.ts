@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const KEY = 'mad_vars';
+const KEY = 'rqb_vars';
 
 function load(): Record<string, string> {
   try {

@@ -1,14 +1,14 @@
 //! MCP (Model Context Protocol) server over stdio.
 //!
 //! Exposes tools to any MCP-compatible AI agent:
-//! - `mad_exec`          execute one endpoint spec
-//! - `mad_flow`          execute a pipeline
-//! - `mad_author`        create or update a spec file
-//! - `mad_vars`          show variable resolution for a spec
-//! - `mad_search`        search specs by method/path/tag/text
-//! - `mad_history`       execution history for a spec
-//! - `mad_session`       get/set session context (env + vars)
-//! - `mad_exec_batch`    execute multiple specs in one call
+//! - `rqb_exec`          execute one endpoint spec
+//! - `rqb_flow`          execute a pipeline
+//! - `rqb_author`        create or update a spec file
+//! - `rqb_vars`          show variable resolution for a spec
+//! - `rqb_search`        search specs by method/path/tag/text
+//! - `rqb_history`       execution history for a spec
+//! - `rqb_session`       get/set session context (env + vars)
+//! - `rqb_exec_batch`    execute multiple specs in one call
 //!
 //! Transport: JSON-RPC 2.0 over stdio (NDJSON, one message per line).
 //! Protocol version: 2024-11-05.
@@ -133,15 +133,15 @@ mod tests {
             .iter()
             .map(|t| t["name"].as_str().unwrap())
             .collect();
-        assert!(names.contains(&"mad_exec"));
-        assert!(names.contains(&"mad_flow"));
-        assert!(names.contains(&"mad_author"));
-        assert!(names.contains(&"mad_vars"));
-        assert!(names.contains(&"mad_search"));
-        assert!(names.contains(&"mad_history"));
-        assert!(names.contains(&"mad_session"));
-        assert!(names.contains(&"mad_exec_batch"));
-        assert!(names.contains(&"mad_context"));
+        assert!(names.contains(&"rqb_exec"));
+        assert!(names.contains(&"rqb_flow"));
+        assert!(names.contains(&"rqb_author"));
+        assert!(names.contains(&"rqb_vars"));
+        assert!(names.contains(&"rqb_search"));
+        assert!(names.contains(&"rqb_history"));
+        assert!(names.contains(&"rqb_session"));
+        assert!(names.contains(&"rqb_exec_batch"));
+        assert!(names.contains(&"rqb_context"));
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
         let s = dispatch(req).await;
         let v: Value = serde_json::from_str(&s).unwrap();
         assert_eq!(v["result"]["protocolVersion"], "2024-11-05");
-        assert_eq!(v["result"]["serverInfo"]["name"], "mad");
+        assert_eq!(v["result"]["serverInfo"]["name"], "rqb");
         assert!(v["result"]["capabilities"]["tools"].is_object());
     }
 
@@ -212,7 +212,7 @@ mod tests {
         let req = make_req(
             4,
             "tools/call",
-            json!({"name": "mad_exec", "arguments": {}}),
+            json!({"name": "rqb_exec", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -223,7 +223,7 @@ mod tests {
         let req = make_req(
             5,
             "tools/call",
-            json!({"name": "mad_flow", "arguments": {}}),
+            json!({"name": "rqb_flow", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -236,7 +236,7 @@ mod tests {
         let req = make_req(
             7,
             "tools/call",
-            json!({"name": "mad_exec", "arguments": {"spec_path": "/no/such/file.md"}}),
+            json!({"name": "rqb_exec", "arguments": {"spec_path": "/no/such/file.md"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32000);
@@ -255,14 +255,14 @@ mod tests {
         assert_eq!(v["error"]["code"], -32601);
     }
 
-    // ── mad_author ──
+    // ── rqb_author ──
 
     #[tokio::test]
     async fn author_missing_params_returns_32602() {
         let req = make_req(
             40,
             "tools/call",
-            json!({"name": "mad_author", "arguments": {}}),
+            json!({"name": "rqb_author", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -276,10 +276,10 @@ mod tests {
             41,
             "tools/call",
             json!({
-                "name": "mad_author",
+                "name": "rqb_author",
                 "arguments": {
                     "spec_path": path.to_str().unwrap(),
-                    "content": "not a valid mad spec"
+                    "content": "not a valid rqb spec"
                 }
             }),
         );
@@ -297,7 +297,7 @@ mod tests {
             42,
             "tools/call",
             json!({
-                "name": "mad_author",
+                "name": "rqb_author",
                 "arguments": {
                     "spec_path": path.to_str().unwrap(),
                     "content": content
@@ -319,7 +319,7 @@ mod tests {
             43,
             "tools/call",
             json!({
-                "name": "mad_author",
+                "name": "rqb_author",
                 "arguments": {
                     "spec_path": path.to_str().unwrap(),
                     "content": content
@@ -363,20 +363,20 @@ mod tests {
         let req = make_req(
             62,
             "resources/read",
-            json!({"uri": "mad://spec/no/such/file.md"}),
+            json!({"uri": "rqb://spec/no/such/file.md"}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32000);
     }
 
-    // ── mad_vars ──
+    // ── rqb_vars ──
 
     #[tokio::test]
     async fn vars_missing_spec_path_returns_32602() {
         let req = make_req(
             70,
             "tools/call",
-            json!({"name": "mad_vars", "arguments": {}}),
+            json!({"name": "rqb_vars", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -391,7 +391,7 @@ mod tests {
         let req = make_req(
             71,
             "tools/call",
-            json!({"name": "mad_vars", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
+            json!({"name": "rqb_vars", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
@@ -408,14 +408,14 @@ mod tests {
         assert!(names.contains(&"authToken"));
     }
 
-    // ── mad_search ──
+    // ── rqb_search ──
 
     #[tokio::test]
     async fn search_returns_results_structure() {
         let req = make_req(
             80,
             "tools/call",
-            json!({"name": "mad_search", "arguments": {"method": "GET"}}),
+            json!({"name": "rqb_search", "arguments": {"method": "GET"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
@@ -425,14 +425,14 @@ mod tests {
         assert!(data["results"].is_array());
     }
 
-    // ── mad_history ──
+    // ── rqb_history ──
 
     #[tokio::test]
     async fn history_missing_spec_path_returns_32602() {
         let req = make_req(
             90,
             "tools/call",
-            json!({"name": "mad_history", "arguments": {}}),
+            json!({"name": "rqb_history", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -446,7 +446,7 @@ mod tests {
         let req = make_req(
             91,
             "tools/call",
-            json!({"name": "mad_history", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
+            json!({"name": "rqb_history", "arguments": {"spec_path": spec_path.to_str().unwrap()}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
@@ -456,14 +456,14 @@ mod tests {
         assert!(data["trend"].is_string());
     }
 
-    // ── mad_session ──
+    // ── rqb_session ──
 
     #[tokio::test]
     async fn session_missing_action_returns_32602() {
         let req = make_req(
             100,
             "tools/call",
-            json!({"name": "mad_session", "arguments": {}}),
+            json!({"name": "rqb_session", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -474,20 +474,20 @@ mod tests {
         let req = make_req(
             101,
             "tools/call",
-            json!({"name": "mad_session", "arguments": {"action": "get"}}),
+            json!({"name": "rqb_session", "arguments": {"action": "get"}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");
     }
 
-    // ── mad_exec_batch ──
+    // ── rqb_exec_batch ──
 
     #[tokio::test]
     async fn exec_batch_missing_specs_returns_32602() {
         let req = make_req(
             110,
             "tools/call",
-            json!({"name": "mad_exec_batch", "arguments": {}}),
+            json!({"name": "rqb_exec_batch", "arguments": {}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
@@ -498,7 +498,7 @@ mod tests {
         let req = make_req(
             111,
             "tools/call",
-            json!({"name": "mad_exec_batch", "arguments": {"specs": ["/no/such/file.md"]}}),
+            json!({"name": "rqb_exec_batch", "arguments": {"specs": ["/no/such/file.md"]}}),
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert!(v["result"].is_object(), "expected result, got: {v}");

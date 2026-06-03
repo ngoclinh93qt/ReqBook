@@ -1045,7 +1045,7 @@ function renderFlowMarkdown(name: string, title: string, nodes: FlowNode[]) {
     for (const capture of node.captures.filter(item => item.source && item.name)) lines.push(`   - Capture: \`${capture.source}\` as \`${capture.name}\``);
     return lines.join('\n');
   }).join('\n');
-  return `---\ntype: pipeline\nname: ${slug(name)}\ndescription: Created in MarkApiDown web canvas\ncontinue-on-error: false\nparallel: false\n---\n\n# ${title || name}\n\n## Steps\n\n${body || '1. **Select endpoint** -> `users/get-users.md`'}\n`;
+  return `---\ntype: pipeline\nname: ${slug(name)}\ndescription: Created in Reqbook web canvas\ncontinue-on-error: false\nparallel: false\n---\n\n# ${title || name}\n\n## Steps\n\n${body || '1. **Select endpoint** -> `users/get-users.md`'}\n`;
 }
 
 function deriveCapturesForRefs(nodes: FlowNode[]) {

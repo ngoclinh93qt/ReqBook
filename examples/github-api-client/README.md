@@ -4,16 +4,16 @@ This example uses public GitHub API endpoints so a new user can run a real
 request without creating a local server or handling secrets.
 
 ```bash
-mad validate api-docs/
-mad exec api-docs/apis/repos/get-repository.md
-mad flow api-docs/flows/repository-release-smoke.md
-mad serve
+rqb validate api-docs/
+rqb exec api-docs/apis/repos/get-repository.md
+rqb flow api-docs/flows/repository-release-smoke.md
+rqb serve
 ```
 
 Optional authenticated rate limits:
 
 ```bash
-MAD_GITHUB_TOKEN=... mad exec api-docs/apis/repos/get-repository.md
+RQB_GITHUB_TOKEN=... rqb exec api-docs/apis/repos/get-repository.md
 ```
 
 Agent prompt:

@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
-use mark_api_down::{preview, workspace};
+use reqbook::{preview, workspace};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
@@ -35,7 +35,7 @@ async fn open_workspace(
     *state.workspace_root.write().unwrap() = new_root.clone();
     workspace::save_to_history(&new_root, &name);
     if let Some(win) = app.get_webview_window("main") {
-        let _ = win.set_title(&format!("MarkApiDown — {name}"));
+        let _ = win.set_title(&format!("Reqbook — {name}"));
     }
     Ok(())
 }
@@ -86,7 +86,7 @@ pub fn run() {
                     )
                     .await
                     {
-                        eprintln!("mad-desktop: server error: {e}");
+                        eprintln!("rqb-desktop: server error: {e}");
                     }
                 });
 
@@ -109,5 +109,5 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![get_server_url, open_workspace,])
         .run(tauri::generate_context!())
-        .expect("error while running mad-desktop");
+        .expect("error while running rqb-desktop");
 }

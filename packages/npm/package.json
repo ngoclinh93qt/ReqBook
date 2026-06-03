@@ -1,13 +1,13 @@
 {
-  "name": "mark-api-down",
+  "name": "reqbook",
   "version": "0.1.0",
-  "description": "Markdown-native API specs with a Rust MarkApiDown binary.",
+  "description": "Reqbook is executable API documentation for humans, CI, and coding agents.",
   "license": "Apache-2.0",
   "bin": {
-    "mad": "./mad.js"
+    "rqb": "./rqb.js"
   },
   "files": [
-    "mad.js",
+    "rqb.js",
     "postinstall.js",
     "README.md"
   ],
@@ -19,6 +19,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ngoclinh93qt/MarkApiDown.git"
+    "url": "https://github.com/ngoclinh93qt/ReqBook.git"
   }
 }

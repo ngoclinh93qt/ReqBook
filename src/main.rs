@@ -8,7 +8,7 @@ use std::{
 use anyhow::Result;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{generate, Shell};
-use mark_api_down::workspace;
+use reqbook::workspace;
 
 use commands::{
     check, context, doctor, exec, export, import, init, install, regenerate_index, request, serve,
@@ -19,12 +19,12 @@ use commands::{
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "mad",
+    name = "rqb",
     version,
     about = "API workspace   design specs, send requests, validate contracts"
 )]
 struct Cli {
-    /// Path to api-docs/mad.md.
+    /// Path to api-docs/reqbook.md.
     #[arg(long, global = true)]
     config: Option<PathBuf>,
     /// Disable colored output.
@@ -58,7 +58,7 @@ enum Command {
         #[command(subcommand)]
         command: ImportCommand,
     },
-    /// Export MarkApiDown specs to another API format.
+    /// Export Reqbook specs to another API format.
     Export {
         #[command(subcommand)]
         command: ExportCommand,
@@ -331,7 +331,7 @@ pub(crate) enum InstallCommand {
         #[arg(long)]
         agent: Option<String>,
     },
-    /// Register the MarkApiDown MCP server with Claude Code.
+    /// Register the Reqbook MCP server with Claude Code.
     Mcp,
     /// List detected agents and installation status.
     List,
@@ -347,7 +347,7 @@ pub(crate) enum SkillsCommand {
     },
     /// List detected agents and installation status.
     List,
-    /// Remove installed MarkApiDown skill and slash-command files.
+    /// Remove installed Reqbook skill and slash-command files.
     Uninstall {
         name: Option<String>,
         #[arg(long)]
@@ -393,7 +393,7 @@ async fn main() -> Result<()> {
                 &collection,
             )
             .await?;
-            println!("\nRun `mad serve` to open the web preview.");
+            println!("\nRun `rqb serve` to open the web preview.");
         }
         Command::Validate { path } => validate::run(path)?,
         Command::Exec(args) => exec::exec(args).await?,
@@ -408,11 +408,11 @@ async fn main() -> Result<()> {
         Command::Serve(args) => serve::serve(args, &collection).await?,
         Command::Mock(args) => serve::mock(args).await?,
         Command::Request(args) => request::run(args, &collection).await?,
-        Command::Mcp => mark_api_down::mcp::run_mcp_server().await?,
+        Command::Mcp => reqbook::mcp::run_mcp_server().await?,
         Command::Doctor(args) => doctor::run(args, &collection)?,
         Command::Completion { shell } => {
             let mut cmd = Cli::command();
-            generate(shell, &mut cmd, "mad", &mut io::stdout());
+            generate(shell, &mut cmd, "rqb", &mut io::stdout());
         }
         Command::Version => println!("{}", env!("CARGO_PKG_VERSION")),
     }

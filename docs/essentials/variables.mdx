@@ -1,12 +1,12 @@
 ---
 title: "Variables & environments"
-description: "MarkApiDown resolves {{variable}} placeholders from six sources in strict priority order. Learn how to configure environments, use .env.local, and pass secrets safely."
+description: "Reqbook resolves {{variable}} placeholders from six sources in strict priority order. Learn how to configure environments, use .env.local, and pass secrets safely."
 icon: "sliders"
 ---
 
 ## Variable syntax
 
-MarkApiDown supports two placeholder forms that can appear anywhere in request blocks, response blocks, and pipeline definitions.
+Reqbook supports two placeholder forms that can appear anywhere in request blocks, response blocks, and pipeline definitions.
 
 **Inline variable** resolved from any variable source:
 
@@ -27,7 +27,7 @@ Both forms are interchangeable from a resolution standpoint. Use `:param` in the
 
 ## Resolution priority
 
-When the same variable name appears in more than one source, the highest-priority source wins. MarkApiDown resolves variables in this order, from highest to lowest:
+When the same variable name appears in more than one source, the highest-priority source wins. Reqbook resolves variables in this order, from highest to lowest:
 
 | Priority | Source | Example |
 |---|---|---|
@@ -36,7 +36,7 @@ When the same variable name appears in more than one source, the highest-priorit
 | 3 | Endpoint frontmatter | `userId: 42` in the YAML block |
 | 4 | `_shared/env.md` for the selected env | `## dev` section |
 | 5 | `.env.local` | `authToken=local-token` |
-| 6 (lowest) | `MAD_*` OS environment variables | `MAD_AUTH_TOKEN=...` |
+| 6 (lowest) | `RQB_*` OS environment variables | `RQB_AUTH_TOKEN=...` |
 
 <Note>
  The web UI, CLI, flows, and agent tools use the same priority order. A request that runs in the browser should resolve the same variables when an agent or CI runs it.
@@ -45,7 +45,7 @@ When the same variable name appears in more than one source, the highest-priorit
 ### Priority in practice
 
 ```bash
-MAD_USER_ID=from-os mad exec api-docs/apis/users/get-user.md --var userId=from-cli
+RQB_USER_ID=from-os rqb exec api-docs/apis/users/get-user.md --var userId=from-cli
 # {{userId}} resolves to "from-cli" CLI outranks OS env
 ```
 
@@ -81,7 +81,7 @@ pageSize: 50
 ````
 
 <Warning>
- Do not put tokens, passwords, or API keys in `env.md`. The MarkApiDown parser detects common secret patterns and exits with code 5 before any network request is made.
+ Do not put tokens, passwords, or API keys in `env.md`. The Reqbook parser detects common secret patterns and exits with code 5 before any network request is made.
 </Warning>
 
 ---
@@ -97,29 +97,29 @@ stripeKey=sk_test_...
 ```
 
 <Tip>
- `mad init` adds `.env.local` to `.gitignore` automatically. Run `mad doctor` to confirm it is listed the command reports an error with a suggested fix if it's missing.
+ `rqb init` adds `.env.local` to `.gitignore` automatically. Run `rqb doctor` to confirm it is listed the command reports an error with a suggested fix if it's missing.
 </Tip>
 
 ---
 
-## MAD_* environment variables
+## RQB_* environment variables
 
-MarkApiDown reads only variables prefixed with `MAD_` from the OS environment. The prefix is stripped and the remainder is converted to lower camelCase before resolution.
+Reqbook reads only variables prefixed with `RQB_` from the OS environment. The prefix is stripped and the remainder is converted to lower camelCase before resolution.
 
-| OS variable | MarkApiDown variable |
+| OS variable | Reqbook variable |
 |---|---|
-| `MAD_AUTH_TOKEN` | `authToken` |
-| `MAD_BASE_URL` | `baseUrl` |
-| `MAD_USER_ID` | `userId` |
+| `RQB_AUTH_TOKEN` | `authToken` |
+| `RQB_BASE_URL` | `baseUrl` |
+| `RQB_USER_ID` | `userId` |
 
 ### CI/CD pattern
 
-Set secrets as masked CI environment variables and map them with the `MAD_` prefix:
+Set secrets as masked CI environment variables and map them with the `RQB_` prefix:
 
 ```yaml filename=".github/workflows/api-tests.yml"
 env:
- MAD_AUTH_TOKEN: ${{ secrets.API_TOKEN }}
- MAD_BASE_URL: https://staging.example.com
+ RQB_AUTH_TOKEN: ${{ secrets.API_TOKEN }}
+ RQB_BASE_URL: https://staging.example.com
 ```
 
 This keeps secrets out of spec files entirely and works with any CI provider that supports environment variable injection.
@@ -128,11 +128,11 @@ This keeps secrets out of spec files entirely and works with any CI provider tha
 
 ## Missing variables
 
-If a variable cannot be resolved from any source, MarkApiDown exits with code 2 before making any network request. The error message names the variable and lists the ways to fix it.
+If a variable cannot be resolved from any source, Reqbook exits with code 2 before making any network request. The error message names the variable and lists the ways to fix it.
 
 ```
 api-docs/apis/users/get-user.md: unresolved variable "authToken"
-Fix: define authToken in .env.local, pass --var authToken=..., or set MAD_AUTH_TOKEN.
+Fix: define authToken in .env.local, pass --var authToken=..., or set RQB_AUTH_TOKEN.
 ```
 
 <Tip>
@@ -143,7 +143,7 @@ Fix: define authToken in .env.local, pass --var authToken=..., or set MAD_AUTH_T
 
 ## Nested variables
 
-the current MarkApiDown release does not resolve variables recursively. If resolving `{{baseUrl}}` produces a string that contains another `{{variable}}`, MarkApiDown returns an error rather than performing a second resolution pass.
+the current Reqbook release does not resolve variables recursively. If resolving `{{baseUrl}}` produces a string that contains another `{{variable}}`, Reqbook returns an error rather than performing a second resolution pass.
 
 ```yaml
 # Invalid nested variable reference

@@ -1,12 +1,12 @@
 ---
 title: "Installation"
-description: "Install MarkApiDown on macOS, Linux, or Windows."
+description: "Install Reqbook on macOS, Linux, or Windows."
 icon: "download"
 ---
 
 ## Requirements
 
-MarkApiDown ships as a single static binary with no runtime dependencies: no Node, no Python, no JVM required.
+Reqbook ships as a single static binary with no runtime dependencies: no Node, no Python, no JVM required.
 
 | Install method | Requirement |
 |---|---|
@@ -32,42 +32,42 @@ MarkApiDown ships as a single static binary with no runtime dependencies: no Nod
  If `~/.local/bin` is not on your `PATH`, the installer prints the exact line to add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
 
  <Note>
- The shell installer script is open-source and auditable at [github.com/ngoclinh93qt/MarkApiDown](https://github.com/ngoclinh93qt/MarkApiDown/blob/main/scripts/install.sh).
+ The shell installer script is open-source and auditable at [github.com/ngoclinh93qt/ReqBook](https://github.com/ngoclinh93qt/ReqBook/blob/main/scripts/install.sh).
  </Note>
  </Tab>
 
  <Tab title="Cargo">
- Install directly from [crates.io](https://crates.io/crates/mark-api-down). This builds MarkApiDown from source and places the binary in `~/.cargo/bin`.
+ Install directly from [crates.io](https://crates.io/crates/reqbook). This builds Reqbook from source and places the binary in `~/.cargo/bin`.
 
  ```bash
- cargo install mark-api-down
+ cargo install reqbook
  ```
 
  Requires Rust 1.75 or later. Upgrade your toolchain with `rustup update stable` if needed.
  </Tab>
 
  <Tab title="Homebrew">
- Install via the official MarkApiDown tap on macOS (or Linux with Homebrew):
+ Install via the official Reqbook tap on macOS (or Linux with Homebrew):
 
  ```bash
- brew install mark-api-down/tap/mad
+ brew install reqbook/tap/rqb
  ```
 
- Homebrew manages upgrades via `brew upgrade mad`. No separate tap add step is required; the formula URL handles it.
+ Homebrew manages upgrades via `brew upgrade rqb`. No separate tap add step is required; the formula URL handles it.
  </Tab>
 
  <Tab title="npm">
  Install via npm for Node.js projects. This bundles a prebuilt binary for macOS, Linux, and Windows; no Rust toolchain needed.
 
  ```bash
- npm install -g mark-api-down
+ npm install -g reqbook
  ```
 
  The npm package is a thin wrapper around the native binary. You can also pin it as a `devDependency` to lock the version per project:
 
  ```bash
- npm install --save-dev mark-api-down
- npx mad validate api-docs/
+ npm install --save-dev reqbook
+ npx rqb validate api-docs/
  ```
  </Tab>
 
@@ -75,23 +75,23 @@ MarkApiDown ships as a single static binary with no runtime dependencies: no Nod
  Use the official image from GitHub Container Registry. Mount your project directory at `/work`:
 
  ```bash
- docker pull ghcr.io/ngoclinh93qt/mad:latest
+ docker pull ghcr.io/ngoclinh93qt/rqb:latest
  docker run --rm -v "$(pwd)":/work -w /work \
- ghcr.io/ngoclinh93qt/mad:latest validate api-docs/
+ ghcr.io/ngoclinh93qt/rqb:latest validate api-docs/
  ```
 
- Replace `validate api-docs/` with any `mad` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
+ Replace `validate api-docs/` with any `rqb` subcommand. To execute endpoints against a local server, use `--network=host` or Docker Compose.
 
  <Tip>
- Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/ngoclinh93qt/mad:0.1.0`.
+ Pin a specific version in CI to avoid unexpected behavior from `latest`: use a tag like `ghcr.io/ngoclinh93qt/rqb:0.1.0`.
  </Tip>
  </Tab>
 
  <Tab title="Windows (MSI)">
- Download the `.msi` installer from the [releases page](https://github.com/ngoclinh93qt/MarkApiDown/releases). Run the installer and `mad` is added to your system PATH automatically; no manual PATH edits needed.
+ Download the `.msi` installer from the [releases page](https://github.com/ngoclinh93qt/ReqBook/releases). Run the installer and `rqb` is added to your system PATH automatically; no manual PATH edits needed.
 
  <Note>
- Windows support is available from the current MarkApiDown release. The MSI installer targets Windows 10 and Windows Server 2019 or later.
+ Windows support is available from the current Reqbook release. The MSI installer targets Windows 10 and Windows Server 2019 or later.
  </Note>
  </Tab>
 </Tabs>
@@ -103,26 +103,26 @@ MarkApiDown ships as a single static binary with no runtime dependencies: no Nod
 After installing, confirm the binary is on your PATH and run the built-in diagnostics:
 
 ```bash
-mad version
+rqb version
 # 0.1.0
 
-mad doctor
+rqb doctor
 ```
 
 <Note>
- `mad doctor` runs a series of checks: it verifies that `api-docs/` exists, that `.env.local` is listed in `.gitignore`, that all specs in the project are valid, and that any installed AI agent skills match the current binary version.
+ `rqb doctor` runs a series of checks: it verifies that `api-docs/` exists, that `.env.local` is listed in `.gitignore`, that all specs in the project are valid, and that any installed AI agent skills match the current binary version.
 </Note>
 
 ---
 
 ## VS Code extension
 
-The VS Code extension uses the same `mad` binary. Install MarkApiDown first, then configure the extension if VS Code cannot find `mad` on its process `PATH`.
+The VS Code extension uses the same `rqb` binary. Install Reqbook first, then configure the extension if VS Code cannot find `rqb` on its process `PATH`.
 
 ```json
 {
-  "markapidown.madPath": "/absolute/path/to/mad",
-  "markapidown.env": "dev"
+  "reqbook.rqbPath": "/absolute/path/to/rqb",
+  "reqbook.env": "dev"
 }
 ```
 
@@ -137,19 +137,19 @@ Generate and install completions for your shell so you get tab-completion for su
 <Tabs>
  <Tab title="Bash">
  ```bash
- mad completion bash >> ~/.bashrc
+ rqb completion bash >> ~/.bashrc
  source ~/.bashrc
  ```
  </Tab>
  <Tab title="Zsh">
  ```bash
- mad completion zsh > "${fpath[1]}/_mad"
+ rqb completion zsh > "${fpath[1]}/_mad"
  # Restart your shell or run: exec zsh
  ```
  </Tab>
  <Tab title="Fish">
  ```bash
- mad completion fish > ~/.config/fish/completions/mad.fish
+ rqb completion fish > ~/.config/fish/completions/rqb.fish
  ```
  </Tab>
 </Tabs>
@@ -168,21 +168,21 @@ Generate and install completions for your shell so you get tab-completion for su
  </Tab>
  <Tab title="Cargo">
  ```bash
- cargo install mark-api-down --force
+ cargo install reqbook --force
  ```
  </Tab>
  <Tab title="Homebrew">
  ```bash
- brew upgrade mad
+ brew upgrade rqb
  ```
  </Tab>
  <Tab title="npm">
  ```bash
- npm install -g mark-api-down
+ npm install -g reqbook
  ```
  </Tab>
 </Tabs>
 
 <Tip>
- After upgrading, run `mad doctor --fix` to automatically update any installed AI agent skills (Claude Code, Cursor, Copilot) to the new version. Stale skill files can cause agents to call deprecated flags.
+ After upgrading, run `rqb doctor --fix` to automatically update any installed AI agent skills (Claude Code, Cursor, Copilot) to the new version. Stale skill files can cause agents to call deprecated flags.
 </Tip>

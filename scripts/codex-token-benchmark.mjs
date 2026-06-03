@@ -13,11 +13,11 @@ import path from 'node:path';
 const root = process.cwd();
 const codexBin = process.env.CODEX_BIN || 'codex';
 const runs = Number(
-  process.env.MAD_AGENT_TOKEN_BENCH_RUNS || process.env.MAD_CODEX_TOKEN_BENCH_RUNS || 1,
+  process.env.RQB_AGENT_TOKEN_BENCH_RUNS || process.env.RQB_CODEX_TOKEN_BENCH_RUNS || 1,
 );
 const timeoutMs = Number(
-  process.env.MAD_AGENT_TOKEN_BENCH_TIMEOUT_MS ||
-    process.env.MAD_CODEX_TOKEN_BENCH_TIMEOUT_MS ||
+  process.env.RQB_AGENT_TOKEN_BENCH_TIMEOUT_MS ||
+    process.env.RQB_CODEX_TOKEN_BENCH_TIMEOUT_MS ||
     180_000,
 );
 const model = process.env.CODEX_MODEL;
@@ -47,8 +47,8 @@ const tokenKeys = {
 };
 
 const scenarioLabels = {
-  'source-only': 'Without MarkApiDown (source only)',
-  markapidown: 'With MarkApiDown specs',
+  'source-only': 'Without Reqbook (source only)',
+  reqbook: 'With Reqbook specs',
 };
 
 function fail(message) {
@@ -279,27 +279,27 @@ function summarize(results, meta) {
 
   const byName = Object.fromEntries(scenarioRows.map((row) => [row.scenario, row]));
   let comparison = null;
-  if (byName['source-only']?.mean_total_tokens && byName.markapidown?.mean_total_tokens) {
+  if (byName['source-only']?.mean_total_tokens && byName.reqbook?.mean_total_tokens) {
     const sourceTotal = byName['source-only'].mean_total_tokens;
-    const madTotal = byName.markapidown.mean_total_tokens;
+    const reqbookTotal = byName.reqbook.mean_total_tokens;
     const sourceUncached = byName['source-only'].mean_uncached_tokens;
-    const madUncached = byName.markapidown.mean_uncached_tokens;
+    const reqbookUncached = byName.reqbook.mean_uncached_tokens;
     comparison = {
       source_only_mean_total_tokens: sourceTotal,
-      markapidown_mean_total_tokens: madTotal,
-      total_token_delta: Number((sourceTotal - madTotal).toFixed(1)),
-      total_reduction_percent: Number((((sourceTotal - madTotal) / sourceTotal) * 100).toFixed(1)),
-      total_ratio: Number((sourceTotal / madTotal).toFixed(2)),
+      reqbook_mean_total_tokens: reqbookTotal,
+      total_token_delta: Number((sourceTotal - reqbookTotal).toFixed(1)),
+      total_reduction_percent: Number((((sourceTotal - reqbookTotal) / sourceTotal) * 100).toFixed(1)),
+      total_ratio: Number((sourceTotal / reqbookTotal).toFixed(2)),
       source_only_mean_uncached_tokens: sourceUncached,
-      markapidown_mean_uncached_tokens: madUncached,
+      reqbook_mean_uncached_tokens: reqbookUncached,
       uncached_token_delta:
-        sourceUncached && madUncached ? Number((sourceUncached - madUncached).toFixed(1)) : null,
+        sourceUncached && reqbookUncached ? Number((sourceUncached - reqbookUncached).toFixed(1)) : null,
       uncached_reduction_percent:
-        sourceUncached && madUncached
-          ? Number((((sourceUncached - madUncached) / sourceUncached) * 100).toFixed(1))
+        sourceUncached && reqbookUncached
+          ? Number((((sourceUncached - reqbookUncached) / sourceUncached) * 100).toFixed(1))
           : null,
       uncached_ratio:
-        sourceUncached && madUncached ? Number((sourceUncached / madUncached).toFixed(2)) : null,
+        sourceUncached && reqbookUncached ? Number((sourceUncached / reqbookUncached).toFixed(2)) : null,
     };
   }
 
@@ -328,15 +328,15 @@ function printMarkdown(summary) {
   if (summary.comparison) {
     if (summary.comparison.uncached_reduction_percent != null) {
       console.log(
-        `\nUncached-token comparison: MarkApiDown used ` +
+        `\nUncached-token comparison: Reqbook used ` +
           `${formatReduction(summary.comparison.uncached_reduction_percent)} tokens ` +
-          `(${summary.comparison.uncached_ratio}x without / with MarkApiDown).`,
+          `(${summary.comparison.uncached_ratio}x without / with Reqbook).`,
       );
     }
     console.log(
-      `Total-token comparison: MarkApiDown used ` +
+      `Total-token comparison: Reqbook used ` +
         `${formatReduction(summary.comparison.total_reduction_percent)} total tokens ` +
-        `(${summary.comparison.total_ratio}x without / with MarkApiDown).`,
+        `(${summary.comparison.total_ratio}x without / with Reqbook).`,
     );
   } else {
     console.log('\nMeasured reduction: n/a; Codex JSON output did not expose token usage for every scenario.');
