@@ -21,8 +21,9 @@ use crate::{
 
 use super::{
     business::{
-        collect_flows, collect_specs, doc_path, flow_to_response, is_flow_rel_path,
-        load_env_context, render_env_config, run_exec, scan_project, spec_path,
+        collect_flows, collect_specs, doc_path, ensure_api_docs_target, flow_to_response,
+        is_flow_rel_path, load_env_context, render_env_config, run_exec, safe_rel_path,
+        scan_project, spec_path,
     },
     types::{
         AdHocReqBody, AdHocReqResponse, ExecBody, FlowsResponse, IndexResponse, RuntimeOverrides,
@@ -49,7 +50,16 @@ pub(super) async fn api_spec_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> Response {
-    let file_path = spec_path(&state.current_root(), &rel_path);
+    let file_path = match spec_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error})),
+            )
+                .into_response()
+        }
+    };
     let source = match fs::read_to_string(&file_path) {
         Ok(s) => s,
         Err(_) => {
@@ -93,7 +103,16 @@ pub(super) async fn validate_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> impl IntoResponse {
-    let file_path = doc_path(&state.current_root(), &rel_path);
+    let file_path = match doc_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error})),
+            )
+                .into_response()
+        }
+    };
     let source = match fs::read_to_string(&file_path) {
         Ok(source) => source,
         Err(e) => {
@@ -141,7 +160,16 @@ pub(super) async fn flow_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> Response {
-    let file_path = doc_path(&state.current_root(), &rel_path);
+    let file_path = match doc_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error})),
+            )
+                .into_response()
+        }
+    };
     let source = match fs::read_to_string(&file_path) {
         Ok(source) => source,
         Err(_) => {
@@ -177,7 +205,6 @@ pub(super) async fn save_flow_handler(
                 .into_response()
         }
     };
-    let file_path = doc_path(&state.current_root(), &rel_path);
     if !is_flow_rel_path(&rel_path) || !rel_path.ends_with(".md") {
         return (
             StatusCode::BAD_REQUEST,
@@ -185,6 +212,16 @@ pub(super) async fn save_flow_handler(
         )
             .into_response();
     }
+    let file_path = match doc_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error})),
+            )
+                .into_response()
+        }
+    };
     if let Err(e) = parse_pipeline(text, &file_path) {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -201,6 +238,13 @@ pub(super) async fn save_flow_handler(
                 .into_response();
         }
     }
+    if let Err(e) = ensure_api_docs_target(&state.current_root(), &file_path) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": e})),
+        )
+            .into_response();
+    }
     match fs::write(&file_path, text) {
         Ok(()) => Json(serde_json::json!({"status": "saved"})).into_response(),
         Err(e) => (
@@ -215,7 +259,16 @@ pub(super) async fn run_flow_handler(
     State(state): State<Arc<AppState>>,
     AxumPath(rel_path): AxumPath<String>,
 ) -> impl IntoResponse {
-    let file_path = doc_path(&state.current_root(), &rel_path);
+    let file_path = match doc_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error})),
+            )
+                .into_response()
+        }
+    };
     let source = match fs::read_to_string(&file_path) {
         Ok(source) => source,
         Err(e) => {
@@ -266,7 +319,16 @@ pub(super) async fn exec_handler(
     AxumPath(rel_path): AxumPath<String>,
     body: Bytes,
 ) -> impl IntoResponse {
-    let file_path = spec_path(&state.current_root(), &rel_path);
+    let file_path = match spec_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error, "diff": {"passed": false}})),
+            )
+                .into_response()
+        }
+    };
 
     if let Some(ref entries) = state.mock_entries {
         return mock_exec_response(&file_path, entries);
@@ -361,7 +423,16 @@ pub(super) async fn save_spec_handler(
                 .into_response()
         }
     };
-    let file_path = spec_path(&state.current_root(), &rel_path);
+    let file_path = match spec_path(&state.current_root(), &rel_path) {
+        Ok(path) => path,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": error})),
+            )
+                .into_response()
+        }
+    };
     if !file_path.exists() {
         return (
             StatusCode::NOT_FOUND,
@@ -605,7 +676,42 @@ pub(super) async fn adhoc_request_handler(
     };
 
     let saved_path = if let Some(rel) = &body.save_as {
-        let dest = state.current_root().join(API_DOCS_DIR).join(rel);
+        let rel_path = match safe_rel_path(rel) {
+            Ok(path) => path,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"error": e})),
+                )
+                    .into_response()
+            }
+        };
+        if !rel_path.starts_with("apis")
+            || rel_path.extension().and_then(|ext| ext.to_str()) != Some("md")
+        {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "save_as must be under apis/*.md"})),
+            )
+                .into_response();
+        }
+        let dest = state.current_root().join(API_DOCS_DIR).join(&rel_path);
+        if let Some(parent) = dest.parent() {
+            if let Err(e) = fs::create_dir_all(parent) {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": e.to_string()})),
+                )
+                    .into_response();
+            }
+        }
+        if let Err(e) = ensure_api_docs_target(&state.current_root(), &dest) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": e})),
+            )
+                .into_response();
+        }
         let response_block = build_response_block(&execution);
         adhoc::save_to_path(&dest, &params, &response_block)
             .ok()

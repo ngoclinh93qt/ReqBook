@@ -14,7 +14,7 @@ use reqbook::{
 };
 use serde::Serialize;
 
-use super::{execution_context, find_api_docs_root, read_text};
+use super::{confirm_production_env, execution_context, find_api_docs_root, read_text};
 use crate::{CheckArgs, CheckReportFormat};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -48,7 +48,8 @@ struct CheckSummary {
     items: Vec<CheckItem>,
 }
 
-pub(crate) async fn run(args: CheckArgs) -> Result<()> {
+pub(crate) async fn run(args: CheckArgs, yes: bool) -> Result<()> {
+    confirm_production_env(&args.env, yes, "run contract checks")?;
     let files = spec_files(&args.path, args.changed_from.as_deref())?;
     let changed_only = args.changed_from.is_some();
     let mut items = Vec::new();

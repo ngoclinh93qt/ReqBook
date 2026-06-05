@@ -663,13 +663,13 @@ Examples:
 
 ### Production confirmation
 
-Running against production requires confirmation in interactive mode.
+Running against `prod` or `production` requires confirmation in interactive mode.
 
 ```bash
 rqb exec api-docs/apis/users/delete-user.md --env=prod
 ```
 
-Reqbook prompts before sending the request. Use `--yes` to skip confirmation in CI.
+Reqbook prompts before sending the request. In non-interactive shells, Reqbook refuses to send production requests unless `--yes` is passed after deliberate review.
 
 ## Reports and exit codes
 

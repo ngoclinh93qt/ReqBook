@@ -152,14 +152,25 @@ pub enum EngineError {
         /// Details.
         message: String,
     },
+    /// The selected environment is not allowed by endpoint frontmatter.
+    #[error("{path}: environment `{env}` is not allowed for this endpoint\nFix: run with one of: {allowed}, or add `{env}` to `env: [...]` after review.")]
+    UnsupportedEnvironment {
+        /// Source path.
+        path: String,
+        /// Requested environment.
+        env: String,
+        /// Allowed environments.
+        allowed: String,
+    },
 }
 
 /// Execute an endpoint with a default reqwest client.
 pub async fn execute(
     endpoint: &Endpoint,
-    _env: &str,
+    env: &str,
     opts: ExecOpts,
 ) -> Result<Execution, EngineError> {
+    ensure_environment_allowed(endpoint, env)?;
     let client = Client::builder()
         .use_rustls_tls()
         .build()
@@ -168,6 +179,19 @@ pub async fn execute(
             source,
         })?;
     execute_with_client(&client, endpoint, opts).await
+}
+
+/// Validate that the requested environment is allowed by endpoint frontmatter.
+pub fn ensure_environment_allowed(endpoint: &Endpoint, env: &str) -> Result<(), EngineError> {
+    if endpoint.schema.env.is_empty() || endpoint.schema.env.iter().any(|allowed| allowed == env) {
+        return Ok(());
+    }
+
+    Err(EngineError::UnsupportedEnvironment {
+        path: source_path(endpoint),
+        env: env.to_string(),
+        allowed: endpoint.schema.env.join(", "),
+    })
 }
 
 /// Execute an endpoint with an injected client.
@@ -1109,6 +1133,19 @@ Content-Type: application/json
         .unwrap();
         endpoint.source = None;
         assert_eq!(execution.response.unwrap().status, 200);
+    }
+
+    #[tokio::test]
+    async fn rejects_environment_not_declared_by_endpoint() {
+        let mut endpoint = endpoint("http://example.com");
+        endpoint.schema.env = vec!["dev".to_string(), "staging".to_string()];
+
+        let err = execute(&endpoint, "prod", ExecOpts::default())
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, EngineError::UnsupportedEnvironment { .. }));
+        assert!(err.to_string().contains("dev, staging"));
     }
 
     #[tokio::test]

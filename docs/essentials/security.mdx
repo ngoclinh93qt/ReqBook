@@ -64,14 +64,14 @@ Masking is applied before writing to any file, stream, or storage. Unmasked valu
 
 ## Production confirmation
 
-Running against a `prod` environment requires explicit confirmation in an interactive terminal. Reqbook prompts before sending any request when `--env=prod` is passed.
+Running against a `prod` or `production` environment requires explicit confirmation in an interactive terminal. Reqbook prompts before sending any request when a production environment is selected.
 
 ```bash
 rqb exec api-docs/apis/users/delete-user.md --env=prod
-# Reqbook: You are about to run against prod. Confirm? [y/N]
+# Reqbook: You are about to execute endpoint against `prod`. Confirm? [y/N]
 ```
 
-Pass `--yes` to skip the confirmation prompt in automated pipelines:
+In non-interactive shells, Reqbook refuses to send production requests unless `--yes` is passed after deliberate review:
 
 ```bash
 rqb exec api-docs/apis/users/get-users.md --env=prod --yes

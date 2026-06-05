@@ -9,12 +9,16 @@ use reqbook::{
     pipeline::{self, PipelineOpts},
 };
 
-use super::{execution_context, print_report, read_text};
+use super::{confirm_production_env, execution_context, print_report, read_text};
 use crate::{ExecArgs, FlowArgs, OutputFormat};
 
-pub(crate) async fn exec(args: ExecArgs) -> Result<()> {
+pub(crate) async fn exec(args: ExecArgs, yes: bool) -> Result<()> {
     let source = read_text(&args.file, "executing endpoint")?;
     let endpoint = parse_endpoint(&source, &args.file)?;
+    engine::ensure_environment_allowed(&endpoint, &args.env)?;
+    if !args.dry_run {
+        confirm_production_env(&args.env, yes, "execute endpoint")?;
+    }
     let context = execution_context(&args.file, &args.env, &args.vars)?;
     let execution = engine::execute(
         &endpoint,
@@ -30,9 +34,10 @@ pub(crate) async fn exec(args: ExecArgs) -> Result<()> {
     print_report(args.output, &execution)
 }
 
-pub(crate) async fn flow(args: FlowArgs) -> Result<()> {
+pub(crate) async fn flow(args: FlowArgs, yes: bool) -> Result<()> {
     let source = read_text(&args.pipeline, "executing pipeline")?;
     let mut parsed = parse_pipeline(&source, &args.pipeline)?;
+    confirm_production_env(&args.env, yes, "run pipeline")?;
     if args.parallel {
         parsed.schema.parallel = true;
     }

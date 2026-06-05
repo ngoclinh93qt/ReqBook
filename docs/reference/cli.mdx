@@ -6,13 +6,14 @@ icon: "terminal"
 
 ## Global flags
 
-Every subcommand accepts these flags. They must be placed before the subcommand name.
+Every subcommand accepts these flags. Global flags can be placed before or after the subcommand name.
 
 | Flag | Type | Description |
 |---|---|---|
 | `--config <path>` | path | Path to `api-docs/reqbook.md`. Overrides the default discovery. |
 | `--no-color` | bool | Disable ANSI color in output. Also respected if `NO_COLOR` is set in the environment. |
 | `-v`, `--verbose` | bool | Enable verbose diagnostic output. |
+| `--yes` | bool | Accept non-interactive defaults and skip production confirmation after human review. |
 
 ---
 
@@ -43,7 +44,7 @@ rqb init [--name=<name>] [--dev-url=<url>] [--yes]
 |---|---|---|---|
 | `--name` | string | interactive | Project name written into `reqbook.md`. |
 | `--dev-url` | string | interactive | Base URL written into `_shared/env.md` for the `dev` environment. |
-| `--yes` | bool | `false` | Accept all defaults without interactive prompts. |
+| `--yes` | bool | `false` | Global flag. Accept all defaults without interactive prompts. |
 
 Without `--yes`, Reqbook prompts for any missing values. `--yes` uses `my-api` and `http://localhost:8080` as defaults when no flags are provided.
 
@@ -122,7 +123,7 @@ rqb exec <file> [--env=<env>] [--output=<format>] [--var key=val]... [--dry-run]
 | `--strict-assertions` | bool | `false` | Treat failing `## Assertions` rules as execution failures. |
 
 <Note>
-When `--env=prod` is used in an interactive terminal, Reqbook prompts for confirmation before sending the request. Pass `--yes` (global flag) to skip the prompt in CI.
+When `--env=prod` or `--env=production` is used in an interactive terminal, Reqbook prompts for confirmation before sending the request. In non-interactive shells, Reqbook refuses to send production requests unless `--yes` is passed after deliberate review.
 </Note>
 
 If a referenced variable is not resolved from any source, Reqbook exits with code `2` before making any network request, and prints a suggested fix naming the variable and where to define it.

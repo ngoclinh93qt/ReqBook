@@ -3,7 +3,7 @@
 use std::{
     collections::BTreeMap,
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use anyhow::Result;
@@ -21,32 +21,98 @@ use super::types::{
     LEGACY_FLOWS_DIR,
 };
 
-pub(super) fn doc_path(root: &Path, rel_path: &str) -> PathBuf {
-    let api_docs = root.join(API_DOCS_DIR);
-    let direct = api_docs.join(rel_path);
-    if direct.exists() {
-        return direct;
+pub(super) fn safe_rel_path(rel_path: &str) -> Result<PathBuf, String> {
+    let path = Path::new(rel_path);
+    if rel_path.trim().is_empty() || path.is_absolute() {
+        return Err("path must be a non-empty relative path".to_string());
     }
-    if let Some(rest) = rel_path.strip_prefix(&format!("{LEGACY_FLOWS_DIR}/")) {
-        let modern = api_docs.join(FLOWS_DIR).join(rest);
-        if modern.exists() {
-            return modern;
+
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => out.push(part),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                return Err("path must not contain `..`".to_string());
+            }
+            Component::RootDir | Component::Prefix(_) => {
+                return Err("path must be relative".to_string());
+            }
         }
     }
-    direct
+
+    if out.as_os_str().is_empty() {
+        return Err("path must be a non-empty relative path".to_string());
+    }
+    Ok(out)
 }
 
-pub(super) fn spec_path(root: &Path, rel_path: &str) -> PathBuf {
+pub(super) fn ensure_api_docs_target(root: &Path, target: &Path) -> Result<(), String> {
     let api_docs = root.join(API_DOCS_DIR);
-    let direct = api_docs.join(rel_path);
-    if direct.exists() || rel_path.starts_with(&format!("{APIS_DIR}/")) {
-        direct
+    let api_docs = api_docs.canonicalize().map_err(|e| {
+        format!(
+            "api-docs root is not available: {}\nFix: create api-docs/ before saving.",
+            e
+        )
+    })?;
+
+    let checked = if target.exists() {
+        target
+            .canonicalize()
+            .map_err(|e| format!("invalid path: {e}"))?
     } else {
-        let nested = api_docs.join(APIS_DIR).join(rel_path);
+        let parent = target
+            .parent()
+            .ok_or_else(|| "path must have a parent".to_string())?;
+        let parent = parent
+            .canonicalize()
+            .map_err(|e| format!("invalid parent path: {e}"))?;
+        let file_name = target
+            .file_name()
+            .ok_or_else(|| "path must include a file name".to_string())?;
+        parent.join(file_name)
+    };
+
+    if !checked.starts_with(&api_docs) {
+        return Err("path must stay inside api-docs/".to_string());
+    }
+    Ok(())
+}
+
+pub(super) fn doc_path(root: &Path, rel_path: &str) -> Result<PathBuf, String> {
+    let rel = safe_rel_path(rel_path)?;
+    let api_docs = root.join(API_DOCS_DIR);
+    let direct = api_docs.join(&rel);
+    if direct.exists() {
+        ensure_api_docs_target(root, &direct)?;
+        return Ok(direct);
+    }
+    if let Ok(rest) = rel.strip_prefix(LEGACY_FLOWS_DIR) {
+        let modern = api_docs.join(FLOWS_DIR).join(rest);
+        if modern.exists() {
+            ensure_api_docs_target(root, &modern)?;
+            return Ok(modern);
+        }
+    }
+    Ok(direct)
+}
+
+pub(super) fn spec_path(root: &Path, rel_path: &str) -> Result<PathBuf, String> {
+    let rel = safe_rel_path(rel_path)?;
+    let api_docs = root.join(API_DOCS_DIR);
+    let direct = api_docs.join(&rel);
+    if direct.exists() || rel.starts_with(APIS_DIR) {
+        if direct.exists() {
+            ensure_api_docs_target(root, &direct)?;
+        }
+        Ok(direct)
+    } else {
+        let nested = api_docs.join(APIS_DIR).join(&rel);
         if nested.exists() {
-            nested
+            ensure_api_docs_target(root, &nested)?;
+            Ok(nested)
         } else {
-            direct
+            Ok(direct)
         }
     }
 }

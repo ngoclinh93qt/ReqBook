@@ -12,7 +12,10 @@ pub mod request;
 pub mod serve;
 pub mod validate;
 
-use std::path::{Path, PathBuf};
+use std::{
+    io::{self, IsTerminal, Write},
+    path::{Path, PathBuf},
+};
 
 use anyhow::{bail, Context as AnyhowContext, Result};
 use reqbook::{
@@ -45,6 +48,37 @@ pub(crate) fn execution_context(path: &Path, env: &str, vars: &[String]) -> Resu
     let cli_context = context_from_vars(vars)?;
     merge_context(&mut context, cli_context, SourceKind::Cli);
     Ok(context)
+}
+
+pub(crate) fn confirm_production_env(env: &str, yes: bool, action: &str) -> Result<()> {
+    if !is_production_env(env) {
+        return Ok(());
+    }
+    if yes {
+        return Ok(());
+    }
+    if !io::stdin().is_terminal() {
+        bail!(
+            "refusing to {action} against `{env}` without confirmation\nFix: pass --yes only after reviewing the production request."
+        );
+    }
+
+    eprint!("Reqbook: You are about to {action} against `{env}`. Confirm? [y/N] ");
+    io::stderr().flush()?;
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer)?;
+    if matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
+        Ok(())
+    } else {
+        bail!("aborted before sending production request")
+    }
+}
+
+pub(crate) fn is_production_env(env: &str) -> bool {
+    matches!(
+        env.trim().to_ascii_lowercase().as_str(),
+        "prod" | "production"
+    )
 }
 
 pub(crate) fn load_env_file(path: &Path, env: &str, context: &mut Context) -> Result<()> {

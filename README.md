@@ -87,22 +87,15 @@ rqb import project .
 
 ## Installation
 
+Until the first public release artifacts are published, install Reqbook from a local checkout:
+
 ```bash
-# Cargo
-cargo install reqbook
-
-# Shell installer (macOS / Linux)
-curl -fsSL https://markapidown.net/install.sh | sh
-
-# npm wrapper
-npm install -g reqbook
-
-# Homebrew
-brew install reqbook/tap/rqb
-
-# Docker
-docker run --rm -v "$(pwd)":/work -w /work ghcr.io/ngoclinh93qt/rqb:latest validate api-docs/
+git clone https://github.com/ngoclinh93qt/ReqBook.git
+cd ReqBook
+cargo install --path .
 ```
+
+Package-manager channels such as crates.io, the shell installer, npm, Homebrew, Docker, and GitHub Release binaries should be documented here only after the corresponding public release artifacts are available.
 
 ## CLI
 
@@ -127,7 +120,7 @@ rqb doctor
 
 - [Getting started](https://docs.markapidown.net/quickstart)
 - [CLI reference](https://docs.markapidown.net/cli/overview)
-- [Configuration reference](https://docs.markapidown.net/reference/config)
+- [Configuration reference](https://docs.markapidown.net/reference/configuration)
 - [Spec convention](docs/spec/convention.md)
 - [Benchmarks](BENCHMARKS.md)
 - [Contributing](CONTRIBUTING.md)

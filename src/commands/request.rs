@@ -8,10 +8,10 @@ use reqbook::{
     engine::{self, ExecOpts},
 };
 
-use super::{execution_context, print_report};
+use super::{confirm_production_env, execution_context, print_report};
 use crate::RequestArgs;
 
-pub(crate) async fn run(args: RequestArgs, collection: &Path) -> Result<()> {
+pub(crate) async fn run(args: RequestArgs, collection: &Path, yes: bool) -> Result<()> {
     let body = match &args.data {
         Some(d) if d.starts_with('@') => {
             let path = Path::new(&d[1..]);
@@ -37,6 +37,9 @@ pub(crate) async fn run(args: RequestArgs, collection: &Path) -> Result<()> {
     };
 
     let endpoint = adhoc::build_endpoint(&params)?;
+    if !args.dry_run {
+        confirm_production_env(&args.env, yes, "send ad-hoc request")?;
+    }
     let context = {
         let dummy = collection.join("reqbook.md");
         execution_context(&dummy, &args.env, &args.vars)?

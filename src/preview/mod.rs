@@ -10,7 +10,9 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use axum::{
-    http::{header, StatusCode, Uri},
+    extract::Request,
+    http::{header, HeaderMap, Method, StatusCode, Uri},
+    middleware::{from_fn, Next},
     response::IntoResponse,
     routing::{get, post},
     Router,
@@ -155,7 +157,49 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/git/checkout", post(git_checkout_handler))
         .route("/api/pick-folder", get(pick_folder_handler))
         .fallback(static_handler)
+        .layer(from_fn(unsafe_request_guard))
         .with_state(state)
+}
+
+async fn unsafe_request_guard(req: Request, next: Next) -> impl IntoResponse {
+    if is_unsafe_method(req.method()) && !is_allowed_browser_write(req.headers()) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
+                "error": "write requests are only allowed from the local preview origin"
+            })),
+        )
+            .into_response();
+    }
+    next.run(req).await
+}
+
+fn is_unsafe_method(method: &Method) -> bool {
+    matches!(
+        *method,
+        Method::POST | Method::PUT | Method::PATCH | Method::DELETE
+    )
+}
+
+fn is_allowed_browser_write(headers: &HeaderMap) -> bool {
+    if headers
+        .get("sec-fetch-site")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.eq_ignore_ascii_case("cross-site"))
+    {
+        return false;
+    }
+
+    let Some(origin) = headers
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+    else {
+        return true;
+    };
+    let Ok(url) = reqwest::Url::parse(origin) else {
+        return false;
+    };
+    matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
 }
 
 async fn bind_listener(host: &str, port: u16) -> Result<tokio::net::TcpListener> {
@@ -247,7 +291,9 @@ mod tests {
 
     use super::*;
     use crate::parser::EnvConfig;
-    use business::{apply_runtime_overrides, collect_specs, render_env_config};
+    use business::{
+        apply_runtime_overrides, collect_specs, doc_path, render_env_config, safe_rel_path,
+    };
     use types::RuntimeOverrides;
 
     #[test]
@@ -345,5 +391,39 @@ Content-Type: application/json
             source,
             "POST https://example.com/users/:id\nAccept: application/json\n\n{}"
         );
+    }
+
+    #[test]
+    fn safe_rel_path_rejects_traversal() {
+        assert!(safe_rel_path("flows/../../outside.md").is_err());
+        assert!(safe_rel_path("../api-docs/apis/users.md").is_err());
+        assert!(safe_rel_path("/api-docs/apis/users.md").is_err());
+        assert_eq!(
+            safe_rel_path("flows/demo.md").unwrap(),
+            PathBuf::from("flows/demo.md")
+        );
+    }
+
+    #[test]
+    fn doc_path_rejects_traversal_before_filesystem_access() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("api-docs/flows")).unwrap();
+        let err = doc_path(dir.path(), "flows/../../outside.md").unwrap_err();
+        assert!(err.contains(".."));
+    }
+
+    #[test]
+    fn unsafe_request_guard_rejects_cross_site_browser_writes() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::ORIGIN, "https://example.com".parse().unwrap());
+        assert!(!is_allowed_browser_write(&headers));
+
+        let mut headers = HeaderMap::new();
+        headers.insert(header::ORIGIN, "http://127.0.0.1:8091".parse().unwrap());
+        assert!(is_allowed_browser_write(&headers));
+
+        let mut headers = HeaderMap::new();
+        headers.insert("sec-fetch-site", "cross-site".parse().unwrap());
+        assert!(!is_allowed_browser_write(&headers));
     }
 }

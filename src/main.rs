@@ -33,6 +33,9 @@ struct Cli {
     /// Enable verbose diagnostics.
     #[arg(short, long, global = true)]
     verbose: bool,
+    /// Accept safety confirmations and non-interactive defaults.
+    #[arg(long, global = true)]
+    yes: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -132,9 +135,6 @@ pub(crate) struct InitArgs {
     /// Development base URL.
     #[arg(long)]
     pub(crate) dev_url: Option<String>,
-    /// Accept defaults and do not prompt.
-    #[arg(long)]
-    pub(crate) yes: bool,
 }
 
 #[derive(Debug, Args)]
@@ -379,10 +379,11 @@ async fn main() -> Result<()> {
     if cli.no_color {
         std::env::set_var("NO_COLOR", "1");
     }
+    let yes = cli.yes;
     let collection = workspace::collection_root(cli.config.as_deref());
     match cli.command {
         Command::Init(args) => {
-            init::run(args, &collection)?;
+            init::run(args, &collection, yes)?;
             println!("\nScanning for existing API routes...");
             import::run(
                 ImportCommand::Project {
@@ -396,9 +397,9 @@ async fn main() -> Result<()> {
             println!("\nRun `rqb serve` to open the web preview.");
         }
         Command::Validate { path } => validate::run(path)?,
-        Command::Exec(args) => exec::exec(args).await?,
-        Command::Flow(args) => exec::flow(args).await?,
-        Command::Check(args) => check::run(args).await?,
+        Command::Exec(args) => exec::exec(args, yes).await?,
+        Command::Flow(args) => exec::flow(args, yes).await?,
+        Command::Check(args) => check::run(args, yes).await?,
         Command::Context(args) => context::run(args)?,
         Command::Index => regenerate_index(&collection)?,
         Command::Import { command } => import::run(command, &collection).await?,
@@ -407,7 +408,7 @@ async fn main() -> Result<()> {
         Command::Skills { command } => install::skills(command).await?,
         Command::Serve(args) => serve::serve(args, &collection).await?,
         Command::Mock(args) => serve::mock(args).await?,
-        Command::Request(args) => request::run(args, &collection).await?,
+        Command::Request(args) => request::run(args, &collection, yes).await?,
         Command::Mcp => reqbook::mcp::run_mcp_server().await?,
         Command::Doctor(args) => doctor::run(args, &collection)?,
         Command::Completion { shell } => {

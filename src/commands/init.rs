@@ -106,12 +106,12 @@ pub(crate) fn detect_project_name() -> Option<String> {
     None
 }
 
-pub(crate) fn run(args: crate::InitArgs, collection: &Path) -> Result<()> {
+pub(crate) fn run(args: crate::InitArgs, collection: &Path, yes: bool) -> Result<()> {
     let detected = detect_project_name();
     let default_name = detected.unwrap_or_else(|| "my-api".to_string());
     let name = match args.name {
         Some(name) => name,
-        None if args.yes => default_name,
+        None if yes => default_name,
         None => dialoguer::Input::new()
             .with_prompt("Project name")
             .default(default_name)
@@ -119,7 +119,7 @@ pub(crate) fn run(args: crate::InitArgs, collection: &Path) -> Result<()> {
     };
     let dev_url = match args.dev_url {
         Some(url) => url,
-        None if args.yes => "http://localhost:8080".to_string(),
+        None if yes => "http://localhost:8080".to_string(),
         None => dialoguer::Input::new()
             .with_prompt("Base URL (dev)")
             .default("http://localhost:8080".to_string())

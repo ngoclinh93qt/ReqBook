@@ -21,6 +21,10 @@ pub(super) fn classify_engine_error(err: &EngineError) -> (&'static str, Option<
         EngineError::InvalidRequest { .. } => ("VALIDATION_ERROR", None),
         EngineError::InvalidExpected { .. } => ("VALIDATION_ERROR", None),
         EngineError::Http { .. } => ("VALIDATION_ERROR", None),
+        EngineError::UnsupportedEnvironment { .. } => (
+            "ENV_NOT_ALLOWED",
+            Some("Run with an allowed env from endpoint frontmatter or update env: [...] after review"),
+        ),
     }
 }
 
@@ -37,6 +41,9 @@ pub(super) fn hint_for_error_type(error_type: &str) -> Option<&'static str> {
         "SPEC_PARSE_ERROR" => {
             Some("Fix YAML frontmatter or markdown section structure in the spec file")
         }
+        "ENV_NOT_ALLOWED" => Some(
+            "Run with an allowed env from endpoint frontmatter or update env: [...] after review",
+        ),
         _ => None,
     }
 }
