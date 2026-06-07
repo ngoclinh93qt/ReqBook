@@ -1,20 +1,49 @@
 name: release
+run-name: Release ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish, for example v0.1.0"
+        required: true
+        type: string
+      draft:
+        description: "Create the GitHub Release as a draft"
+        required: false
+        default: false
+        type: boolean
+      prerelease:
+        description: "Mark the GitHub Release as a pre-release"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
   id-token: write
   packages: write
 
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
 jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+      - name: Validate release tag
+        run: |
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *) echo "Release tag must start with v, got: $RELEASE_TAG" >&2; exit 1 ;;
+          esac
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -64,6 +93,8 @@ jobs:
             os: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -114,20 +145,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           path: dist/
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: dist/*
           generate_release_notes: true
+          draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
 
   vscode-package:
     needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -140,7 +178,7 @@ jobs:
           npm ci
           npm test
           npm run check
-          npm run package -- --out ../../dist/reqbook-vscode-${{ github.ref_name }}.vsix --no-dependencies
+          npm run package -- --out ../../dist/reqbook-vscode-${{ env.RELEASE_TAG }}.vsix --no-dependencies
       - uses: actions/upload-artifact@v4
         with:
           name: reqbook-vscode
@@ -152,6 +190,8 @@ jobs:
     if: ${{ vars.PUBLISH_VSCODE == 'true' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -175,6 +215,8 @@ jobs:
     if: ${{ vars.PUBLISH_OPEN_VSX == 'true' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -198,6 +240,8 @@ jobs:
     if: ${{ vars.PUBLISH_CRATES == 'true' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo publish --locked
@@ -213,6 +257,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -227,9 +273,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
-        if: github.event_name == 'push'
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -237,5 +285,5 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name == 'push' }}
-          tags: ghcr.io/${{ github.repository_owner }}/rqb:${{ github.ref_name }},ghcr.io/${{ github.repository_owner }}/rqb:latest
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+          tags: ghcr.io/${{ github.repository_owner }}/rqb:${{ env.RELEASE_TAG }},ghcr.io/${{ github.repository_owner }}/rqb:latest

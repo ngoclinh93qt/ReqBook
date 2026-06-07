@@ -14,9 +14,28 @@ See the [Exit codes reference](/docs/reference/exit-codes) for a full list of co
 
 ## Release automation
 
-This repository ships a tag-based release workflow at `.github/workflows/release.yml`. Push a tag like `v0.1.0` to build release binaries, package the VS Code extension, create a GitHub Release, and optionally publish to external package managers.
+This repository ships a tag-based release workflow at `.github/workflows/release.yml`. Push a tag like `v0.1.0`, or run the `release` workflow manually with an existing `v*` tag, to build release binaries, package the VS Code extension, create a GitHub Release, and optionally publish to external package managers.
 
 Package-manager publishing is gated by GitHub repository variables. Leave a variable unset or set it to `false` to keep that channel disabled while still producing GitHub Release artifacts.
+
+### Manual release trigger
+
+Manual release runs are for retrying or promoting an existing tag. Create and push the tag first:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Then open GitHub Actions, choose the `release` workflow, click **Run workflow**, and enter:
+
+| Input | Value |
+|---|---|
+| `tag` | Existing tag, for example `v0.1.0`. |
+| `draft` | `true` only when you want to review the GitHub Release before publishing. |
+| `prerelease` | `true` for alpha, beta, rc, or early public builds. |
+
+The workflow checks out the tag, not the current `main` branch. The tag must start with `v`.
 
 ### Required GitHub configuration
 
@@ -43,12 +62,17 @@ Optional Homebrew variables for a future tap job:
 gh secret set CARGO_REGISTRY_TOKEN
 gh secret set NPM_TOKEN
 gh secret set VSCE_PAT
-gh secret set OVSX_PAT
 
 gh variable set PUBLISH_CRATES --body true
 gh variable set PUBLISH_NPM --body true
 gh variable set PUBLISH_VSCODE --body true
-gh variable set PUBLISH_OPEN_VSX --body true
+```
+
+Open VSX and Homebrew can stay disabled until those channels are ready:
+
+```bash
+gh variable set PUBLISH_OPEN_VSX --body false
+gh variable set PUBLISH_HOMEBREW --body false
 ```
 
 Do not store `RQB_*` runtime API credentials as release publishing secrets unless a CI test needs them. `RQB_*` values are for executing API specs, while the package-manager tokens above are for publishing artifacts.
