@@ -133,18 +133,28 @@ jobs:
         run: |
           mkdir staging
           cp target/${{ matrix.target }}/release/rqb staging/
-          tar -cJf rqb-${{ matrix.target }}.tar.xz -C staging rqb
+          archive="rqb-${{ matrix.target }}.tar.xz"
+          tar -cJf "$archive" -C staging rqb
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$archive" > "$archive.sha256"
+          else
+            shasum -a 256 "$archive" > "$archive.sha256"
+          fi
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory staging
           Copy-Item target/${{ matrix.target }}/release/rqb.exe staging/
-          Compress-Archive -Path staging/rqb.exe -DestinationPath rqb-${{ matrix.target }}.zip
+          $archive = "rqb-${{ matrix.target }}.zip"
+          Compress-Archive -Path staging/rqb.exe -DestinationPath $archive
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          "$hash  $archive" | Set-Content -NoNewline "$archive.sha256"
       - uses: actions/upload-artifact@v4
         with:
           name: rqb-${{ matrix.target }}
           path: rqb-${{ matrix.target }}.*
+          if-no-files-found: error
 
   github-release:
     needs:
@@ -159,13 +169,60 @@ jobs:
         with:
           merge-multiple: true
           path: dist/
+      - name: Verify release assets
+        run: |
+          cat > expected-release-assets.txt <<EOF
+          rqb-x86_64-unknown-linux-musl.tar.xz
+          rqb-x86_64-unknown-linux-musl.tar.xz.sha256
+          rqb-aarch64-unknown-linux-musl.tar.xz
+          rqb-aarch64-unknown-linux-musl.tar.xz.sha256
+          rqb-x86_64-apple-darwin.tar.xz
+          rqb-x86_64-apple-darwin.tar.xz.sha256
+          rqb-aarch64-apple-darwin.tar.xz
+          rqb-aarch64-apple-darwin.tar.xz.sha256
+          rqb-x86_64-pc-windows-msvc.zip
+          rqb-x86_64-pc-windows-msvc.zip.sha256
+          reqbook-vscode-${RELEASE_TAG}.vsix
+          EOF
+          sed -i 's/^ *//' expected-release-assets.txt
+
+          missing=0
+          while IFS= read -r asset; do
+            if [ ! -f "dist/$asset" ]; then
+              echo "missing release asset: dist/$asset" >&2
+              missing=1
+            fi
+          done < expected-release-assets.txt
+          if [ "$missing" -ne 0 ]; then
+            echo "available files:" >&2
+            find dist -maxdepth 1 -type f -print | sort >&2
+            exit 1
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           files: dist/*
+          fail_on_unmatched_files: true
           generate_release_notes: true
           draft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft || false }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+      - name: Verify published release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          published="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          missing=0
+          while IFS= read -r asset; do
+            if ! printf '%s\n' "$published" | grep -qx "$asset"; then
+              echo "missing published release asset: $asset" >&2
+              missing=1
+            fi
+          done < expected-release-assets.txt
+          if [ "$missing" -ne 0 ]; then
+            echo "published assets:" >&2
+            printf '%s\n' "$published" | sort >&2
+            exit 1
+          fi
 
   vscode-package:
     needs: checks
@@ -191,6 +248,7 @@ jobs:
         with:
           name: reqbook-vscode
           path: dist/*.vsix
+          if-no-files-found: error
 
   vscode-marketplace:
     needs: vscode-package

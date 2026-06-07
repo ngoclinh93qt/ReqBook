@@ -18,6 +18,21 @@ This repository ships a tag-based release workflow at `.github/workflows/release
 
 Package-manager publishing is gated by GitHub repository variables. Leave a variable unset or set it to `false` to keep that channel disabled while still producing GitHub Release artifacts.
 
+### GitHub Release artifacts
+
+The release workflow must publish these binary assets because the shell, PowerShell, and npm installers download by exact asset name:
+
+| Platform | Required asset |
+|---|---|
+| macOS Apple Silicon | `rqb-aarch64-apple-darwin.tar.xz` |
+| macOS Intel | `rqb-x86_64-apple-darwin.tar.xz` |
+| Linux ARM64 | `rqb-aarch64-unknown-linux-musl.tar.xz` |
+| Linux x64 | `rqb-x86_64-unknown-linux-musl.tar.xz` |
+| Windows x64 | `rqb-x86_64-pc-windows-msvc.zip` |
+| VS Code | `reqbook-vscode-<tag>.vsix` |
+
+Each CLI archive is published with a matching `.sha256` file. The workflow fails before and after creating the GitHub Release if any required asset is missing.
+
 ### Manual release trigger
 
 Manual release runs are for retrying or promoting an existing tag. Create and push the tag first:
@@ -269,7 +284,7 @@ For reproducible CI builds, pin the Reqbook version explicitly rather than alway
 
 ```bash
 # Install a specific version
-curl -fsSL https://markapidown.net/install.sh | sh -s -- --version=1.2.0
+curl -fsSL https://markapidown.net/install.sh | sh -s -- --version=v1.2.0
 ```
 
 Alternatively, check the binary into your repository under `bin/rqb` and reference it directly. The binary is statically linked and has no runtime dependencies.

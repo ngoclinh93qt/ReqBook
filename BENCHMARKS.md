@@ -27,6 +27,10 @@ This benchmark runs Codex as the agent against the same local fixture in two mod
 
 The fixture is intentionally local and does not require a network service. The harness stores raw JSONL, prompts, and summaries under `target/token-benchmarks/codex/<timestamp>/`.
 
+Latest rerun attempt: 2026-06-07T04:05:17.019Z
+Result: blocked by Codex usage limit for both scenarios.
+Artifact: `target/token-benchmarks/codex/2026-06-07T04-05-17-018Z/summary.md`
+
 Captured: 2026-06-01T15:06:43.918Z  
 Machine: Darwin 25.3.0 arm64  
 Codex: `codex-cli 0.135.0`  

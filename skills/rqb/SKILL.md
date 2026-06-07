@@ -80,6 +80,9 @@ Content-Type: application/json
 | `rqb_author` | Create or update a spec (validates before writing — prefer over direct file writes) |
 | `rqb_search` | Find specs by method, path, or tag |
 | `rqb_vars` | Show variable resolution for a spec |
+| `rqb_context` | Build compact API context for a target, flow, or changed specs |
+| `rqb_history` | Inspect recent execution history and trend |
+| `rqb_session` | Get or set default MCP env and vars |
 | `rqb_exec_batch` | Run multiple specs in one call |
 
 ## Rules

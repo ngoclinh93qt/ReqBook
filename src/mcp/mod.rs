@@ -114,14 +114,10 @@ mod tests {
     // ── tools/list ──
 
     #[test]
-    fn tools_list_has_at_least_eight_tools() {
+    fn tools_list_has_nine_tools() {
         let list = tools_list_result();
         let tools = list["tools"].as_array().unwrap();
-        assert!(
-            tools.len() >= 8,
-            "expected at least 8 tools, got {}",
-            tools.len()
-        );
+        assert_eq!(tools.len(), 9, "expected 9 tools, got {}", tools.len());
     }
 
     #[test]

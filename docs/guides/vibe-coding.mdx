@@ -39,11 +39,12 @@ Reqbook is strongest when a coding agent is part of your API workflow. The agent
  ```
  </Step>
 
- <Step title="Register MCP for Claude Code">
+ <Step title="Register MCP for your agent">
  MCP mode gives the agent structured Reqbook tools instead of asking it to parse terminal output.
 
  ```bash
- claude mcp add rqb -- rqb mcp
+ rqb install mcp --agent=claude-code
+ rqb install mcp --agent=codex-cli
  ```
  </Step>
 

@@ -23,12 +23,30 @@ if ($Version -eq "latest") {
     $baseUrl = "https://github.com/$Repo/releases/download/$Version"
 }
 
+function Invoke-RequiredDownload {
+    param(
+        [string]$Url,
+        [string]$OutFile,
+        [string]$AssetName
+    )
+
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $OutFile
+    } catch {
+        $hint = "Check https://github.com/$Repo/releases and rerun the release workflow if the asset is missing."
+        if ($Version -eq "latest") {
+            $hint = "The latest GitHub release may not include binaries for this platform yet. $hint"
+        }
+        throw "failed to download Reqbook release asset`nasset: $AssetName`nurl: $Url`n$hint"
+    }
+}
+
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "rqb-install-$PID"
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
 try {
     $archivePath = Join-Path $tmp $archive
-    Invoke-WebRequest -Uri "$baseUrl/$archive" -OutFile $archivePath
+    Invoke-RequiredDownload -Url "$baseUrl/$archive" -OutFile $archivePath -AssetName $archive
 
     $checksumPath = Join-Path $tmp "$archive.sha256"
     try {

@@ -171,6 +171,31 @@ function parseUsage(stdout) {
   return candidates[0];
 }
 
+function parseErrorMessage(stdout, stderr) {
+  const messages = [];
+  const lines = stdout.split(/\r?\n/).filter((line) => line.trim());
+  for (const line of lines) {
+    try {
+      const event = JSON.parse(line);
+      if (typeof event.message === 'string' && event.type === 'error') {
+        messages.push(event.message);
+      }
+      if (event.error && typeof event.error.message === 'string') {
+        messages.push(event.error.message);
+      }
+    } catch (_) {
+      // Keep scanning JSONL; stderr is handled below.
+    }
+  }
+
+  if (messages.length > 0) {
+    return messages[messages.length - 1];
+  }
+
+  const stderrLines = stderr.split(/\r?\n/).filter((line) => line.trim());
+  return stderrLines.length > 0 ? stderrLines[stderrLines.length - 1] : null;
+}
+
 function codexVersion() {
   const result = spawnSync(codexBin, ['--version'], { encoding: 'utf8' });
   if (result.status !== 0) {
@@ -227,6 +252,7 @@ function runCodex(scenarioName, runIndex, prompt) {
   writeFileSync(path.join(scenarioOut, 'stderr.log'), result.stderr || '');
 
   const usageCandidate = parseUsage(result.stdout || '');
+  const errorMessage = result.status === 0 ? null : parseErrorMessage(result.stdout || '', result.stderr || '');
   const run = {
     scenario: scenarioName,
     run: runIndex,
@@ -237,6 +263,7 @@ function runCodex(scenarioName, runIndex, prompt) {
     usage_source: usageCandidate
       ? `events.jsonl line ${usageCandidate.line} path ${usageCandidate.path}`
       : null,
+    error_message: errorMessage,
     output_dir: scenarioOut,
   };
 
@@ -270,6 +297,14 @@ function summarize(results, meta) {
       label: scenarioLabels[name] || name,
       runs: runsForScenario.length,
       successful_usage_runs: successful.length,
+      failures: runsForScenario
+        .filter((run) => run.status !== 0 || !run.usage)
+        .map((run) => ({
+          run: run.run,
+          status: run.status,
+          signal: run.signal,
+          error_message: run.error_message,
+        })),
       mean_total_tokens: meanTotal == null ? null : Number(meanTotal.toFixed(1)),
       mean_uncached_tokens: meanUncached == null ? null : Number(meanUncached.toFixed(1)),
       totals,
@@ -340,6 +375,18 @@ function printMarkdown(summary) {
     );
   } else {
     console.log('\nMeasured reduction: n/a; Codex JSON output did not expose token usage for every scenario.');
+  }
+  const failures = summary.scenarios.flatMap((row) =>
+    row.failures.map((failure) => ({ scenario: row.label, ...failure })),
+  );
+  if (failures.length > 0) {
+    console.log('\nFailures:');
+    for (const failure of failures) {
+      const message = failure.error_message || 'usage not reported';
+      console.log(
+        `- ${failure.scenario} run ${failure.run}: status ${failure.status ?? 'n/a'}, ${message}`,
+      );
+    }
   }
 }
 

@@ -3,7 +3,9 @@
 #[cfg(feature = "install")]
 use std::path::Path;
 
-use anyhow::{bail, Result};
+#[cfg(not(feature = "install"))]
+use anyhow::bail;
+use anyhow::Result;
 #[cfg(feature = "install")]
 use owo_colors::OwoColorize;
 
@@ -44,7 +46,7 @@ pub(crate) async fn install(command: InstallCommand) -> Result<()> {
             println!("{} command(s) installed", installed.len());
             Ok(())
         }
-        InstallCommand::Mcp => install_mcp(),
+        InstallCommand::Mcp { agent } => install_mcp(agent.as_deref()),
         InstallCommand::List => {
             for status in reqbook::installer::detect_agents(Path::new(".")) {
                 println!(
@@ -115,31 +117,26 @@ pub(crate) async fn skills(command: SkillsCommand) -> Result<()> {
 }
 
 #[cfg(feature = "install")]
-pub(crate) fn install_mcp() -> Result<()> {
-    println!("Registering Reqbook MCP server with Claude Code...");
-    let status = std::process::Command::new("claude")
-        .args(["mcp", "add", "rqb", "--", "rqb", "mcp"])
-        .status();
-    match status {
-        Ok(s) if s.success() => {
-            println!("{} Registered. Verify with: claude mcp list", "✓".green());
-            Ok(())
-        }
-        Ok(_) => bail!(
-            "claude mcp add failed\nFix: run `claude mcp add rqb -- rqb mcp` manually."
-        ),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => bail!(
-            "claude CLI not found\nFix: install Claude Code, then run `claude mcp add rqb -- rqb mcp`."
-        ),
-        Err(e) => bail!(
-            "failed to run claude: {e}\nFix: run `claude mcp add rqb -- rqb mcp` manually."
-        ),
+pub(crate) fn install_mcp(agent: Option<&str>) -> Result<()> {
+    let installed = reqbook::installer::install_mcp(Path::new("."), agent)?;
+    for file in &installed {
+        println!(
+            "installed {} MCP config: {}",
+            file.agent.name(),
+            file.path.display()
+        );
     }
+    println!(
+        "{} {} MCP config(s) installed. Restart the agent or reload MCP tools to connect.",
+        "✓".green(),
+        installed.len()
+    );
+    Ok(())
 }
 
 #[cfg(not(feature = "install"))]
 #[allow(dead_code)]
-pub(crate) fn install_mcp() -> Result<()> {
+pub(crate) fn install_mcp(_agent: Option<&str>) -> Result<()> {
     bail!(
         "install support is not compiled into this binary\nFix: install Reqbook with default features."
     )

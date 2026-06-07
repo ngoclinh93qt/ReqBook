@@ -409,7 +409,7 @@ rqb skills install [--agent=<name>]
 |---|---|---|
 | `--agent` | string | Install skills only for a specific agent. Installs for all detected agents if omitted. |
 
-Supported agent names: `claude-code`, `cursor`, `copilot`, `codex-cli`, `antigravity`, `opencode`.
+Supported agent names: `claude-code`, `cursor`, `copilot`, `codex-cli`, `antigravity`, `opencode`, `windsurf`.
 
 Reqbook detects agents by checking for their config directories (`.claude/`, `.cursor/`, `.github/`, etc.).
 
@@ -462,6 +462,34 @@ rqb skills uninstall --agent=claude-code
 ```
 
 **Exit codes (all skills subcommands)**: `0` on success, `3` on filesystem error.
+
+---
+
+## rqb install mcp
+
+Install Reqbook MCP server configuration for one agent or every detected agent.
+
+```bash
+rqb install mcp [--agent=<name>]
+```
+
+| Flag | Type | Description |
+|---|---|---|
+| `--agent` | string | Install MCP config only for a specific agent. Installs for all detected agents if omitted. |
+
+Supported agent names: `claude-code`, `cursor`, `copilot`, `codex-cli`, `antigravity`, `opencode`, `windsurf`.
+
+| Agent | Config written |
+|---|---|
+| Claude Code | `.mcp.json` |
+| Codex CLI / IDE | `.codex/config.toml` |
+| Cursor | `.cursor/mcp.json` |
+| GitHub Copilot in VS Code | `.vscode/mcp.json` |
+| OpenCode | `opencode.json` |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` |
+| Windsurf / Cascade | `~/.codeium/windsurf/mcp_config.json` |
+
+After installing, restart the agent or use its MCP reload/list command.
 
 ---
 
@@ -570,15 +598,18 @@ No flags. The MCP server exposes the following tools to any MCP-compatible AI ag
 |---|---|
 | `rqb_exec` | Execute an endpoint spec |
 | `rqb_flow` | Run a pipeline |
-| `rqb_validate` | Validate specs in a file or directory |
-| `rqb_list_specs` | List all endpoint specs with method and path |
-| `rqb_read_spec` | Read the full content of a spec file |
 | `rqb_author` | Create or update a spec file |
+| `rqb_vars` | Show variable resolution for a spec |
+| `rqb_search` | Search specs by method, path, tag, or text |
+| `rqb_context` | Return compact API context for a target, flow, or changed specs |
+| `rqb_history` | Return recent execution history for a spec |
+| `rqb_session` | Get or set default MCP env and vars |
+| `rqb_exec_batch` | Run multiple specs and return a compact summary |
 
-Register with Claude Code:
+Install an agent config:
 
 ```bash
-claude mcp add rqb -- rqb mcp
+rqb install mcp --agent=codex-cli
 ```
 
 See [AI agent integration](/docs/guides/ai-agents) for full setup and usage details.
@@ -631,7 +662,7 @@ No flags.
 
 ```bash
 rqb version
-# 0.1.0
+# 0.1.2
 ```
 
 **Exit codes**: `0` always.

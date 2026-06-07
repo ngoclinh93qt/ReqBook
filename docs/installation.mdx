@@ -104,7 +104,7 @@ After installing, confirm the binary is on your PATH and run the built-in diagno
 
 ```bash
 rqb version
-# 0.1.0
+# 0.1.2
 
 rqb doctor
 ```
@@ -127,6 +127,22 @@ The VS Code extension uses the same `rqb` binary. Install Reqbook first, then co
 ```
 
 See the [VS Code extension guide](/docs/guides/vscode-extension) for commands, variable autocomplete, and result panel behavior.
+
+---
+
+## Troubleshooting
+
+### Shell installer returns 404
+
+The shell installer downloads a platform-specific binary from the latest GitHub Release. For example, Apple Silicon macOS expects an asset named `rqb-aarch64-apple-darwin.tar.xz`.
+
+If the install command fails with `curl: (56) The requested URL returned error: 404`, the latest release is missing that binary asset. Re-run the release workflow for the current tag or pin a release tag that has assets:
+
+```bash
+curl -fsSL https://markapidown.net/install.sh | sh -s -- --version=vX.Y.Z
+```
+
+This is unrelated to starting an API server; it happens before `rqb` is installed.
 
 ---
 

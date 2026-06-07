@@ -1,6 +1,6 @@
 ---
 title: "Set up agent support"
-description: "Install the skill, slash commands, and the MCP server for Claude Code, Cursor, Copilot, Codex CLI, Antigravity, and OpenCode."
+description: "Install the skill, slash commands, and the MCP server for Claude Code, Cursor, Copilot, Codex CLI, Antigravity, OpenCode, and Windsurf."
 icon: "download"
 ---
 
@@ -14,7 +14,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  Two `/rqb` commands for Claude Code and Codex CLI: `/rqb` for creating, enriching, and building flows; `/rqb-debug` for diagnosing failures.
  </Card>
  <Card title="MCP server" icon="plug">
- Structured tools for Claude Code: exec, flow, author, and more. Agents get typed results without parsing shell output.
+ Structured tools for MCP-compatible agents: exec, flow, author, context, and more. Agents get typed results without parsing shell output.
  </Card>
  <Card title="Shared markdown source" icon="code-pull-request">
  Every agent change is a markdown file in `api-docs/`. Reviewable, diffable, committable. No hidden state.
@@ -52,17 +52,19 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  ```
  </Step>
 
- <Step title="Register the MCP server (Claude Code only)">
- The MCP server gives Claude Code structured access to spec execution, pipelines, and authoring — no terminal output parsing.
+ <Step title="Register the MCP server">
+ The MCP server gives compatible agents structured access to spec execution, pipelines, context packs, and authoring — no terminal output parsing.
 
  ```bash
- claude mcp add rqb -- rqb mcp
+ rqb install mcp
  ```
 
- Verify:
+ To target one agent:
 
  ```bash
- claude mcp list
+ rqb install mcp --agent=codex-cli
+ rqb install mcp --agent=cursor
+ rqb install mcp --agent=copilot
  ```
  </Step>
 </Steps>
@@ -82,7 +84,7 @@ rqb skills install --agent=claude-code
 ```bash Codex CLI
 rqb skills install --agent=codex-cli
 # Installs: 1 skill + 2 slash commands
-# Locations: ~/.codex/skills/rqb/, ~/.codex/commands/
+# Locations: .agents/skills/rqb/, ~/.codex/commands/
 ```
 
 ```bash Cursor
@@ -122,12 +124,24 @@ rqb skills install --agent=windsurf
 | Agent | Skills | Slash commands | MCP |
 |---|---|---|---|
 | Claude Code | 1 skill | 2 commands | ✓ |
-| Codex CLI | 1 skill | 2 commands | |
-| Cursor | 1 skill | | |
-| GitHub Copilot | 1 skill | | |
-| Antigravity | 1 skill | | |
-| OpenCode | 1 skill | | |
-| Windsurf | 1 skill | | |
+| Codex CLI | 1 skill | 2 commands | ✓ |
+| Cursor | 1 skill | | ✓ |
+| GitHub Copilot | 1 skill | | ✓ |
+| Antigravity | 1 skill | | ✓ |
+| OpenCode | 1 skill | | ✓ |
+| Windsurf | 1 skill | | ✓ |
+
+### MCP config locations
+
+| Agent | Command | Config |
+|---|---|---|
+| Claude Code | `rqb install mcp --agent=claude-code` | `.mcp.json` |
+| Codex CLI / IDE | `rqb install mcp --agent=codex-cli` | `.codex/config.toml` |
+| Cursor | `rqb install mcp --agent=cursor` | `.cursor/mcp.json` |
+| GitHub Copilot in VS Code | `rqb install mcp --agent=copilot` | `.vscode/mcp.json` |
+| OpenCode | `rqb install mcp --agent=opencode` | `opencode.json` |
+| Antigravity | `rqb install mcp --agent=antigravity` | `~/.gemini/antigravity/mcp_config.json` |
+| Windsurf / Cascade | `rqb install mcp --agent=windsurf` | `~/.codeium/windsurf/mcp_config.json` |
 
 ---
 

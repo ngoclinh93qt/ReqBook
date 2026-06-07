@@ -1,4 +1,4 @@
-//! Cross-agent skill and slash-command installation.
+//! Cross-agent skill, slash-command, and MCP installation.
 
 use std::{
     fs,
@@ -6,6 +6,7 @@ use std::{
 };
 
 use serde::Deserialize;
+use serde_json::{json, Value};
 use thiserror::Error;
 
 const RQB: &str = include_str!("../../skills/rqb/SKILL.md");
@@ -86,6 +87,16 @@ impl Agent {
     }
 }
 
+const ALL_AGENTS: &[Agent] = &[
+    Agent::ClaudeCode,
+    Agent::CodexCli,
+    Agent::Antigravity,
+    Agent::OpenCode,
+    Agent::Cursor,
+    Agent::Copilot,
+    Agent::Windsurf,
+];
+
 // ─── Result types ─────────────────────────────────────────────────────────────
 
 /// Installed file record.
@@ -128,6 +139,22 @@ pub enum InstallError {
         /// Source error.
         #[source]
         source: std::io::Error,
+    },
+    /// Existing agent config could not be updated safely.
+    #[error("{path}: invalid config: {message}\nFix: correct the file, then rerun the installer.")]
+    InvalidConfig {
+        /// Path.
+        path: PathBuf,
+        /// Error detail.
+        message: String,
+    },
+    /// Home directory was required but unavailable.
+    #[error(
+        "home directory not available for {agent}\nFix: set HOME or install this MCP server manually."
+    )]
+    HomeDirUnavailable {
+        /// Agent name.
+        agent: &'static str,
     },
     /// Canonical skill metadata is invalid.
     #[error("canonical skill metadata is invalid: {source}\nFix: correct skills/*/SKILL.md frontmatter.")]
@@ -219,6 +246,20 @@ pub fn install(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, I
             }
         }
     }
+    Ok(installed)
+}
+
+/// Install Reqbook MCP server configuration for one explicit agent or all detected agents.
+pub fn install_mcp(root: &Path, agent: Option<&str>) -> Result<Vec<InstalledFile>, InstallError> {
+    let agents = resolve_agents(root, agent)?;
+    let mut installed = Vec::new();
+
+    for agent in agents {
+        let path = mcp_target_path(root, agent)?;
+        write_mcp_config(agent, &path)?;
+        installed.push(InstalledFile { agent, path });
+    }
+
     Ok(installed)
 }
 
@@ -321,15 +362,7 @@ pub fn uninstall(root: &Path, agent: Option<&str>) -> Result<Vec<PathBuf>, Insta
             })?,
         ]
     } else {
-        vec![
-            Agent::ClaudeCode,
-            Agent::CodexCli,
-            Agent::Antigravity,
-            Agent::OpenCode,
-            Agent::Cursor,
-            Agent::Copilot,
-            Agent::Windsurf,
-        ]
+        ALL_AGENTS.to_vec()
     };
 
     let skills = canonical_skills()?;
@@ -376,15 +409,7 @@ pub fn uninstall_skill(
             })?,
         ]
     } else {
-        vec![
-            Agent::ClaudeCode,
-            Agent::CodexCli,
-            Agent::Antigravity,
-            Agent::OpenCode,
-            Agent::Cursor,
-            Agent::Copilot,
-            Agent::Windsurf,
-        ]
+        ALL_AGENTS.to_vec()
     };
     let all_skills = canonical_skills()?;
     let skill = all_skills
@@ -457,9 +482,7 @@ fn parse_skill(source: &'static str) -> Result<SkillSource, InstallError> {
 fn skill_target_path(root: &Path, agent: Agent, name: &str) -> PathBuf {
     match agent {
         Agent::ClaudeCode => root.join(format!(".claude/skills/{name}/SKILL.md")),
-        Agent::CodexCli => dirs::home_dir()
-            .unwrap_or_else(|| root.to_path_buf())
-            .join(format!(".codex/skills/{name}/SKILL.md")),
+        Agent::CodexCli => root.join(format!(".agents/skills/{name}/SKILL.md")),
         Agent::Antigravity => {
             let base = if root.join(".agents").exists() {
                 root.join(".agents")
@@ -475,6 +498,25 @@ fn skill_target_path(root: &Path, agent: Agent, name: &str) -> PathBuf {
         Agent::Copilot => root.join(format!(".github/instructions/{name}.instructions.md")),
         Agent::Windsurf => root.join(format!(".windsurf/rules/{name}.md")),
     }
+}
+
+fn mcp_target_path(root: &Path, agent: Agent) -> Result<PathBuf, InstallError> {
+    let path = match agent {
+        Agent::ClaudeCode => root.join(".mcp.json"),
+        Agent::CodexCli => root.join(".codex/config.toml"),
+        Agent::Antigravity => home_dir(agent)?.join(".gemini/antigravity/mcp_config.json"),
+        Agent::OpenCode => root.join("opencode.json"),
+        Agent::Cursor => root.join(".cursor/mcp.json"),
+        Agent::Copilot => root.join(".vscode/mcp.json"),
+        Agent::Windsurf => home_dir(agent)?.join(".codeium/windsurf/mcp_config.json"),
+    };
+    Ok(path)
+}
+
+fn home_dir(agent: Agent) -> Result<PathBuf, InstallError> {
+    dirs::home_dir().ok_or(InstallError::HomeDirUnavailable {
+        agent: agent.name(),
+    })
 }
 
 /// Path for a slash-command file.
@@ -521,6 +563,145 @@ fn write_file(path: &Path, contents: &str) -> Result<(), InstallError> {
     })
 }
 
+fn write_mcp_config(agent: Agent, path: &Path) -> Result<(), InstallError> {
+    match agent {
+        Agent::CodexCli => write_codex_mcp_config(path),
+        Agent::OpenCode => merge_json_mcp_server(
+            path,
+            "mcp",
+            json!({
+                "type": "local",
+                "command": ["rqb", "mcp"],
+                "enabled": true,
+                "timeout": 10000
+            }),
+            Some(("schema", "https://opencode.ai/config.json")),
+        ),
+        Agent::Copilot => merge_json_mcp_server(
+            path,
+            "servers",
+            json!({
+                "type": "stdio",
+                "command": "rqb",
+                "args": ["mcp"]
+            }),
+            None,
+        ),
+        Agent::ClaudeCode | Agent::Antigravity | Agent::Cursor | Agent::Windsurf => {
+            merge_json_mcp_server(
+                path,
+                "mcpServers",
+                json!({
+                    "type": "stdio",
+                    "command": "rqb",
+                    "args": ["mcp"]
+                }),
+                None,
+            )
+        }
+    }
+}
+
+fn write_codex_mcp_config(path: &Path) -> Result<(), InstallError> {
+    let existing = read_optional_string(path)?;
+    let block = r#"[mcp_servers.rqb]
+command = "rqb"
+args = ["mcp"]
+enabled = true
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+"#;
+    let updated = upsert_toml_table(&existing, "mcp_servers.rqb", block);
+    write_file(path, &updated)
+}
+
+fn upsert_toml_table(contents: &str, table: &str, block: &str) -> String {
+    let header = format!("[{table}]");
+    let mut output = Vec::new();
+    let mut skipping = false;
+
+    for line in contents.lines() {
+        let trimmed = line.trim();
+        if trimmed == header {
+            skipping = true;
+            continue;
+        }
+        if skipping && trimmed.starts_with('[') {
+            skipping = false;
+        }
+        if !skipping {
+            output.push(line);
+        }
+    }
+
+    let mut rendered = output.join("\n");
+    if !rendered.trim().is_empty() {
+        rendered.push_str("\n\n");
+    }
+    rendered.push_str(block.trim_end());
+    rendered.push('\n');
+    rendered
+}
+
+fn merge_json_mcp_server(
+    path: &Path,
+    root_key: &str,
+    server: Value,
+    schema: Option<(&str, &str)>,
+) -> Result<(), InstallError> {
+    let existing = read_optional_string(path)?;
+    let mut root = if existing.trim().is_empty() {
+        json!({})
+    } else {
+        serde_json::from_str::<Value>(&existing).map_err(|source| InstallError::InvalidConfig {
+            path: path.to_path_buf(),
+            message: source.to_string(),
+        })?
+    };
+
+    let Some(object) = root.as_object_mut() else {
+        return Err(InstallError::InvalidConfig {
+            path: path.to_path_buf(),
+            message: "top-level value must be a JSON object".to_string(),
+        });
+    };
+
+    if let Some((key, value)) = schema {
+        object
+            .entry(format!("${key}"))
+            .or_insert_with(|| Value::String(value.to_string()));
+    }
+
+    let entry = object
+        .entry(root_key.to_string())
+        .or_insert_with(|| json!({}));
+    let Some(servers) = entry.as_object_mut() else {
+        return Err(InstallError::InvalidConfig {
+            path: path.to_path_buf(),
+            message: format!("`{root_key}` must be a JSON object"),
+        });
+    };
+    servers.insert("rqb".to_string(), server);
+
+    let rendered =
+        serde_json::to_string_pretty(&root).map_err(|source| InstallError::InvalidConfig {
+            path: path.to_path_buf(),
+            message: source.to_string(),
+        })?;
+    write_file(path, &(rendered + "\n"))
+}
+
+fn read_optional_string(path: &Path) -> Result<String, InstallError> {
+    match fs::read_to_string(path) {
+        Ok(contents) => Ok(contents),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(source) => Err(InstallError::Io {
+            path: path.to_path_buf(),
+            source,
+        }),
+    }
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -564,6 +745,68 @@ mod tests {
 
         let skill = dir.path().join(".claude/skills/rqb/SKILL.md");
         assert!(skill.exists(), "rqb skill not created");
+    }
+
+    #[test]
+    fn installs_codex_skill_to_agents_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".codex")).unwrap();
+        let installed = install_skills(dir.path(), Some("codex-cli")).unwrap();
+
+        assert_eq!(installed.len(), 1);
+        assert!(dir.path().join(".agents/skills/rqb/SKILL.md").exists());
+    }
+
+    #[test]
+    fn installs_mcp_configs_for_project_scoped_agents() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let installed = install_mcp(dir.path(), Some("claude-code")).unwrap();
+        assert_eq!(installed.len(), 1);
+        let claude = fs::read_to_string(dir.path().join(".mcp.json")).unwrap();
+        assert!(claude.contains("\"mcpServers\""));
+        assert!(claude.contains("\"command\": \"rqb\""));
+
+        let installed = install_mcp(dir.path(), Some("cursor")).unwrap();
+        assert_eq!(installed.len(), 1);
+        let cursor = fs::read_to_string(dir.path().join(".cursor/mcp.json")).unwrap();
+        assert!(cursor.contains("\"mcpServers\""));
+        assert!(cursor.contains("\"args\": ["));
+
+        let installed = install_mcp(dir.path(), Some("copilot")).unwrap();
+        assert_eq!(installed.len(), 1);
+        let copilot = fs::read_to_string(dir.path().join(".vscode/mcp.json")).unwrap();
+        assert!(copilot.contains("\"servers\""));
+        assert!(copilot.contains("\"type\": \"stdio\""));
+
+        let installed = install_mcp(dir.path(), Some("opencode")).unwrap();
+        assert_eq!(installed.len(), 1);
+        let opencode = fs::read_to_string(dir.path().join("opencode.json")).unwrap();
+        assert!(opencode.contains("\"$schema\": \"https://opencode.ai/config.json\""));
+        assert!(opencode.contains("\"type\": \"local\""));
+    }
+
+    #[test]
+    fn installs_codex_mcp_config_without_dropping_existing_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = dir.path().join(".codex/config.toml");
+        write_file(
+            &config,
+            r#"model = "gpt-5"
+
+[mcp_servers.other]
+command = "other"
+"#,
+        )
+        .unwrap();
+
+        install_mcp(dir.path(), Some("codex-cli")).unwrap();
+
+        let content = fs::read_to_string(config).unwrap();
+        assert!(content.contains("model = \"gpt-5\""));
+        assert!(content.contains("[mcp_servers.other]"));
+        assert!(content.contains("[mcp_servers.rqb]"));
+        assert!(content.contains("args = [\"mcp\"]"));
     }
 
     #[test]

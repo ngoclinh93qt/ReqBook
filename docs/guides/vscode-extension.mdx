@@ -94,13 +94,13 @@ cd packages/vscode
 npm ci
 npm test
 npm run check
-npm run package -- --out /tmp/reqbook-vscode-0.1.0.vsix
+npm run package -- --out /tmp/reqbook-vscode-0.1.2.vsix
 ```
 
 Install a pre-release VSIX with:
 
 ```bash
-code --install-extension /tmp/reqbook-vscode-0.1.0.vsix
+code --install-extension /tmp/reqbook-vscode-0.1.2.vsix
 ```
 
 For local development, open the repository in VS Code, open `packages/vscode/extension.js`, and run the extension in an Extension Development Host. The extension has no runtime npm dependencies.

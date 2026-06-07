@@ -1,34 +1,62 @@
 ---
 title: "MCP server"
-description: "Eight structured tools for Claude Code exec, flow, author, vars, search, history, session, and exec_batch. Compact output by default; verbose mode for debugging."
+description: "Nine structured tools for MCP-compatible coding agents: exec, flow, author, vars, search, context, history, session, and exec_batch. Compact output by default; verbose mode for debugging."
 icon: "plug"
 ---
 
-The MCP server exposes Reqbook operations as structured JSON-RPC tools. Every tool returns compact JSON by default full request/response payloads only appear when you pass `verbose: true`. This keeps agent context lean.
+The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-compatible coding agents. Every tool returns compact JSON by default full request/response payloads only appear when you pass `verbose: true`. This keeps agent context lean.
 
 ---
 
-## Register with Claude Code
+## Register with an agent
 
 <Steps>
- <Step title="Add the MCP server">
+ <Step title="Install a project or agent config">
  ```bash
- claude mcp add rqb -- rqb mcp
+ rqb install mcp --agent=claude-code
+ rqb install mcp --agent=codex-cli
+ rqb install mcp --agent=cursor
+ rqb install mcp --agent=copilot
+ rqb install mcp --agent=opencode
  ```
+
+ Omit `--agent` to install MCP config for every detected agent in the workspace.
+ </Step>
+
+ <Step title="Restart or reload the agent">
+ Each client discovers MCP servers differently. Restart the agent, reload MCP tools, or use the client's MCP list command.
  </Step>
 
  <Step title="Verify registration">
  ```bash
  claude mcp list
+ codex mcp list
+ opencode mcp list
  ```
 
- Expected output:
+ Expected Claude Code output:
 
- ```
+ ```text
  rqb: rqb mcp - ✓ Connected
  ```
  </Step>
 </Steps>
+
+### Config files written
+
+| Agent | Config file | Shape |
+|---|---|---|
+| Claude Code | `.mcp.json` | `mcpServers.rqb.command = "rqb"` |
+| Codex CLI / IDE | `.codex/config.toml` | `[mcp_servers.rqb]` |
+| Cursor | `.cursor/mcp.json` | `mcpServers.rqb` |
+| GitHub Copilot in VS Code | `.vscode/mcp.json` | `servers.rqb` |
+| OpenCode | `opencode.json` | `mcp.rqb` |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` | `mcpServers.rqb` |
+| Windsurf / Cascade | `~/.codeium/windsurf/mcp_config.json` | `mcpServers.rqb` |
+
+<Note>
+ Codex loads project-scoped `.codex/config.toml` only for trusted projects. GitHub Copilot requires Agent mode and, for Business/Enterprise accounts, the organization's MCP policy must allow MCP servers. Windsurf and Antigravity use global `mcp_config.json` files, so reload the client after installing.
+</Note>
 
 ---
 
@@ -41,6 +69,7 @@ The MCP server exposes Reqbook operations as structured JSON-RPC tools. Every to
 | `rqb_author` | Create or update a spec (validates before writing, refuses silent overwrite) |
 | `rqb_vars` | Show which variables a spec needs and which are resolved |
 | `rqb_search` | Search specs by method, path, tag, or text no file reading required |
+| `rqb_context` | Return compact deterministic API context for a target, flow, or changed specs |
 | `rqb_history` | Execution history and trend for a spec |
 | `rqb_session` | Get/set session env + vars (defaults for all exec/flow calls) |
 | `rqb_exec_batch` | Run multiple specs and return a summary table |
@@ -253,6 +282,34 @@ Search specs without reading individual files. Useful for discovering relevant s
  { "file": "apis/users/get-user.md", "method": "GET", "path": "/users/:userId", "title": "Get User", "tags": ["users", "read"] }
  ]
 }
+```
+
+---
+
+### rqb_context
+
+Return compact deterministic API context for an endpoint, flow, or changed specs. This is the lowest-token way to give an agent relevant request/response contracts without asking it to read many files.
+
+**Input** (all optional)
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `target` | string | | Endpoint/flow id or file path, e.g. `users.create` |
+| `changed_from` | string | | Git ref used to summarize changed specs only |
+| `root` | string | `api-docs` | Reqbook docs root |
+| `token_budget` | integer | `800` | Approximate output token budget |
+| `verbose` | boolean | `false` | Include full request and expected response blocks |
+| `env` | string | `dev` | Environment used in suggested next commands |
+
+**Output**
+
+```text
+# Reqbook Agent Context
+Target: api-docs/apis/users/post-users.md
+...
+Suggested verify:
+rqb validate api-docs
+rqb exec api-docs/apis/users/post-users.md --env=dev
 ```
 
 ---

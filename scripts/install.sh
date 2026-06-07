@@ -62,6 +62,24 @@ else
   base_url="https://github.com/${REPO}/releases/download/${VERSION}"
 fi
 
+download_required() {
+  url="$1"
+  dest="$2"
+
+  if curl -fsSL "$url" -o "$dest"; then
+    return 0
+  fi
+
+  echo "failed to download Reqbook release asset" >&2
+  echo "asset: ${archive}" >&2
+  echo "url: ${url}" >&2
+  if [ "$VERSION" = "latest" ]; then
+    echo "The latest GitHub release may not include binaries for this platform yet." >&2
+  fi
+  echo "Check https://github.com/${REPO}/releases and rerun the release workflow if the asset is missing." >&2
+  exit 1
+}
+
 if [ -z "$INSTALL_DIR" ]; then
   if [ -w /usr/local/bin ]; then
     INSTALL_DIR="/usr/local/bin"
@@ -75,7 +93,7 @@ mkdir -p "$tmp"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 echo "Downloading ${archive}..."
-curl -fsSL "${base_url}/${archive}" -o "${tmp}/${archive}"
+download_required "${base_url}/${archive}" "${tmp}/${archive}"
 
 if curl -fsSL "${base_url}/${archive}.sha256" -o "${tmp}/${archive}.sha256"; then
   if command -v sha256sum >/dev/null 2>&1; then

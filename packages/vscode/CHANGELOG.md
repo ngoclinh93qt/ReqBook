@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 - 2026-06-07
+
+- Harden release packaging checks for CLI binaries and VSIX assets.
+- Improve installer failure messages when a GitHub Release is missing platform assets.
+
 ## 0.1.0 - 2026-06-03
 
 Initial preview release.

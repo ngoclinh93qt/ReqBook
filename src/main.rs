@@ -372,8 +372,12 @@ pub(crate) enum InstallCommand {
         #[arg(long)]
         agent: Option<String>,
     },
-    /// Register the Reqbook MCP server with Claude Code.
-    Mcp,
+    /// Register the Reqbook MCP server with an AI agent.
+    Mcp {
+        /// Agent name. Installs for all detected agents if omitted.
+        #[arg(long)]
+        agent: Option<String>,
+    },
     /// List detected agents and installation status.
     List,
 }

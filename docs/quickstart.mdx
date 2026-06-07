@@ -120,18 +120,22 @@ headers:
 
 ---
 
-## 5. Install agent skills
+## 5. Install agent skills and MCP
 
 ```bash
 rqb skills install
+rqb install mcp
 ```
 
 Or choose one agent:
 
 ```bash
 rqb skills install --agent=claude-code
+rqb install mcp --agent=claude-code
 rqb skills install --agent=cursor
+rqb install mcp --agent=cursor
 rqb skills install --agent=copilot
+rqb install mcp --agent=copilot
 ```
 
 Now you can ask your coding agent:
@@ -165,7 +169,7 @@ Commit the markdown files, not hidden app state.
  Preview, validate, run, and inspect specs from your editor.
  </Card>
  <Card title="Set up agent support" icon="robot" href="/docs/agents/setup">
- Install skills, slash commands, and MCP for Claude Code the full integration.
+ Install skills, slash commands, and MCP for supported coding agents.
  </Card>
  <Card title="Web preview" icon="desktop" href="/docs/guides/web-preview">
  Learn the browser UI: request tweaks, mock mode, cURL import, flow canvas.
