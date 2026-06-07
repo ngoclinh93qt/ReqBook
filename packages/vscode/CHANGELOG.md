@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5 - 2026-06-07
+
+- Handle CRLF endpoint frontmatter consistently for Windows checkouts.
+
 ## 0.1.4 - 2026-06-07
 
 - Restrict GitHub Release artifact downloads to CLI binaries and the VSIX package.

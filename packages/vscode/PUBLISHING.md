@@ -15,7 +15,7 @@ cd packages/vscode
 npm ci
 npm test
 npm run check
-npm run package -- --out /tmp/reqbook-vscode-0.1.4.vsix
+npm run package -- --out /tmp/reqbook-vscode-0.1.5.vsix
 ```
 
 Install the generated VSIX in VS Code and smoke test these commands against a real Reqbook collection:
@@ -52,7 +52,7 @@ Open VSX uses a separate namespace/token flow.
 
 ```bash
 cd packages/vscode
-npm exec -- ovsx publish /tmp/reqbook-vscode-0.1.4.vsix -p "$OVSX_PAT"
+npm exec -- ovsx publish /tmp/reqbook-vscode-0.1.5.vsix -p "$OVSX_PAT"
 ```
 
 Do not commit generated `.vsix` artifacts or personal access tokens.

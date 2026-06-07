@@ -226,24 +226,25 @@ fn insert_env(
 }
 
 fn split_frontmatter<'a>(source: &'a str, path: &str) -> Result<(&'a str, &'a str), ParseError> {
-    let mut lines = source.lines();
-    if lines.next() != Some("---") {
+    let Some(rest) = source
+        .strip_prefix("---\n")
+        .or_else(|| source.strip_prefix("---\r\n"))
+    else {
         return Err(ParseError::MissingFrontmatter {
             path: path.to_string(),
         });
-    }
-    let rest = &source[4..];
+    };
     let Some(end) = rest.find("\n---") else {
         return Err(ParseError::MissingFrontmatter {
             path: path.to_string(),
         });
     };
-    let frontmatter = &rest[..end];
+    let frontmatter = rest[..end].strip_suffix('\r').unwrap_or(&rest[..end]);
     let body_start = end + "\n---".len();
-    let body = rest
-        .get(body_start..)
-        .unwrap_or_default()
-        .strip_prefix('\n')
+    let body = rest.get(body_start..).unwrap_or_default();
+    let body = body
+        .strip_prefix("\r\n")
+        .or_else(|| body.strip_prefix('\n'))
         .unwrap_or_default();
     Ok((frontmatter, body))
 }
@@ -667,6 +668,16 @@ Content-Type: application/json
         assert_eq!(endpoint.title, "Get user by id");
         assert!(endpoint.request.contains("GET"));
         assert!(endpoint.tests.is_some());
+    }
+
+    #[test]
+    fn parses_endpoint_with_crlf_frontmatter_and_body() {
+        let source = endpoint_doc().replace('\n', "\r\n");
+        let endpoint = parse_endpoint(&source, "api-docs/users/get-user.md").unwrap();
+
+        assert_eq!(endpoint.schema.resource, "users");
+        assert_eq!(endpoint.title, "Get user by id");
+        assert!(endpoint.expected_response.contains("HTTP/1.1 200 OK"));
     }
 
     #[test]
