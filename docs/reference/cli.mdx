@@ -351,11 +351,13 @@ rqb check api-docs/ --report json
 
 ## rqb context
 
-Print compact deterministic API context for coding agents.
+Print bounded executable API context for coding agents.
 
 ```bash
 rqb context users.create
-rqb context users.create orders.create --verbose
+rqb context users.create --mode surgical --intent implement
+rqb context users.create --mode schema --output json
+rqb context users.create orders.create --mode compact --verbose
 rqb context flow signup-login-profile
 rqb context --changed-from origin/main --output json
 ```
@@ -365,8 +367,12 @@ rqb context --changed-from origin/main --output json
 | `--root` | api-docs root directory. Defaults to `api-docs`. |
 | `--changed-from` | Summarize only changed specs since this git ref. |
 | `--token-budget` | Approximate output token budget. |
+| `--mode` | `surgical`, `compact`, or `schema`. Defaults to `surgical` to minimize agent tokens. |
+| `--intent` | Agent task intent, e.g. `implement`, `debug`, `test`, `review`, or `document`. |
 | `--verbose` | Include full request and expected response blocks. |
 | `--output` | `markdown` or `json`. JSON wraps the rendered context with env, root, target, and budget metadata for agent automation. |
+
+Use `--mode surgical` for most Codex/Claude/Cursor tasks. It returns only the method/path, variables, request body fields, success response fields, assertions, and verify commands. Use `--mode schema` when another tool or agent needs machine-readable contract JSON.
 
 ---
 
@@ -376,7 +382,7 @@ Write an agent-ready markdown pack containing Reqbook context, guardrails, and s
 
 ```bash
 rqb agent pack users.create orders.create --verbose --out .reqbook/agent-context.md
-rqb agent pack flow signup-login-profile --token-budget 1800
+rqb agent pack flow signup-login-profile --mode surgical --token-budget 1800
 rqb agent pack --changed-from origin/main --out .reqbook/changed-context.md
 ```
 
@@ -386,6 +392,8 @@ rqb agent pack --changed-from origin/main --out .reqbook/changed-context.md
 | `--changed-from` | Build the pack from changed endpoint and flow specs since this git ref. |
 | `--out` | Output markdown file. Defaults to `.reqbook/agent-context.md`. |
 | `--token-budget` | Approximate output token budget. Defaults to `1600`. |
+| `--mode` | `surgical`, `compact`, or `schema`. Defaults to `surgical`. |
+| `--intent` | Agent task intent included in the pack metadata. |
 | `--verbose` | Include full request, expected response, agent-task, and notes blocks. |
 | `--env` | Environment used in suggested verify commands. Defaults to `dev`. |
 
@@ -601,7 +609,7 @@ No flags. The MCP server exposes the following tools to any MCP-compatible AI ag
 | `rqb_author` | Create or update a spec file |
 | `rqb_vars` | Show variable resolution for a spec |
 | `rqb_search` | Search specs by method, path, tag, or text |
-| `rqb_context` | Return compact API context for a target, flow, or changed specs |
+| `rqb_context` | Return bounded executable API context for a target, flow, or changed specs |
 | `rqb_history` | Return recent execution history for a spec |
 | `rqb_session` | Get or set default MCP env and vars |
 | `rqb_exec_batch` | Run multiple specs and return a compact summary |

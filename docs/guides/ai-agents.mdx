@@ -18,7 +18,7 @@ Reqbook gives agents the building blocks they need: markdown files they can read
  Two `/rqb` commands for the complex, LLM-native tasks: spec creation and enrichment, flow building, and debugging.
  </Card>
  <Card title="MCP server" icon="plug" href="/docs/agents/mcp">
- Nine structured tools for MCP-compatible agents — exec, flow, author, vars, search, context, history, session, and exec_batch. Compact output by default.
+ Nine structured tools for MCP-compatible agents — exec, flow, author, vars, search, context, history, session, and exec_batch. Surgical context by default.
  </Card>
  <Card title="Shared source" icon="code-pull-request">
  Every agent change is a markdown file in `api-docs/`. Reviewable, diffable, committable. No hidden state.
@@ -42,7 +42,7 @@ The key design decision: not every operation needs an agent. Simple, determinist
 | Dry-run (resolve vars, don't send) | `rqb_exec` + `dry_run: true` | Catches missing variables before hitting the network |
 | Check variable readiness | `rqb_vars` MCP | Shows what's resolved and what's missing before exec |
 | Search specs by method/tag/path | `rqb_search` MCP | Compact index — no file reading required |
-| Build compact API context | `rqb_context` MCP | Gives the agent a bounded contract pack instead of many source files |
+| Build surgical API context | `rqb_context` MCP | Gives the agent method/path, body fields, response fields, assertions, and verify commands instead of many source files |
 | Run a pipeline (structured result) | `rqb_flow` MCP | Returns per-step state for programmatic debugging |
 | Author a spec (with write guard) | `rqb_author` MCP | Validates before writing, refuses silent overwrites |
 | Check execution trend | `rqb_history` MCP | Stable/improving/regressing over recent runs |
@@ -76,7 +76,7 @@ Two commands covering the tasks where LLM reasoning produces better results than
 
 ## MCP server — MCP-compatible agents
 
-Nine tools that return structured JSON or compact context for the agent to act on programmatically:
+Nine tools that return structured JSON or surgical context for the agent to act on programmatically:
 
 | Tool | When to use |
 |---|---|
@@ -85,7 +85,7 @@ Nine tools that return structured JSON or compact context for the agent to act o
 | `rqb_author` | Write a spec with validation guard and overwrite protection |
 | `rqb_vars` | Check variable resolution before exec |
 | `rqb_search` | Find specs by method, path, or tag |
-| `rqb_context` | Build bounded API context for a target, flow, or changed specs |
+| `rqb_context` | Build surgical or schema API context for a target, flow, or changed specs |
 | `rqb_history` | Check execution trend over recent runs |
 | `rqb_session` | Set env and vars once for all subsequent calls |
 | `rqb_exec_batch` | Run multiple specs and get a summary table |
@@ -118,6 +118,8 @@ With all three active:
 - The agent knows Reqbook conventions and makes good decisions without prompting (skill)
 - You can trigger complex workflows precisely without writing long prompts (slash commands)
 - The agent gets structured results without parsing terminal output (MCP)
+
+For token-sensitive runs, ask the agent to call `rqb_context` first with `mode: "surgical"` and an explicit `intent` such as `"implement"` or `"debug"`. This returns only the executable contract needed for the task before the agent decides whether source inspection is necessary.
 
 ---
 

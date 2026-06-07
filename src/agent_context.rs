@@ -11,6 +11,40 @@ use serde_json::Value;
 
 use crate::parser::{parse_endpoint, parse_pipeline, Endpoint, PipelineStep};
 
+/// Output style for agent context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContextMode {
+    /// Minimal contract-only context for low-token agent execution.
+    Surgical,
+    /// Human-readable compact context with descriptions and related flows.
+    Compact,
+    /// JSON schema summary for tool-driven agents.
+    Schema,
+}
+
+impl ContextMode {
+    /// Parse a CLI/MCP mode name.
+    pub fn parse(input: &str) -> Result<Self> {
+        match input {
+            "surgical" => Ok(Self::Surgical),
+            "compact" => Ok(Self::Compact),
+            "schema" => Ok(Self::Schema),
+            other => anyhow::bail!(
+                "unknown context mode `{other}`. Use one of: surgical, compact, schema"
+            ),
+        }
+    }
+
+    /// Stable mode name.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Surgical => "surgical",
+            Self::Compact => "compact",
+            Self::Schema => "schema",
+        }
+    }
+}
+
 /// Options for rendering agent context.
 #[derive(Debug, Clone)]
 pub struct AgentContextOptions {
@@ -26,6 +60,10 @@ pub struct AgentContextOptions {
     pub verbose: bool,
     /// Environment name used in suggested commands.
     pub env: String,
+    /// Output style.
+    pub mode: ContextMode,
+    /// Optional agent task intent, e.g. implement, debug, test, review.
+    pub intent: Option<String>,
 }
 
 /// Render compact context for an endpoint, flow, or changed files.
@@ -76,8 +114,21 @@ fn render_endpoint(root: &Path, file: &Path, options: &AgentContextOptions) -> R
     let source =
         std::fs::read_to_string(file).with_context(|| format!("reading {}", file.display()))?;
     let endpoint = parse_endpoint(&source, file)?;
+    match options.mode {
+        ContextMode::Surgical => render_endpoint_surgical(root, file, &endpoint, options),
+        ContextMode::Compact => render_endpoint_compact(root, file, &endpoint, options),
+        ContextMode::Schema => render_endpoint_schema(root, file, &endpoint, options),
+    }
+}
+
+fn render_endpoint_compact(
+    root: &Path,
+    file: &Path,
+    endpoint: &Endpoint,
+    options: &AgentContextOptions,
+) -> Result<String> {
     let rel = file.strip_prefix(root).unwrap_or(file);
-    let variables = variables_for(&endpoint);
+    let variables = variables_for(endpoint);
     let expected = expected_summary(&endpoint.expected_response);
     let related = related_flows(root, rel);
     let auth = endpoint
@@ -132,13 +183,136 @@ fn render_endpoint(root: &Path, file: &Path, options: &AgentContextOptions) -> R
     Ok(out)
 }
 
+fn render_endpoint_surgical(
+    root: &Path,
+    file: &Path,
+    endpoint: &Endpoint,
+    options: &AgentContextOptions,
+) -> Result<String> {
+    let rel = file.strip_prefix(root).unwrap_or(file);
+    let variables = variables_for(endpoint);
+    let request_shape = body_shape(&endpoint.request, "body", 10);
+    let (status, response_shape) = response_shape(&endpoint.expected_response, 10);
+    let assertions = assertion_summary(endpoint, 6);
+    let intent = options.intent.as_deref().unwrap_or("implement");
+
+    let mut out = format!(
+        "API contract ({intent}): {} {}\nFile: {}\n",
+        endpoint.schema.method.as_str(),
+        endpoint.schema.path,
+        rel.display()
+    );
+    out.push_str(&format!("Title: {}\n", endpoint.title));
+    out.push_str(&format!("Variables: {}\n", empty_dash(variables)));
+    out.push_str(&format!(
+        "Request body: {}\n",
+        if request_shape.is_empty() {
+            "none".to_string()
+        } else {
+            request_shape.join(", ")
+        }
+    ));
+    out.push_str(&format!(
+        "Success response: HTTP {}{}{}\n",
+        status.unwrap_or_else(|| "?".to_string()),
+        if response_shape.is_empty() { "" } else { " " },
+        response_shape.join(", ")
+    ));
+    if !assertions.is_empty() {
+        out.push_str(&format!("Assertions: {}\n", assertions.join("; ")));
+    }
+    out.push_str("Agent steps:\n");
+    out.push_str("- Use this contract before reading backend source.\n");
+    out.push_str(
+        "- Only inspect source files needed to satisfy this method/path and body shape.\n",
+    );
+    out.push_str("- Verify with the commands below after code changes.\n");
+    out.push_str("Verify:\n");
+    out.push_str(&format!("- rqb validate {}\n", root.display()));
+    out.push_str(&format!(
+        "- rqb exec {} --env {}\n",
+        file.display(),
+        options.env
+    ));
+    Ok(out)
+}
+
+fn render_endpoint_schema(
+    root: &Path,
+    file: &Path,
+    endpoint: &Endpoint,
+    options: &AgentContextOptions,
+) -> Result<String> {
+    let rel = file.strip_prefix(root).unwrap_or(file);
+    let (status, response_fields) = response_shape(&endpoint.expected_response, 20);
+    let value = serde_json::json!({
+        "type": "endpoint_contract",
+        "mode": options.mode.as_str(),
+        "intent": options.intent.as_deref().unwrap_or("implement"),
+        "file": rel.to_string_lossy(),
+        "title": endpoint.title,
+        "method": endpoint.schema.method.as_str(),
+        "path": endpoint.schema.path,
+        "auth": endpoint.schema.auth.as_ref().map(|auth| format!("{auth:?}").to_ascii_lowercase()),
+        "variables": variables_for(endpoint),
+        "request": {
+            "body_fields": body_shape(&endpoint.request, "body", 20),
+        },
+        "success_response": {
+            "status": status,
+            "body_fields": response_fields,
+        },
+        "assertions": assertion_summary(endpoint, 20),
+        "verify": [
+            format!("rqb validate {}", root.display()),
+            format!("rqb exec {} --env {}", file.display(), options.env),
+        ],
+    });
+    serde_json::to_string_pretty(&value).map_err(Into::into)
+}
+
 fn render_flow(root: &Path, file: &Path, options: &AgentContextOptions) -> Result<String> {
     let source =
         std::fs::read_to_string(file).with_context(|| format!("reading {}", file.display()))?;
     let flow = parse_pipeline(&source, file)?;
     let rel = file.strip_prefix(root).unwrap_or(file);
+    if options.mode == ContextMode::Schema {
+        let steps = flow
+            .steps
+            .iter()
+            .map(|step| {
+                serde_json::json!({
+                    "name": step.name,
+                    "endpoint": step.endpoint,
+                    "captures": step.capture.iter().map(|capture| {
+                        serde_json::json!({"source": capture.source, "name": capture.name})
+                    }).collect::<Vec<_>>(),
+                    "injects": step.inject,
+                })
+            })
+            .collect::<Vec<_>>();
+        let value = serde_json::json!({
+            "type": "flow_contract",
+            "mode": options.mode.as_str(),
+            "intent": options.intent.as_deref().unwrap_or("implement"),
+            "file": rel.to_string_lossy(),
+            "name": flow.schema.name,
+            "steps": steps,
+            "verify": [
+                format!("rqb validate {}", root.display()),
+                format!("rqb flow {} --env {}", file.display(), options.env),
+            ],
+        });
+        return serde_json::to_string_pretty(&value).map_err(Into::into);
+    }
+
     let mut out = format!(
-        "Flow: {}\nFile: {}\nSteps: {}\n",
+        "{}Flow: {}\nFile: {}\nSteps: {}\n",
+        if options.mode == ContextMode::Surgical {
+            "API flow contract\n"
+        } else {
+            ""
+        },
         flow.schema.name,
         rel.display(),
         flow.steps.len()
@@ -163,11 +337,26 @@ fn render_flow(root: &Path, file: &Path, options: &AgentContextOptions) -> Resul
             "Inject semantics: Inject reads values captured by previous steps; env and CLI variables are resolved in request templates but do not satisfy Inject.\n",
         );
     }
-    out.push_str(&format!(
-        "Safe next command: rqb flow {} --env {}\n",
-        file.display(),
-        options.env
-    ));
+    if options.mode == ContextMode::Surgical {
+        out.push_str("Agent steps:\n");
+        out.push_str("- Use captures/injects as the source of truth for data dependencies.\n");
+        out.push_str(
+            "- Verify the first failing step in isolation before changing multiple files.\n",
+        );
+        out.push_str("Verify:\n");
+        out.push_str(&format!("- rqb validate {}\n", root.display()));
+        out.push_str(&format!(
+            "- rqb flow {} --env {}\n",
+            file.display(),
+            options.env
+        ));
+    } else {
+        out.push_str(&format!(
+            "Safe next command: rqb flow {} --env {}\n",
+            file.display(),
+            options.env
+        ));
+    }
     if options.verbose {
         out.push_str("\nEndpoint details:\n");
         for step in &flow.steps {
@@ -253,16 +442,10 @@ fn variables_for(endpoint: &Endpoint) -> Vec<String> {
 }
 
 fn expected_summary(expected_response: &str) -> String {
-    let mut parts = expected_response.splitn(2, "\n\n");
-    let head = parts.next().unwrap_or_default();
-    let body = parts.next().unwrap_or_default();
-    let status = head
-        .lines()
-        .next()
-        .and_then(|line| line.split_whitespace().nth(1))
-        .unwrap_or("?");
+    let (status, body) = http_status_and_body(expected_response);
+    let status = status.unwrap_or_else(|| "?".to_string());
     let mut fields = Vec::new();
-    if let Ok(json) = serde_json::from_str::<Value>(body) {
+    if let Ok(json) = serde_json::from_str::<Value>(&body) {
         collect_json_fields("body", &json, &mut fields);
     }
     if fields.is_empty() {
@@ -270,6 +453,113 @@ fn expected_summary(expected_response: &str) -> String {
     } else {
         format!("{status} {}", fields.join(", "))
     }
+}
+
+fn response_shape(expected_response: &str, limit: usize) -> (Option<String>, Vec<String>) {
+    let (status, body) = http_status_and_body(expected_response);
+    let fields = json_shape(&body, "body", limit);
+    (status, fields)
+}
+
+fn body_shape(http_block: &str, prefix: &str, limit: usize) -> Vec<String> {
+    let (_, body) = http_status_and_body(http_block);
+    json_shape(&body, prefix, limit)
+}
+
+fn http_status_and_body(http_block: &str) -> (Option<String>, String) {
+    let normalized = http_block.replace("\r\n", "\n");
+    let (head, body) = normalized
+        .split_once("\n\n")
+        .map_or((normalized.as_str(), ""), |(head, body)| (head, body));
+    let status = head
+        .lines()
+        .next()
+        .and_then(|line| {
+            if line.starts_with("HTTP/") {
+                line.split_whitespace().nth(1)
+            } else {
+                None
+            }
+        })
+        .map(str::to_string);
+    (status, body.to_string())
+}
+
+fn json_shape(body: &str, prefix: &str, limit: usize) -> Vec<String> {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let Ok(json) = serde_json::from_str::<Value>(trimmed) else {
+        return vec![format!("{prefix}:raw")];
+    };
+    let mut fields = Vec::new();
+    collect_json_shape(prefix, &json, &mut fields, limit);
+    fields
+}
+
+fn collect_json_shape(prefix: &str, value: &Value, fields: &mut Vec<String>, limit: usize) {
+    if fields.len() >= limit {
+        return;
+    }
+    match value {
+        Value::Object(map) => {
+            if map.is_empty() {
+                fields.push(format!("{prefix}:object"));
+                return;
+            }
+            for (key, value) in map {
+                let next = format!("{prefix}.{key}");
+                match value {
+                    Value::Object(_) | Value::Array(_) => {
+                        collect_json_shape(&next, value, fields, limit)
+                    }
+                    _ => fields.push(format!("{next}:{}", json_type(value))),
+                }
+                if fields.len() >= limit {
+                    return;
+                }
+            }
+        }
+        Value::Array(items) => {
+            if let Some(first) = items.first() {
+                collect_json_shape(&format!("{prefix}[]"), first, fields, limit);
+            } else {
+                fields.push(format!("{prefix}:array"));
+            }
+        }
+        _ => fields.push(format!("{prefix}:{}", json_type(value))),
+    }
+}
+
+fn json_type(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(number) if number.is_i64() || number.is_u64() => "integer",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
+}
+
+fn assertion_summary(endpoint: &Endpoint, limit: usize) -> Vec<String> {
+    endpoint
+        .assertions
+        .iter()
+        .take(limit)
+        .map(|assertion| {
+            let op = serde_json::to_string(&assertion.op)
+                .unwrap_or_else(|_| "\"equals\"".to_string())
+                .trim_matches('"')
+                .to_string();
+            match &assertion.value {
+                Some(value) => format!("{} {} {}", assertion.path, op, value),
+                None => format!("{} {}", assertion.path, op),
+            }
+        })
+        .collect()
 }
 
 fn collect_json_fields(prefix: &str, value: &Value, fields: &mut Vec<String>) {
@@ -489,6 +779,8 @@ name: update-user
             token_budget: 1200,
             verbose: true,
             env: "dev".to_string(),
+            mode: ContextMode::Compact,
+            intent: None,
         })
         .unwrap();
 
@@ -496,5 +788,63 @@ name: update-user
         assert!(rendered.contains("Endpoint: PATCH /users/:id"));
         assert!(rendered.contains("Request:"));
         assert!(rendered.contains("Agent task:"));
+    }
+
+    #[test]
+    fn surgical_context_summarizes_json_contract() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("apis/refunds")).unwrap();
+        let spec = root.join("apis/refunds/post-refund-quote.md");
+        fs::write(
+            &spec,
+            r#"---
+resource: refunds
+protocol: http
+method: POST
+path: /refunds/quote
+version: 1
+---
+# Create refund quote
+
+Create a quote before refund capture.
+
+## Request
+
+```http
+POST {{baseUrl}}/refunds/quote
+Content-Type: application/json
+
+{"orderId":"ord_123","reason":"duplicate"}
+```
+
+## Expected response
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{"quoteId":"rfq_123","amount":1250,"expiresAt":"2026-06-07T12:00:00Z"}
+```
+"#,
+        )
+        .unwrap();
+
+        let rendered = render(AgentContextOptions {
+            root: root.to_path_buf(),
+            target: Some(spec.display().to_string()),
+            changed_from: None,
+            token_budget: 400,
+            verbose: false,
+            env: "dev".to_string(),
+            mode: ContextMode::Surgical,
+            intent: Some("implement".to_string()),
+        })
+        .unwrap();
+
+        assert!(rendered.contains("API contract (implement): POST /refunds/quote"));
+        assert!(rendered.contains("body.orderId:string"));
+        assert!(rendered.contains("body.amount:integer"));
+        assert!(rendered.contains("Verify:"));
     }
 }

@@ -1,10 +1,21 @@
 //! `rqb context` command.
 
 use anyhow::Result;
-use reqbook::agent_context::{self, AgentContextOptions};
+use reqbook::agent_context::{self, AgentContextOptions, ContextMode};
 use serde_json::json;
 
 use crate::{ContextArgs, ContextOutputFormat};
+
+pub(crate) struct ContextRenderOptions {
+    pub(crate) root: std::path::PathBuf,
+    pub(crate) targets: Vec<String>,
+    pub(crate) changed_from: Option<String>,
+    pub(crate) token_budget: usize,
+    pub(crate) mode: ContextMode,
+    pub(crate) intent: Option<String>,
+    pub(crate) verbose: bool,
+    pub(crate) env: String,
+}
 
 pub(crate) fn run(args: ContextArgs) -> Result<()> {
     let targets = normalize_targets(&args.target)?;
@@ -16,15 +27,18 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
     let env = args.env.clone();
     let changed_from = args.changed_from.clone();
     let token_budget = args.token_budget;
+    let mode = ContextMode::parse(&args.mode)?;
     let verbose = args.verbose;
-    let rendered = render_markdown(
-        root.clone(),
-        targets.clone(),
-        changed_from.clone(),
+    let rendered = render_markdown(ContextRenderOptions {
+        root: root.clone(),
+        targets: targets.clone(),
+        changed_from: changed_from.clone(),
         token_budget,
+        mode,
+        intent: args.intent.clone(),
         verbose,
-        env.clone(),
-    )?;
+        env: env.clone(),
+    })?;
     match args.output {
         ContextOutputFormat::Markdown => println!("{rendered}"),
         ContextOutputFormat::Json => println!(
@@ -35,6 +49,8 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
                 "targets": targets,
                 "changed_from": changed_from,
                 "token_budget": token_budget,
+                "mode": mode.as_str(),
+                "intent": args.intent,
                 "verbose": verbose,
                 "content": rendered,
             }))?
@@ -43,14 +59,18 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn render_markdown(
-    root: std::path::PathBuf,
-    targets: Vec<String>,
-    changed_from: Option<String>,
-    token_budget: usize,
-    verbose: bool,
-    env: String,
-) -> Result<String> {
+pub(crate) fn render_markdown(options: ContextRenderOptions) -> Result<String> {
+    let ContextRenderOptions {
+        root,
+        targets,
+        changed_from,
+        token_budget,
+        mode,
+        intent,
+        verbose,
+        env,
+    } = options;
+
     if changed_from.is_some() && !targets.is_empty() {
         anyhow::bail!("use either explicit targets or --changed-from, not both");
     }
@@ -62,6 +82,8 @@ pub(crate) fn render_markdown(
             token_budget,
             verbose,
             env,
+            mode,
+            intent,
         })
     } else {
         let per_target_budget = (token_budget / targets.len()).max(128);
@@ -74,6 +96,8 @@ pub(crate) fn render_markdown(
                 token_budget: per_target_budget,
                 verbose,
                 env: env.clone(),
+                mode,
+                intent: intent.clone(),
             })?);
         }
         Ok(parts.join("\n\n---\n\n"))

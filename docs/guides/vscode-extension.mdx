@@ -16,11 +16,15 @@ The Reqbook VS Code extension is the in-editor bridge for teams that write API s
 
 ## Demo
 
-<video controls muted playsInline preload="metadata" style={{ width: "100%", borderRadius: "8px" }}>
-  <source src="/assets/vscode-demo.mp4" type="video/mp4" />
+<video controls muted playsInline preload="metadata" poster="https://markapidown.net/images/demoapi.png" style={{ width: "100%", borderRadius: "8px" }}>
+  <source src="https://markapidown.net/videos/vscode-demo.mp4" type="video/mp4" />
 </video>
 
 The demo shows a runnable endpoint in VS Code with inline CodeLens actions, direct execution through `rqb`, and the structured result panel.
+
+<Note>
+ To publish the optimized Cloudflare Stream version, set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, then run `node scripts/upload-cloudflare-stream-video.mjs docs/assets/vscode-demo.mp4 "Reqbook VS Code demo"`. Stream returns a player iframe, not an MP4 source, so replace the `<video>` block above with the returned `mdx_embed` after the upload is ready.
+</Note>
 
 ---
 
@@ -33,7 +37,7 @@ Open an endpoint or flow markdown file, then run these commands from the Command
 | `Reqbook: Preview Endpoint` | Opens a VS Code webview preview of the current markdown spec with action buttons. |
 | `Reqbook: Run Spec` | Saves the current file, runs `rqb exec` for endpoints or `rqb flow` for flows/pipelines, and shows a compact result panel. |
 | `Reqbook: Validate Current File` | Saves the current file, runs `rqb validate <file>`, and shows validation output. |
-| `Reqbook: Show Agent Context` | Runs `rqb context <file>` and shows the compact context that coding agents should use. |
+| `Reqbook: Show Agent Context` | Runs `rqb context <file>` and shows the surgical context that coding agents should use. |
 
 The result panel shows endpoint status, duration, request URL, response diff, structured assertions, flow steps, captures, and raw command output.
 

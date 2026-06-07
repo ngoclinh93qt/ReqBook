@@ -152,7 +152,7 @@ pub(super) fn tools_list_result() -> Value {
             },
             {
                 "name": "rqb_context",
-                "description": "Return compact deterministic API context for an endpoint, flow, or changed specs.",
+                "description": "Return bounded executable API context for an endpoint, flow, or changed specs. Defaults to surgical mode to minimize tokens.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -171,6 +171,15 @@ pub(super) fn tools_list_result() -> Value {
                         "token_budget": {
                             "type": "integer",
                             "description": "Approximate output token budget (default: 800)."
+                        },
+                        "mode": {
+                            "type": "string",
+                            "enum": ["surgical", "compact", "schema"],
+                            "description": "Output mode. surgical is contract-only; compact is human-readable; schema is JSON contract summary (default: surgical)."
+                        },
+                        "intent": {
+                            "type": "string",
+                            "description": "Agent task intent, e.g. implement, debug, test, review, or document."
                         },
                         "verbose": {
                             "type": "boolean",
@@ -834,6 +843,16 @@ pub(super) fn handle_context(args: &Value) -> Result<Value, (i32, String)> {
         .get("verbose")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let mode = args
+        .get("mode")
+        .and_then(|v| v.as_str())
+        .unwrap_or("surgical");
+    let mode = crate::agent_context::ContextMode::parse(mode)
+        .map_err(|err| (-32602, format!("Invalid params: {err}")))?;
+    let intent = args
+        .get("intent")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
     let env = args
         .get("env")
         .and_then(|v| v.as_str())
@@ -847,6 +866,8 @@ pub(super) fn handle_context(args: &Value) -> Result<Value, (i32, String)> {
         token_budget,
         verbose,
         env,
+        mode,
+        intent,
     })
     .map_err(|err| (-32000, err.to_string()))?;
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))

@@ -52,7 +52,7 @@ enum Command {
     Flow(FlowArgs),
     /// Run contract checks for endpoint and flow specs.
     Check(CheckArgs),
-    /// Print compact API context for coding agents.
+    /// Print bounded executable API context for coding agents.
     Context(ContextArgs),
     /// Create agent-ready API context packs.
     Agent {
@@ -234,6 +234,12 @@ pub(crate) struct ContextArgs {
     /// Approximate output token budget.
     #[arg(long, default_value_t = 800)]
     pub(crate) token_budget: usize,
+    /// Context output mode: surgical, compact, or schema.
+    #[arg(long, default_value = "surgical")]
+    pub(crate) mode: String,
+    /// Agent task intent: implement, debug, test, review, or document.
+    #[arg(long)]
+    pub(crate) intent: Option<String>,
     /// Include full request and expected response blocks.
     #[arg(long)]
     pub(crate) verbose: bool,
@@ -267,6 +273,12 @@ pub(crate) struct AgentPackArgs {
     /// Approximate output token budget.
     #[arg(long, default_value_t = 1600)]
     pub(crate) token_budget: usize,
+    /// Context output mode: surgical, compact, or schema.
+    #[arg(long, default_value = "surgical")]
+    pub(crate) mode: String,
+    /// Agent task intent: implement, debug, test, review, or document.
+    #[arg(long)]
+    pub(crate) intent: Option<String>,
     /// Include full request, expected response, agent-task, and notes blocks.
     #[arg(long)]
     pub(crate) verbose: bool,

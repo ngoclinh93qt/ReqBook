@@ -14,7 +14,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  Two `/rqb` commands for Claude Code and Codex CLI: `/rqb` for creating, enriching, and building flows; `/rqb-debug` for diagnosing failures.
  </Card>
  <Card title="MCP server" icon="plug">
- Structured tools for MCP-compatible agents: exec, flow, author, context, and more. Agents get typed results without parsing shell output.
+ Structured tools for MCP-compatible agents: exec, flow, author, surgical context, and more. Agents get typed results without parsing shell output.
  </Card>
  <Card title="Shared markdown source" icon="code-pull-request">
  Every agent change is a markdown file in `api-docs/`. Reviewable, diffable, committable. No hidden state.
@@ -68,6 +68,10 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
  ```
  </Step>
 </Steps>
+
+<Tip>
+ For token-sensitive agent runs, start with `rqb_context` using `mode: "surgical"` and an explicit `intent`. It returns the executable API contract before the agent decides whether backend source inspection is necessary.
+</Tip>
 
 ---
 

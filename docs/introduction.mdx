@@ -123,7 +123,7 @@ When an agent needs to test an API endpoint without Reqbook, it reads router fil
 | Test one endpoint | Read source files, construct curl, parse stdout | `rqb_exec spec.md` structured result |
 | Debug multi-step flow | Write a temp script, manually chain requests, no trace on failure | `rqb_flow pipeline.md` per-step state, captured values |
 | Detect a regression | Only after a bug report | `rqb check` or `rqb validate` in CI fails before merge |
-| Agent discovers APIs | Scan broad source and docs manually | `rqb context` and `rqb_search` return compact API context |
+| Agent discovers APIs | Scan broad source and docs manually | `rqb context` and `rqb_search` return bounded API context |
 | Share tests with team | "Send me the curl" | Commit markdown, review in PR |
 | Mock backend | Run live server or hardcode | `rqb mock` from recorded responses |
 

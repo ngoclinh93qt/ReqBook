@@ -80,7 +80,7 @@ Content-Type: application/json
 | `rqb_author` | Create or update a spec (validates before writing — prefer over direct file writes) |
 | `rqb_search` | Find specs by method, path, or tag |
 | `rqb_vars` | Show variable resolution for a spec |
-| `rqb_context` | Build compact API context for a target, flow, or changed specs |
+| `rqb_context` | Build surgical API context before reading source; use `mode: "surgical"` and set `intent` |
 | `rqb_history` | Inspect recent execution history and trend |
 | `rqb_session` | Get or set default MCP env and vars |
 | `rqb_exec_batch` | Run multiple specs in one call |
@@ -89,6 +89,8 @@ Content-Type: application/json
 
 - Variables: `{{name}}` resolved from `_shared/env.md` → `.env.local` → `RQB_*` env vars.
 - Secrets never in markdown — use `.env.local` or `RQB_*`.
+- Before inspecting backend source for an API task, call `rqb_context` with `mode: "surgical"` for the target endpoint or flow.
+- Use `mode: "schema"` when you need machine-readable contract fields for planning or code generation.
 - Use `rqb_author` not direct file writes.
 - After writing specs: `rqb index`.
 - Default to `--env=dev`. Confirm before `--env=prod`.

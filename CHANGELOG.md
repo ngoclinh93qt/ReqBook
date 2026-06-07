@@ -29,7 +29,7 @@ Initial release of Reqbook — markdown-native API specs with execution, pipelin
 - `rqb exec` — execute one endpoint with `--env`, `--var`, `--dry-run`, `--timeout`, `--output`
 - `rqb flow` — execute a pipeline with `--parallel`/`--no-parallel`
 - `rqb check` — PR-focused contract checks with Markdown, GitHub, JUnit, and JSON reports
-- `rqb context` — compact deterministic endpoint, flow, or changed-spec context for coding agents
+- `rqb context` — bounded executable endpoint, flow, or changed-spec context for coding agents
 - `rqb index` — regenerate `api-docs/README.md`
 - `rqb import postman` — import Postman Collection v2.1 JSON
 - `rqb import insomnia` — import Insomnia v4 JSON

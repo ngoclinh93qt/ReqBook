@@ -1,10 +1,10 @@
 ---
 title: "MCP server"
-description: "Nine structured tools for MCP-compatible coding agents: exec, flow, author, vars, search, context, history, session, and exec_batch. Compact output by default; verbose mode for debugging."
+description: "Nine structured tools for MCP-compatible coding agents: exec, flow, author, vars, search, context, history, session, and exec_batch. Surgical context by default; verbose mode for debugging."
 icon: "plug"
 ---
 
-The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-compatible coding agents. Every tool returns compact JSON by default full request/response payloads only appear when you pass `verbose: true`. This keeps agent context lean.
+The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-compatible coding agents. Execution tools return compact JSON by default, and `rqb_context` returns surgical contract context unless you request `compact` or `schema` mode. Full request/response payloads only appear when you pass `verbose: true`.
 
 ---
 
@@ -69,7 +69,7 @@ The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-c
 | `rqb_author` | Create or update a spec (validates before writing, refuses silent overwrite) |
 | `rqb_vars` | Show which variables a spec needs and which are resolved |
 | `rqb_search` | Search specs by method, path, tag, or text no file reading required |
-| `rqb_context` | Return compact deterministic API context for a target, flow, or changed specs |
+| `rqb_context` | Return bounded executable API context for a target, flow, or changed specs |
 | `rqb_history` | Execution history and trend for a spec |
 | `rqb_session` | Get/set session env + vars (defaults for all exec/flow calls) |
 | `rqb_exec_batch` | Run multiple specs and return a summary table |
@@ -288,7 +288,7 @@ Search specs without reading individual files. Useful for discovering relevant s
 
 ### rqb_context
 
-Return compact deterministic API context for an endpoint, flow, or changed specs. This is the lowest-token way to give an agent relevant request/response contracts without asking it to read many files.
+Return bounded executable API context for an endpoint, flow, or changed specs. This is the lowest-token way to give an agent relevant request/response contracts without asking it to read many files.
 
 **Input** (all optional)
 
@@ -298,19 +298,25 @@ Return compact deterministic API context for an endpoint, flow, or changed specs
 | `changed_from` | string | | Git ref used to summarize changed specs only |
 | `root` | string | `api-docs` | Reqbook docs root |
 | `token_budget` | integer | `800` | Approximate output token budget |
+| `mode` | `"surgical"` \| `"compact"` \| `"schema"` | `"surgical"` | Contract-only, human-readable compact, or JSON schema summary |
+| `intent` | string | `"implement"` | Agent task intent, e.g. `implement`, `debug`, `test`, `review`, or `document` |
 | `verbose` | boolean | `false` | Include full request and expected response blocks |
 | `env` | string | `dev` | Environment used in suggested next commands |
 
 **Output**
 
 ```text
-# Reqbook Agent Context
-Target: api-docs/apis/users/post-users.md
-...
-Suggested verify:
-rqb validate api-docs
-rqb exec api-docs/apis/users/post-users.md --env=dev
+API contract (implement): POST /users
+File: apis/users/post-users.md
+Variables: baseUrl, authToken
+Request body: body.email:string, body.role:string
+Success response: HTTP 201 body.id:string, body.email:string
+Verify:
+- rqb validate api-docs
+- rqb exec api-docs/apis/users/post-users.md --env dev
 ```
+
+Use `mode: "schema"` when the client wants machine-readable JSON instead of text.
 
 ---
 

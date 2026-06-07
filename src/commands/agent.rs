@@ -3,21 +3,25 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context as AnyhowContext, Result};
+use reqbook::agent_context::ContextMode;
 
 use crate::AgentPackArgs;
 
-use super::context::{normalize_targets, render_markdown};
+use super::context::{normalize_targets, render_markdown, ContextRenderOptions};
 
 pub(crate) fn pack(args: AgentPackArgs) -> Result<()> {
     let targets = normalize_targets(&args.target)?;
-    let content = render_markdown(
-        args.root.clone(),
-        targets.clone(),
-        args.changed_from.clone(),
-        args.token_budget,
-        args.verbose,
-        args.env.clone(),
-    )?;
+    let mode = ContextMode::parse(&args.mode)?;
+    let content = render_markdown(ContextRenderOptions {
+        root: args.root.clone(),
+        targets: targets.clone(),
+        changed_from: args.changed_from.clone(),
+        token_budget: args.token_budget,
+        mode,
+        intent: args.intent.clone(),
+        verbose: args.verbose,
+        env: args.env.clone(),
+    })?;
     let commands = safe_next_commands(&content);
     let pack = render_pack(&args, &targets, &content, &commands);
     write_pack(&args.out, &pack)?;
@@ -61,6 +65,8 @@ Use this pack as executable API context for Codex, Claude, Cursor, or another co
 - Env: `{}`
 - Targets: `{}`
 - Token budget: `{}`
+- Mode: `{}`
+- Intent: `{}`
 - Verbose: `{}`
 
 ## Guardrails
@@ -83,6 +89,8 @@ Use this pack as executable API context for Codex, Claude, Cursor, or another co
         args.env,
         target_text,
         args.token_budget,
+        args.mode,
+        args.intent.as_deref().unwrap_or("implement"),
         args.verbose,
         args.root.display(),
         command_text,
@@ -93,10 +101,20 @@ Use this pack as executable API context for Codex, Claude, Cursor, or another co
 fn safe_next_commands(content: &str) -> Vec<String> {
     let mut commands = content
         .lines()
-        .filter_map(|line| line.trim().strip_prefix("Safe next command: "))
-        .map(str::trim)
+        .filter_map(|line| {
+            let line = line.trim();
+            line.strip_prefix("Safe next command: ")
+                .or_else(|| line.strip_prefix("- rqb "))
+                .map(|command| {
+                    if line.starts_with("- rqb ") {
+                        format!("rqb {command}")
+                    } else {
+                        command.to_string()
+                    }
+                })
+        })
+        .map(|command| command.trim().to_string())
         .filter(|command| !command.is_empty())
-        .map(str::to_string)
         .collect::<Vec<_>>();
     commands.sort();
     commands.dedup();
@@ -141,6 +159,8 @@ mod tests {
             root: PathBuf::from("api-docs"),
             out: PathBuf::from(".reqbook/agent-context.md"),
             token_budget: 800,
+            mode: "surgical".to_string(),
+            intent: Some("implement".to_string()),
             verbose: true,
             env: "dev".to_string(),
         };

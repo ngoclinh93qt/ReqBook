@@ -4,9 +4,11 @@ Rules:
 - Do not edit files.
 - Do not start servers.
 - Do not call external network services.
-- Prefer `examples/agent-token-api/api-docs/` and Reqbook validation over source inspection.
+- Prefer `rqb context --mode surgical` and Reqbook validation over source inspection.
 - If `target/release/rqb` exists, use it only for validation.
+- If `target/debug/rqb` exists, use it for `context` and validation.
 - Do not inspect source files unless the Reqbook spec is missing or invalid.
+- After locating a candidate spec, run `rqb context <spec> --mode surgical --intent review --token-budget 500` instead of reading broad source.
 
 Task:
 In `examples/agent-token-api`, find the local API endpoint that creates a refund quote.

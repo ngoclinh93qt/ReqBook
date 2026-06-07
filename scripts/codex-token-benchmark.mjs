@@ -48,7 +48,7 @@ const tokenKeys = {
 
 const scenarioLabels = {
   'source-only': 'Without Reqbook (source only)',
-  reqbook: 'With Reqbook specs',
+  reqbook: 'With Reqbook surgical context',
 };
 
 function fail(message) {
