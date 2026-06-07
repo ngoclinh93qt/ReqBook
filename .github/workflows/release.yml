@@ -74,7 +74,7 @@ jobs:
           test "$bytes" -lt 10485760
       - name: Upload E2E failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-e2e-artifacts
           path: target/e2e-artifacts
@@ -150,7 +150,7 @@ jobs:
           Compress-Archive -Path staging/rqb.exe -DestinationPath $archive
           $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
           "$hash  $archive" | Set-Content -NoNewline "$archive.sha256"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rqb-${{ matrix.target }}
           path: rqb-${{ matrix.target }}.*
@@ -244,7 +244,7 @@ jobs:
           npm test
           npm run check
           npm run package -- --out ../../dist/reqbook-vscode-${{ env.RELEASE_TAG }}.vsix --no-dependencies
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: reqbook-vscode
           path: dist/*.vsix
