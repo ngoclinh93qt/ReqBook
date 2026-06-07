@@ -556,17 +556,26 @@ Supported step directives:
 
 ```markdown
 - Inject: `authToken`, `userId`
+- Inject: authToken, userId
 - Capture: `response.body.id` as `userId`
 - Assert: `response.status == 201`
 ```
 
-`Capture` uses JSONPath for JSON responses. Captured values have highest variable priority for later steps.
+`Capture` reads values from the completed step response. Supported capture roots include `response.status`, `response.headers.<name>`, and `response.body` paths such as `response.body.id` or `response.body.items[0].id`. Captured values have highest variable priority for later steps.
+
+`Inject` means "this step requires these values from previous pipeline captures." It is not needed for normal environment or CLI variables used directly in request templates. For example, a request block can use `{{baseUrl}}`, `{{requestId}}`, or a path parameter such as `:userId` from `_shared/env.md` or `--var userId=...` without an `Inject` directive. Add `Inject: userId` only when `userId` is captured by an earlier step and must be passed downstream.
+
+Reqbook accepts both backticked and bare injected variable names. For example, ``Inject: `userId` `` and `Inject: userId` are equivalent.
 
 ### Sequential and parallel behavior
 
 Pipelines run sequentially by default. If a step fails and `continue-on-error` is false, Reqbook stops and reports the failing step.
 
 When `parallel: true`, Reqbook may run steps concurrently only when their dependencies allow it. A step that injects a captured value waits for the step that captures it.
+
+Validation catches dependency graph issues that do not require network access, including duplicate capture names and cyclic `Inject`/`Capture` dependencies. Runtime execution still catches missing injected captures when a step declares `Inject` but no previous step captured that name.
+
+Use `rqb flow <file> --dry-run --output=json` to inspect every resolved step request without sending network traffic. During dry-run, captured values are represented as synthetic placeholders such as `__capture_userId__`, allowing downstream requests to resolve while making it clear no real response was captured.
 
 ## Validation rules
 

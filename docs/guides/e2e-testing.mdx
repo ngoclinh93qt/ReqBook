@@ -1,0 +1,111 @@
+---
+title: "E2E testing"
+description: "Run Reqbook end-to-end checks for the flow canvas, embedded preview server, and desktop smoke path."
+icon: "test-tube"
+---
+
+## Overview
+
+Reqbook has two practical end-to-end checks:
+
+- Flow canvas browser E2E: launches `rqb serve`, opens the real React UI in Playwright, clicks **Run flow**, and verifies capture/inject behavior against a local fixture API.
+- Desktop smoke: launches the Tauri desktop binary, verifies the embedded preview server, desktop write-session guard, workspace switching, and flow/index metadata.
+
+Both tests create temporary local workspaces and do not modify remote data.
+
+## Flow canvas browser E2E
+
+Install web dependencies and build the embedded UI:
+
+```bash
+cd web
+npm ci
+npm run build
+cd ..
+cargo build --locked
+```
+
+Install the Playwright Chromium runner once:
+
+```bash
+cd web
+npx playwright install chromium
+```
+
+Run the flow canvas E2E from the repository root:
+
+```bash
+node scripts/flow-canvas-e2e.mjs
+```
+
+Or run it from `web/`:
+
+```bash
+npm run e2e:flow
+```
+
+The script starts a local fixture API, creates a temporary Reqbook workspace, starts `rqb serve` on a random loopback port, opens `/flows/flows/e2e-flow.md`, clicks **Run flow**, and verifies:
+
+- the flow canvas renders;
+- exactly two flow nodes are present;
+- the run summary shows `Passed`;
+- every node status is `ok`;
+- the fixture API received `POST /posts` followed by `GET /users/42`, proving capture/inject worked.
+
+When the script fails, it writes debug artifacts to `target/e2e-artifacts/flow-canvas/`:
+
+- `flow-canvas.png` screenshot;
+- `flow-canvas.html` rendered DOM;
+- `preview.log` server output;
+- `fixture-requests.json` calls received by the fixture API;
+- `error.txt` stack trace.
+
+## CI gate
+
+`.github/workflows/ci.yml` runs the flow canvas E2E in a dedicated `Web E2E` job on Ubuntu:
+
+```yaml
+- name: Install Playwright Chromium
+  run: cd web && npx playwright install --with-deps chromium
+- name: Build web UI
+  run: cd web && npm run build
+- name: Build Reqbook binary
+  run: cargo build --locked
+- name: Run flow canvas E2E
+  run: cd web && npm run e2e:flow
+- name: Upload E2E failure artifacts
+  if: failure()
+  uses: actions/upload-artifact@v4
+  with:
+    name: flow-canvas-e2e-artifacts
+    path: target/e2e-artifacts/flow-canvas
+    if-no-files-found: ignore
+```
+
+Keep this job separate from the Rust matrix so UI regressions are easy to identify and the core test matrix remains fast to scan.
+
+## Desktop smoke
+
+Build the desktop binary:
+
+```bash
+cargo build --locked -p rqb-desktop
+```
+
+Run the desktop smoke:
+
+```bash
+node scripts/desktop-smoke.mjs
+```
+
+This launches the Tauri binary, verifies the SPA loads, checks the desktop `rqb_write_token` session guard, opens a temporary workspace, reads `/api/index`, reads `/api/flows`, then terminates the app.
+
+## What remains for release-grade native E2E
+
+The flow canvas E2E covers the web surface. The desktop smoke covers native launch and embedded server wiring. Before a public desktop release, add native click-level tests using Tauri WebDriver or platform automation:
+
+1. Launch the packaged desktop artifact.
+2. Verify the native window is nonblank.
+3. Open or create a workspace through the native folder picker path.
+4. Run a flow from the native window and assert the same node/run states as the browser E2E.
+5. Save a spec/flow and assert writes stay inside `api-docs/`.

@@ -25,9 +25,32 @@ GET {{baseUrl}}/api/git/branches
 HTTP/1.1 200 OK
 Content-Type: application/json
 
-{}
+{
+  "is_repo": true,
+  "root": "/Users/example/project",
+  "current": "main",
+  "dirty": false,
+  "branches": [
+    {
+      "name": "main",
+      "current": true,
+      "remote": false,
+      "upstream": "origin/main",
+      "commit": "a1b2c3d",
+      "summary": "Update API docs"
+    },
+    {
+      "name": "feature/api-docs",
+      "current": false,
+      "remote": false,
+      "upstream": null,
+      "commit": "d4e5f6a",
+      "summary": "Add branch switch smoke test"
+    }
+  ]
+}
 ```
 
 ## Notes
 
-Imported from: `/Users/linh/linh/reqbook/Reqbook/src/preview.rs`
+Returns `is_repo: false` with an empty `branches` array when the current workspace is not inside a Git repository. `dirty` is true when the worktree has uncommitted changes, including untracked files.

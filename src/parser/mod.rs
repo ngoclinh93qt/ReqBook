@@ -555,7 +555,10 @@ fn parse_steps(source: &str) -> Vec<PipelineStep> {
             .expect("valid capture regex");
     let inject_re = regex::Regex::new(r#"Inject:\s*(?P<vars>.+)$"#).expect("valid inject regex");
     let assert_re = regex::Regex::new(r#"Assert:\s*(?P<assert>.+)$"#).expect("valid assert regex");
-    let var_re = regex::Regex::new(r#"`(?P<var>[^`]+)`"#).expect("valid variable regex");
+    let var_re = regex::Regex::new(
+        r#"`(?P<quoted>[A-Za-z_][A-Za-z0-9_]*)`|(?P<bare>[A-Za-z_][A-Za-z0-9_]*)"#,
+    )
+    .expect("valid variable regex");
 
     let mut steps = Vec::new();
     for line in source.lines() {
@@ -578,11 +581,12 @@ fn parse_steps(source: &str) -> Vec<PipelineStep> {
                 name: caps["name"].trim().to_string(),
             });
         } else if let Some(caps) = inject_re.captures(line) {
-            step.inject.extend(
-                var_re
-                    .captures_iter(&caps["vars"])
-                    .map(|caps| caps["var"].trim().to_string()),
-            );
+            step.inject
+                .extend(var_re.captures_iter(&caps["vars"]).filter_map(|caps| {
+                    caps.name("quoted")
+                        .or_else(|| caps.name("bare"))
+                        .map(|mat| mat.as_str().to_string())
+                }));
         } else if let Some(caps) = assert_re.captures(line) {
             step.assert.push(caps["assert"].trim().to_string());
         }
@@ -703,6 +707,25 @@ parallel: false
         assert_eq!(pipeline.steps.len(), 2);
         assert_eq!(pipeline.steps[0].capture[0].name, "userId");
         assert_eq!(pipeline.steps[1].inject, vec!["userId"]);
+    }
+
+    #[test]
+    fn parses_bare_pipeline_inject_variables() {
+        let source = r#"---
+type: pipeline
+name: user-onboarding
+---
+# User onboarding
+
+## Steps
+
+1. **Create user** -> `users/create-user.md`
+   - Capture: `response.body.id` as userId
+2. **Login** -> `users/login.md`
+   - Inject: userId, sessionId
+"#;
+        let pipeline = parse_pipeline(source, "api-docs/pipelines/user.md").unwrap();
+        assert_eq!(pipeline.steps[1].inject, vec!["userId", "sessionId"]);
     }
 
     #[test]

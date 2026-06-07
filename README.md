@@ -21,6 +21,7 @@ rqb request GET https://httpbin.org/get  # ad-hoc request (rqb-cli)
 | --- | --- | --- |
 | **rqb-cli** | `rqb <command>` | Scripts, CI, agents, ad-hoc requests |
 | **rqb-ui** | `rqb serve` | Interactive design, debugging, review |
+| **Reqbook desktop** | `cargo run -p rqb-desktop` | Native desktop shell around the local web preview |
 | **VS Code extension** | `packages/vscode` | In-editor preview, run, validate, context, and variable autocomplete |
 
 ## Why Reqbook
@@ -71,6 +72,27 @@ Open the web preview:
 rqb serve
 ```
 
+Run the desktop app from source:
+
+```bash
+cd web && npm ci && npm run build
+cd ..
+cargo run -p rqb-desktop
+```
+
+Run the flow canvas E2E:
+
+```bash
+cd web
+NPM_CONFIG_UPDATE_NOTIFIER=false npm ci
+npm run build
+npx playwright install chromium
+cd ..
+cargo build --locked
+cd web
+npm run e2e:flow
+```
+
 Install AI agent skills:
 
 ```bash
@@ -104,8 +126,11 @@ rqb init
 rqb validate api-docs/
 rqb exec api-docs/apis/users/get-user-by-id.md --env=dev --var userId=42
 rqb flow api-docs/flows/user-onboarding.md --env=dev
+rqb flow api-docs/flows/user-onboarding.md --dry-run --output json
 rqb check api-docs/ --changed-from origin/main --report github
-rqb context users.create
+rqb context users.create orders.create --verbose
+rqb context flow user-onboarding --output json
+rqb agent pack flow user-onboarding --verbose --out .reqbook/agent-context.md
 rqb export openapi api-docs/ --out openapi.generated.yaml
 rqb import curl
 rqb import collection ./local-client-collection
@@ -121,6 +146,8 @@ rqb doctor
 - [Getting started](https://docs.markapidown.net/quickstart)
 - [CLI reference](https://docs.markapidown.net/cli/overview)
 - [Configuration reference](https://docs.markapidown.net/reference/configuration)
+- [E2E testing](https://docs.markapidown.net/guides/e2e-testing)
+- [Desktop smoke testing](https://docs.markapidown.net/guides/desktop-smoke)
 - [Spec convention](docs/spec/convention.md)
 - [Benchmarks](BENCHMARKS.md)
 - [Contributing](CONTRIBUTING.md)

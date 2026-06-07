@@ -11,7 +11,7 @@ retry:
   attempts: 0
   backoff: fixed
 ---
-# Create exec
+# Run endpoint spec
 
 ## Request
 

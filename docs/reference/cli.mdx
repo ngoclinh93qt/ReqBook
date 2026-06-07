@@ -156,7 +156,7 @@ rqb exec api-docs/apis/users/get-user-by-id.md --timeout=10000
 Execute a pipeline file. Steps run sequentially by default, with optional parallelism.
 
 ```bash
-rqb flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel] [--no-parallel] [--timeout=<ms>] [--strict-assertions]
+rqb flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel] [--no-parallel] [--dry-run] [--timeout=<ms>] [--strict-assertions]
 ```
 
 | Flag | Type | Default | Description |
@@ -167,6 +167,7 @@ rqb flow <file> [--env=<env>] [--output=<format>] [--var key=val]... [--parallel
 | `--var` | string | | Inject a variable as `key=value`. Repeatable. |
 | `--parallel` | bool | `false` | Force parallel execution, overriding the pipeline file's `parallel` setting. |
 | `--no-parallel` | bool | `false` | Force sequential execution, overriding the pipeline file's `parallel` setting. |
+| `--dry-run` | bool | `false` | Print resolved step requests without sending them. Captures become synthetic placeholders such as `__capture_userId__` so downstream requests can still resolve. |
 | `--timeout` | integer | | Override timeout in milliseconds for every step in the pipeline. |
 | `--strict-assertions` | bool | `false` | Treat failing endpoint `## Assertions` rules as flow step failures. |
 
@@ -182,6 +183,9 @@ rqb flow api-docs/flows/user-onboarding.md --env=staging
 
 # Force sequential execution for debugging
 rqb flow api-docs/flows/user-onboarding.md --no-parallel
+
+# Resolve every step without sending requests
+rqb flow api-docs/flows/user-onboarding.md --dry-run --output=json
 
 # JSON output for programmatic consumption
 rqb flow api-docs/flows/user-onboarding.md --output=json
@@ -351,8 +355,9 @@ Print compact deterministic API context for coding agents.
 
 ```bash
 rqb context users.create
+rqb context users.create orders.create --verbose
 rqb context flow signup-login-profile
-rqb context --changed-from origin/main
+rqb context --changed-from origin/main --output json
 ```
 
 | Flag | Description |
@@ -361,6 +366,30 @@ rqb context --changed-from origin/main
 | `--changed-from` | Summarize only changed specs since this git ref. |
 | `--token-budget` | Approximate output token budget. |
 | `--verbose` | Include full request and expected response blocks. |
+| `--output` | `markdown` or `json`. JSON wraps the rendered context with env, root, target, and budget metadata for agent automation. |
+
+---
+
+## rqb agent pack
+
+Write an agent-ready markdown pack containing Reqbook context, guardrails, and suggested verify commands.
+
+```bash
+rqb agent pack users.create orders.create --verbose --out .reqbook/agent-context.md
+rqb agent pack flow signup-login-profile --token-budget 1800
+rqb agent pack --changed-from origin/main --out .reqbook/changed-context.md
+```
+
+| Flag | Description |
+|---|---|
+| `--root` | api-docs root directory. Defaults to `api-docs`. |
+| `--changed-from` | Build the pack from changed endpoint and flow specs since this git ref. |
+| `--out` | Output markdown file. Defaults to `.reqbook/agent-context.md`. |
+| `--token-budget` | Approximate output token budget. Defaults to `1600`. |
+| `--verbose` | Include full request, expected response, agent-task, and notes blocks. |
+| `--env` | Environment used in suggested verify commands. Defaults to `dev`. |
+
+Use the generated pack as the initial prompt/context file for Codex, Claude, Cursor, or another coding agent. It tells the agent which APIs matter, which commands are safe to run, and how to verify the implementation.
 
 ---
 

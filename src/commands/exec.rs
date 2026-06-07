@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use reqbook::{
     engine::{self, ExecOpts},
     parser::{parse_endpoint, parse_pipeline},
@@ -31,13 +31,19 @@ pub(crate) async fn exec(args: ExecArgs, yes: bool) -> Result<()> {
         },
     )
     .await?;
-    print_report(args.output, &execution)
+    print_report(args.output, &execution)?;
+    if !args.dry_run && !execution.diff.passed {
+        bail!("contract failed: response did not match the expected spec");
+    }
+    Ok(())
 }
 
 pub(crate) async fn flow(args: FlowArgs, yes: bool) -> Result<()> {
     let source = read_text(&args.pipeline, "executing pipeline")?;
     let mut parsed = parse_pipeline(&source, &args.pipeline)?;
-    confirm_production_env(&args.env, yes, "run pipeline")?;
+    if !args.dry_run {
+        confirm_production_env(&args.env, yes, "run pipeline")?;
+    }
     if args.parallel {
         parsed.schema.parallel = true;
     }
@@ -59,7 +65,7 @@ pub(crate) async fn flow(args: FlowArgs, yes: bool) -> Result<()> {
             exec: ExecOpts {
                 context,
                 timeout_ms: args.timeout,
-                dry_run: false,
+                dry_run: args.dry_run,
                 strict_assertions: args.strict_assertions,
             },
         },
@@ -68,11 +74,15 @@ pub(crate) async fn flow(args: FlowArgs, yes: bool) -> Result<()> {
     match args.output {
         OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&result)?),
         _ => println!(
-            "pipeline {}: {} step(s), passed={}",
+            "pipeline {}: {} step(s), passed={}, dry_run={}",
             parsed.schema.name,
             result.steps.len(),
-            result.passed
+            result.passed,
+            args.dry_run
         ),
+    }
+    if !result.passed {
+        bail!("pipeline failed: one or more steps did not match the expected spec");
     }
     Ok(())
 }

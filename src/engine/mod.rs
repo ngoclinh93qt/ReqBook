@@ -247,7 +247,10 @@ pub async fn execute_with_client(
             request: captured_request,
             response: None,
             duration_ms: 0,
-            diff: ResponseDiff::default(),
+            diff: ResponseDiff {
+                passed: true,
+                ..ResponseDiff::default()
+            },
             assertion_results: Vec::new(),
         });
     }

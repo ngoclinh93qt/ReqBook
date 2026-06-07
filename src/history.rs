@@ -123,7 +123,7 @@ mod tests {
         write_entry(dir.path(), "apis/test.md", entry.clone());
         let entries = read_history(dir.path(), "apis/test.md");
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].passed, true);
+        assert!(entries[0].passed);
         assert_eq!(entries[0].duration_ms, 123);
     }
 

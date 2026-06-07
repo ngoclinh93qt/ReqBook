@@ -384,13 +384,32 @@ export function StatusBar({ env, onScan, scanning, scanMsg, runTick = 0 }: {
   const [currentBranch, setCurrentBranch] = useState<string | null>(null);
   const [branchOpen, setBranchOpen] = useState(false);
   const [branchBusy, setBranchBusy] = useState(false);
+  const [branchError, setBranchError] = useState('');
   const branchRef = useRef<HTMLDivElement>(null);
   const [totals, setTotals] = useState({ passed: 0, failed: 0, never: 0 });
 
-  useEffect(() => {
-    api.getGitBranches()
-      .then(d => { if (d.is_repo && d.current) { setGit(d); setCurrentBranch(d.current); } })
+  function refreshGitBranches() {
+    return api.getGitBranches()
+      .then(d => {
+        if (d.is_repo && d.current) {
+          setGit(d);
+          setCurrentBranch(d.current);
+        } else {
+          setGit(null);
+          setCurrentBranch(null);
+        }
+      })
       .catch(() => {});
+  }
+
+  useEffect(() => {
+    refreshGitBranches();
+    window.addEventListener('rqb:workspace-switched', refreshGitBranches);
+    window.addEventListener('rqb:git-branch-switched', refreshGitBranches);
+    return () => {
+      window.removeEventListener('rqb:workspace-switched', refreshGitBranches);
+      window.removeEventListener('rqb:git-branch-switched', refreshGitBranches);
+    };
   }, []);
 
   useEffect(() => {
@@ -416,14 +435,36 @@ export function StatusBar({ env, onScan, scanning, scanMsg, runTick = 0 }: {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  function toggleBranchMenu() {
+    setBranchOpen(open => {
+      const next = !open;
+      if (next) void refreshGitBranches();
+      return next;
+    });
+  }
+
   async function doCheckout(branch: string) {
     if (branch === currentBranch || branchBusy) { setBranchOpen(false); return; }
+    if (git?.dirty) {
+      const ok = window.confirm(
+        `Your worktree has uncommitted changes. Switch from ${currentBranch ?? 'current branch'} to ${branch}?`,
+      );
+      if (!ok) { setBranchOpen(false); return; }
+    }
+    setBranchError('');
     setBranchBusy(true);
     try {
       const next = await api.checkoutGitBranch(branch);
       setGit(next);
       setCurrentBranch(next.current ?? branch);
-    } catch {}
+      window.dispatchEvent(new CustomEvent('rqb:git-branch-switched', {
+        detail: { branch: next.current ?? branch },
+      }));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setBranchError(message);
+      window.setTimeout(() => setBranchError(''), 7000);
+    }
     finally { setBranchBusy(false); setBranchOpen(false); }
   }
 
@@ -433,8 +474,10 @@ export function StatusBar({ env, onScan, scanning, scanMsg, runTick = 0 }: {
         <div className="git-select" ref={branchRef}>
           <button
             className={`sb-stat git${branchOpen ? ' is-open' : ''}`}
-            onClick={() => setBranchOpen(o => !o)}
+            onClick={toggleBranchMenu}
             disabled={branchBusy}
+            data-testid="git-branch-current"
+            title={git.dirty ? 'Uncommitted changes' : 'Switch branch'}
           >
             <Icon.branch />
             <span className="git-name">{currentBranch}</span>
@@ -452,6 +495,7 @@ export function StatusBar({ env, onScan, scanning, scanMsg, runTick = 0 }: {
                   className={`git-menu-item${b.name === currentBranch ? ' is-active' : ''}`}
                   onClick={() => doCheckout(b.name)}
                   disabled={branchBusy}
+                  data-testid={`git-branch-option-${b.name}`}
                 >
                   <Icon.branch />
                   <span className="git-mi-name">{b.name}</span>
@@ -461,6 +505,12 @@ export function StatusBar({ env, onScan, scanning, scanMsg, runTick = 0 }: {
               ))}
             </div>
           )}
+        </div>
+      )}
+      {branchError && (
+        <div className="sb-stat branch-error" title={branchError} data-testid="git-branch-error">
+          <Icon.cross />
+          <span>{branchError}</span>
         </div>
       )}
 

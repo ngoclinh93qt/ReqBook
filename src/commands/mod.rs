@@ -1,5 +1,6 @@
 //! CLI command implementations and shared helpers.
 
+pub mod agent;
 pub mod check;
 pub mod context;
 pub mod doctor;

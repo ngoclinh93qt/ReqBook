@@ -1,6 +1,6 @@
 ---
-title: "rqb-cli overview"
-description: "All Reqbook capabilities from the terminal same binary as rqb-ui, different interface."
+title: "Reqbook CLI for API Testing"
+description: "Run Reqbook from the terminal to validate, execute, flow-test, import, and package markdown API specs for coding agents."
 ---
 
 ## What is rqb-cli?
@@ -20,10 +20,11 @@ Use it for:
 | `rqb init` | Scaffold a new collection in the current project |
 | `rqb request <METHOD> <URL>` | Send an ad-hoc HTTP request |
 | `rqb exec <file>` | Execute one endpoint spec |
-| `rqb flow <file>` | Run a multi-step pipeline |
+| `rqb flow <file>` | Run a multi-step pipeline, or inspect resolved step requests with `--dry-run` |
 | `rqb validate <path>` | Validate endpoint or pipeline files |
 | `rqb check <path>` | Run PR-focused contract checks and reports |
 | `rqb context <target>` | Print compact API context for coding agents |
+| `rqb agent pack <target>` | Write an agent-ready context pack with guardrails and verify commands |
 | `rqb import postman\|insomnia\|openapi\|collection\|http\|curl` | Import from another tool or local collection format |
 | `rqb export openapi <path>` | Export markdown endpoint specs as OpenAPI |
 | `rqb serve` | Launch rqb-ui in a browser |

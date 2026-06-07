@@ -47,7 +47,7 @@ jobs:
       - name: Format
         run: cargo fmt --check
       - name: Clippy
-        run: cargo clippy --locked -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
 
   validate-examples:
     name: Validate examples
@@ -60,6 +60,38 @@ jobs:
         run: cargo build --release --locked
       - name: Validate jsonplaceholder example
         run: ./target/release/rqb validate examples/jsonplaceholder/api-docs/
+
+  web-e2e:
+    name: Web E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies
+        run: cd web && npm ci
+      - name: Install Playwright Chromium
+        run: cd web && npx playwright install --with-deps chromium
+      - name: Build web UI
+        run: cd web && npm run build
+      - name: Build Reqbook binary
+        run: cargo build --locked
+      - name: Run flow canvas E2E
+        run: cd web && npm run e2e:flow
+      - name: Run branch switch E2E
+        run: cd web && npm run e2e:branch
+      - name: Upload E2E failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-artifacts
+          path: target/e2e-artifacts
+          if-no-files-found: ignore
 
   vscode-extension:
     name: VS Code extension

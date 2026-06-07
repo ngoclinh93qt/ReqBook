@@ -1,4 +1,5 @@
 use std::{
+    fmt::Write as _,
     path::PathBuf,
     sync::{Arc, Mutex, RwLock},
 };
@@ -10,6 +11,16 @@ use tauri_plugin_dialog::DialogExt;
 pub struct TauriState {
     pub workspace_root: Arc<RwLock<PathBuf>>,
     pub server_port: Arc<Mutex<u16>>,
+}
+
+fn new_write_token() -> String {
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).expect("failed to create desktop session token");
+    let mut token = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        let _ = write!(&mut token, "{byte:02x}");
+    }
+    token
 }
 
 #[tauri::command]
@@ -56,6 +67,7 @@ pub fn run() {
             let port_clone = server_port.clone();
             let app_handle = app.handle().clone();
             let app_handle_for_picker = app.handle().clone();
+            let write_token = new_write_token();
 
             let pick_folder_fn: preview::PickFolderFn = Arc::new(move || {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -72,13 +84,16 @@ pub fn run() {
                 let (tx, rx) = tokio::sync::oneshot::channel::<u16>();
                 let root_for_server = root_clone.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = preview::run_with_ready(
+                    if let Err(e) = preview::run_with_ready_options(
                         root_for_server,
                         "127.0.0.1",
                         7700,
                         "dev",
                         false,
-                        Some(pick_folder_fn),
+                        preview::PreviewOptions {
+                            pick_folder: Some(pick_folder_fn),
+                            write_token: Some(write_token),
+                        },
                         move |port| {
                             *port_clone.lock().unwrap() = port;
                             let _ = tx.send(port);

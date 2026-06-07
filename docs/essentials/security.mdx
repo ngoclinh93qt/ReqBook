@@ -83,6 +83,23 @@ rqb exec api-docs/apis/users/get-users.md --env=prod --yes
 
 ---
 
+## Localhost and desktop writes
+
+`rqb serve` binds to loopback by default and rejects browser writes that clearly come from a cross-site origin. This protects the common case where a random website tries to submit a write request to your local Reqbook preview server.
+
+Reqbook desktop adds an extra session check for unsafe methods (`POST`, `PUT`, `PATCH`, and `DELETE`). The embedded server issues an HttpOnly `rqb_write_token` cookie with `SameSite=Strict` when the desktop UI loads. Desktop write endpoints require that active session, so drive-by browser writes without the desktop session are rejected.
+
+This is not a substitute for operating-system account security. A local process running as your user can still access files that your user can access. Treat Reqbook desktop as a local developer tool and avoid opening untrusted workspaces.
+
+Run the desktop smoke test before release candidates to verify this guard:
+
+```bash
+cargo build --locked -p rqb-desktop
+node scripts/desktop-smoke.mjs
+```
+
+---
+
 ## Exit codes
 
 Every Reqbook command exits with a stable, machine-readable code. CI pipelines can branch on these codes to distinguish test failures from spec errors.

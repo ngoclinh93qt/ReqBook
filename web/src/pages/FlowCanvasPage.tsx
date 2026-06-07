@@ -361,7 +361,7 @@ export function FlowCanvasPage() {
   }
 
   return (
-    <div className="flow-shell">
+    <div className="flow-shell" data-testid="flow-canvas-page">
       <div className="flow-toolbar">
         <button className="btn ghost sm" onClick={() => navigate('/flows')}>
           <BackIcon /> All flows
@@ -373,16 +373,16 @@ export function FlowCanvasPage() {
           <span><b>{waves.length}</b> wave{waves.length !== 1 ? 's' : ''} · max <b>{maxParallel}</b> in parallel</span>
         </span>
         <div className="flow-toolbar-actions">
-          {msg && <span className={`flow-inline-msg ${msg.startsWith('Saved') ? 'ok-text' : 'fail-text'}`}>{msg}</span>}
-          {allDone && <span className={`chip ${anyFail ? 'fail' : 'ok'}`}><span className="dot" />{anyFail ? 'Failed' : 'Passed'} · {totalMs}ms</span>}
-          {isRunning && <span className="chip running-chip"><span className="pulse-dot tiny" />Running</span>}
-          <button className="btn sm" onClick={resetFlow} disabled={isRunning}>Reset</button>
-          <button className="btn sm" onClick={tidyLayout} disabled={isRunning}>Auto-layout</button>
-          <button className="btn sm" onClick={save}>Save</button>
+          {msg && <span className={`flow-inline-msg ${msg.startsWith('Saved') ? 'ok-text' : 'fail-text'}`} data-testid="flow-message">{msg}</span>}
+          {allDone && <span className={`chip ${anyFail ? 'fail' : 'ok'}`} data-testid="flow-run-summary"><span className="dot" />{anyFail ? 'Failed' : 'Passed'} · {totalMs}ms</span>}
+          {isRunning && <span className="chip running-chip" data-testid="flow-running"><span className="pulse-dot tiny" />Running</span>}
+          <button className="btn sm" onClick={resetFlow} disabled={isRunning} data-testid="flow-reset">Reset</button>
+          <button className="btn sm" onClick={tidyLayout} disabled={isRunning} data-testid="flow-auto-layout">Auto-layout</button>
+          <button className="btn sm" onClick={save} data-testid="flow-save">Save</button>
           {!isRunning ? (
-            <button className="btn-primary btn-sm-primary" onClick={runFlow}><Icon.play /> Run flow</button>
+            <button className="btn-primary btn-sm-primary" onClick={runFlow} data-testid="flow-run"><Icon.play /> Run flow</button>
           ) : (
-            <button className="btn-primary btn-sm-primary stop-btn" onClick={stopFlow}><span className="stop-square" /> Stop</button>
+            <button className="btn-primary btn-sm-primary stop-btn" onClick={stopFlow} data-testid="flow-stop"><span className="stop-square" /> Stop</button>
           )}
         </div>
       </div>
@@ -394,6 +394,7 @@ export function FlowCanvasPage() {
           onChange={e => setTitle(e.target.value)}
           placeholder="Flow title"
           spellCheck={false}
+          data-testid="flow-title-input"
         />
         <div className="flow-doc-meta">
           <span className="flow-doc-prefix">flows/</span>
@@ -403,6 +404,7 @@ export function FlowCanvasPage() {
             onChange={e => setFlowName(e.target.value)}
             placeholder="flow-name"
             spellCheck={false}
+            data-testid="flow-slug-input"
           />
           <span className="flow-doc-prefix">.md</span>
           {autoSaveState === 'pending' && <span className="autosave-pill">Saving…</span>}
@@ -411,8 +413,8 @@ export function FlowCanvasPage() {
         </div>
       </div>
 
-      <div className={`flow-main ${selected ? 'has-inspector' : ''}`}>
-        <div className="flow-canvas" ref={canvasRef} onMouseDown={startPan} onWheel={onWheel}>
+      <div className={`flow-main ${selected ? 'has-inspector' : ''}`} data-testid="flow-main">
+        <div className="flow-canvas" ref={canvasRef} onMouseDown={startPan} onWheel={onWheel} data-testid="flow-canvas">
           <div className="flow-canvas-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
             <FlowEdges nodes={nodes} edges={edges} active={activeEdges} dragEdge={dragEdge} />
             {nodes.map(node => (
@@ -454,7 +456,7 @@ export function FlowCanvasPage() {
             })}
           </div>
           <div className="canvas-overlay tl"><Legend /></div>
-          <div className="canvas-overlay bl"><button className="btn sm" onClick={addBlock}><Icon.plus /> Add block</button></div>
+          <div className="canvas-overlay bl"><button className="btn sm" onClick={addBlock} data-testid="flow-add-block"><Icon.plus /> Add block</button></div>
           <div className="canvas-overlay br"><ZoomBar zoom={zoom} setZoom={setZoom} /></div>
         </div>
 
@@ -497,6 +499,10 @@ function FlowNodeCard({ node, wave, spec, isSelected, isDragTarget, onSelect, on
       className={`flow-node status-${node.status} ${isSelected ? 'is-selected' : ''} ${detached ? 'is-detached' : ''} ${isDragTarget ? 'is-drop-target' : ''}`}
       style={{ left: node.position.x, top: node.position.y, width: NODE_W }}
       onClick={event => { event.stopPropagation(); onSelect(); }}
+      data-testid="flow-node"
+      data-node-status={node.status}
+      data-node-path={node.relPath}
+      data-node-label={node.label}
     >
       <div className="fn-grip" onMouseDown={onDrag}>
         <span className="fn-handle in" onMouseDown={e => { e.stopPropagation(); onDragInputPort(e); }} title="Drag to reconnect incoming edge" />
@@ -658,7 +664,7 @@ function NodeInspector({ node, nodes, edges, waves, nodeWave, endpoints, result,
   }
 
   return (
-    <aside className="inspector">
+    <aside className="inspector" data-testid="flow-inspector">
       <div className="inspector-h">
         <MethodBadge method={spec?.method || 'GET'} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -733,7 +739,7 @@ function NodeInspector({ node, nodes, edges, waves, nodeWave, endpoints, result,
         </div>
 
         {node.result != null && (
-          <div className="ip-section">
+          <div className="ip-section" data-testid="flow-inspector-response">
             <div className="sec-h"><span>Last response</span><span className="tag">{node.status} · {node.ms ?? '-'}ms</span></div>
             <pre className="code inspector-code">{JSON.stringify(node.result, null, 2)}</pre>
           </div>
@@ -894,8 +900,8 @@ function EndpointPicker({ endpoints, selected, onPick }: {
   }
 
   return (
-    <div className="endpoint-picker" ref={ref}>
-      <button className={`endpoint-current ${open ? 'is-open' : ''}`} onClick={() => setOpen(value => !value)}>
+    <div className="endpoint-picker" ref={ref} data-testid="endpoint-picker">
+      <button className={`endpoint-current ${open ? 'is-open' : ''}`} onClick={() => setOpen(value => !value)} data-testid="endpoint-picker-current">
         {current ? (
           <>
             <MethodBadge method={current.method} />
@@ -908,7 +914,7 @@ function EndpointPicker({ endpoints, selected, onPick }: {
         <div className="endpoint-menu">
           <div className="endpoint-search">
             <Icon.search />
-            <input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Search endpoint by method, path, title..." />
+            <input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Search endpoint by method, path, title..." data-testid="endpoint-picker-search" />
           </div>
           <div className="endpoint-results">
             {filtered.map(endpoint => (
@@ -916,6 +922,8 @@ function EndpointPicker({ endpoints, selected, onPick }: {
                 key={endpoint.rel_path}
                 className={`endpoint-option ${endpoint.rel_path === selected ? 'is-active' : ''}`}
                 onClick={() => pick(endpoint)}
+                data-testid="endpoint-picker-option"
+                data-endpoint-path={endpoint.rel_path}
               >
                 <MethodBadge method={endpoint.method} />
                 <span className="ep-option-main">

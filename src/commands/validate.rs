@@ -6,7 +6,10 @@ use std::{
 };
 
 use anyhow::Result;
-use reqbook::parser::{self, parse_endpoint, parse_pipeline};
+use reqbook::{
+    parser::{self, parse_endpoint, parse_pipeline},
+    pipeline,
+};
 
 use super::read_text;
 
@@ -60,9 +63,12 @@ pub(crate) fn validate_file(path: &Path) -> Result<()> {
         .components()
         .any(|component| matches!(component.as_os_str().to_str(), Some("flows" | "pipelines")))
     {
-        parse_pipeline(&source, path).map(|_| ())
+        let pipeline = parse_pipeline(&source, path)?;
+        pipeline::validate_dependencies(&pipeline)?;
+        Ok(())
     } else {
-        parse_endpoint(&source, path).map(|_| ())
+        parse_endpoint(&source, path)?;
+        Ok(())
     };
     result.map_err(Into::into)
 }

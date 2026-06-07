@@ -12,6 +12,6 @@ parallel: false
 
 1. **Create post** -> `apis/posts/create-post.md`
    - Capture: `response.body.id` as `postId`
-   - Capture: `response.body.input_2` as `input_2`
-2. **List users** -> `apis/users/get-users.md`
-   - Inject: `postId`
+   - Capture: `response.body.userId` as `id`
+2. **Get user by id** -> `apis/users/get-user-by-id.md`
+   - Inject: `id`

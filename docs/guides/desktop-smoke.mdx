@@ -1,0 +1,66 @@
+---
+title: "Desktop smoke testing"
+description: "Start the Tauri desktop app, verify the embedded Reqbook web/API surface, and shut it down automatically."
+icon: "monitor-check"
+---
+
+## Overview
+
+Reqbook desktop is a Tauri wrapper around the same embedded preview server used by `rqb serve`. A practical first desktop test is to launch the native binary, wait for the preview server, verify the SPA and desktop-critical API endpoints, then stop the app.
+
+This is a smoke test, not a full click-level native E2E suite. It proves the desktop binary can boot the local server, serve the web UI, issue the desktop write-session cookie, block unauthenticated writes, switch workspace, and read endpoint/flow metadata.
+
+## Run the smoke test
+
+Build the web UI and desktop binary first:
+
+```bash
+cd web
+npm ci
+npm run build
+cd ..
+cargo build --locked -p rqb-desktop
+```
+
+Run the smoke script from the repository root:
+
+```bash
+node scripts/desktop-smoke.mjs
+```
+
+The script creates a temporary local workspace, checks `GET /`, verifies the `rqb_write_token` desktop session cookie, confirms `POST /api/workspace/open` is forbidden without that session, opens the workspace with the session cookie, checks `GET /api/workspace/current`, `GET /api/index`, and `GET /api/flows`, then terminates the desktop process.
+
+It does not call any external API and does not modify remote data.
+
+## Configuration
+
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `RQB_DESKTOP_BIN` | `target/debug/rqb-desktop` | Path to the desktop binary to launch. |
+| `RQB_DESKTOP_TIMEOUT_MS` | `30000` | Maximum time to wait for the embedded preview server. |
+| `RQB_DESKTOP_SMOKE_KEEP_APP=1` | unset | Keep the desktop app running after the test for manual inspection. |
+| `RQB_DESKTOP_SMOKE_KEEP_WORKSPACE=1` | unset | Keep the temporary workspace for debugging. |
+
+## What this catches
+
+- Desktop binary fails to start.
+- Embedded web assets are missing or stale.
+- Preview server does not bind to a loopback port.
+- Tauri app cannot serve the React UI.
+- Desktop write-session cookie is not issued.
+- Desktop write endpoints accept unauthenticated writes.
+- Workspace switching is broken.
+- Endpoint index or flow index cannot be read from the active workspace.
+
+## What still needs full native E2E
+
+Use Tauri WebDriver/`tauri-driver` or platform-specific automation for click-level tests that open the native window and verify real UI behavior:
+
+1. Open the app and confirm the main window is nonblank.
+2. Pick or create a workspace through the native folder picker path.
+3. Open an endpoint page and run a request against a local fixture API.
+4. Open a flow canvas, run a flow, and verify the run state is visible.
+5. Save a spec/flow and assert the file changed only inside `api-docs/`.
+6. Repeat against packaged release artifacts on macOS, Windows, and Linux.
+
+Keep the smoke script in CI as the fast guard, and reserve native click-level tests for release candidates or a nightly job.

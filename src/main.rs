@@ -11,8 +11,8 @@ use clap_complete::{generate, Shell};
 use reqbook::workspace;
 
 use commands::{
-    check, context, doctor, exec, export, import, init, install, regenerate_index, request, serve,
-    validate,
+    agent, check, context, doctor, exec, export, import, init, install, regenerate_index, request,
+    serve, validate,
 };
 
 // ─── CLI types ────────────────────────────────────────────────────────────────
@@ -54,6 +54,11 @@ enum Command {
     Check(CheckArgs),
     /// Print compact API context for coding agents.
     Context(ContextArgs),
+    /// Create agent-ready API context packs.
+    Agent {
+        #[command(subcommand)]
+        command: AgentCommand,
+    },
     /// Regenerate api-docs/README.md.
     Index,
     /// Import specs from another API tool.
@@ -183,6 +188,9 @@ pub(crate) struct FlowArgs {
     /// Timeout override in milliseconds.
     #[arg(long)]
     pub(crate) timeout: Option<u64>,
+    /// Print resolved step requests without sending them.
+    #[arg(long)]
+    pub(crate) dry_run: bool,
     /// Treat failing `## Assertions` rules as execution failures.
     #[arg(long)]
     pub(crate) strict_assertions: bool,
@@ -215,7 +223,7 @@ pub(crate) struct CheckArgs {
 
 #[derive(Debug, Args)]
 pub(crate) struct ContextArgs {
-    /// Endpoint/flow id or file path, e.g. `users.create`.
+    /// Endpoint/flow ids or file paths, e.g. `users.create posts.create` or `flow checkout`.
     pub(crate) target: Vec<String>,
     /// Only summarize files changed since this git ref.
     #[arg(long)]
@@ -227,6 +235,39 @@ pub(crate) struct ContextArgs {
     #[arg(long, default_value_t = 800)]
     pub(crate) token_budget: usize,
     /// Include full request and expected response blocks.
+    #[arg(long)]
+    pub(crate) verbose: bool,
+    /// Environment used in suggested next commands.
+    #[arg(long, default_value = "dev")]
+    pub(crate) env: String,
+    /// Output format.
+    #[arg(long, default_value = "markdown")]
+    pub(crate) output: ContextOutputFormat,
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum AgentCommand {
+    /// Write an executable context pack for coding agents.
+    Pack(AgentPackArgs),
+}
+
+#[derive(Debug, Args)]
+pub(crate) struct AgentPackArgs {
+    /// Endpoint/flow ids or file paths, e.g. `users.create posts.create` or `flow checkout`.
+    pub(crate) target: Vec<String>,
+    /// Only summarize files changed since this git ref.
+    #[arg(long)]
+    pub(crate) changed_from: Option<String>,
+    /// api-docs/ root directory.
+    #[arg(long, default_value = "api-docs")]
+    pub(crate) root: PathBuf,
+    /// Output markdown file.
+    #[arg(long, default_value = ".reqbook/agent-context.md")]
+    pub(crate) out: PathBuf,
+    /// Approximate output token budget.
+    #[arg(long, default_value_t = 1600)]
+    pub(crate) token_budget: usize,
+    /// Include full request, expected response, agent-task, and notes blocks.
     #[arg(long)]
     pub(crate) verbose: bool,
     /// Environment used in suggested next commands.
@@ -364,6 +405,12 @@ pub(crate) enum OutputFormat {
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
+pub(crate) enum ContextOutputFormat {
+    Markdown,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
 pub(crate) enum CheckReportFormat {
     Markdown,
     Github,
@@ -401,6 +448,9 @@ async fn main() -> Result<()> {
         Command::Flow(args) => exec::flow(args, yes).await?,
         Command::Check(args) => check::run(args, yes).await?,
         Command::Context(args) => context::run(args)?,
+        Command::Agent { command } => match command {
+            AgentCommand::Pack(args) => agent::pack(args)?,
+        },
         Command::Index => regenerate_index(&collection)?,
         Command::Import { command } => import::run(command, &collection).await?,
         Command::Export { command } => export::run(command)?,

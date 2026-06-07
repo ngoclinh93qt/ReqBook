@@ -18,3 +18,4 @@ serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 reqbook = { path = "..", features = ["web"] }
 anyhow = "1"
+getrandom = "0.2"

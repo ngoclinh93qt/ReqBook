@@ -358,27 +358,69 @@ pub(crate) fn title_from_path(method: &str, path: &str) -> String {
         .collect();
 
     // Separate static segments from path-parameter segments.
-    let static_segs: Vec<&str> = segments
+    let static_segs: Vec<String> = segments
         .iter()
         .filter(|s| !s.starts_with(':'))
-        .cloned()
+        .map(|s| s.replace(['-', '_'], " ").to_lowercase())
         .collect();
     let has_id_param = segments.iter().any(|s| s.starts_with(':'));
 
-    let base = static_segs
-        .last()
-        .copied()
-        .unwrap_or("resource")
-        .replace(['-', '_'], " ");
+    let base = static_segs.last().map(String::as_str).unwrap_or("resource");
+    let resource = resource_for_action(&static_segs);
 
     match method {
-        "GET" if has_id_param => format!("{} by id", sentence_case(&base)),
-        "GET" => sentence_case(&base),
-        "POST" => format!("Create {}", base.to_lowercase()),
-        "PUT" | "PATCH" => format!("Update {}", base.to_lowercase()),
-        "DELETE" => format!("Delete {}", base.to_lowercase()),
-        m => format!("{} {}", sentence_case(m), base.to_lowercase()),
+        "GET" if has_id_param => format!("{} by id", sentence_case(base)),
+        "GET" => sentence_case(base),
+        "POST" => {
+            if let Some(action) = action_from_segment(base) {
+                format!("{action} {resource}")
+            } else {
+                format!("Create {base}")
+            }
+        }
+        "PUT" | "PATCH" => {
+            if matches!(base, "update" | "edit") {
+                format!("Update {resource}")
+            } else {
+                format!("Update {base}")
+            }
+        }
+        "DELETE" => {
+            if matches!(base, "delete" | "remove") {
+                format!("Delete {resource}")
+            } else {
+                format!("Delete {base}")
+            }
+        }
+        m => format!("{} {base}", sentence_case(m)),
     }
+}
+
+fn action_from_segment(segment: &str) -> Option<&'static str> {
+    match segment {
+        "create" | "new" => Some("Create"),
+        "open" => Some("Open"),
+        "exec" | "execute" | "run" => Some("Run"),
+        "send" => Some("Send"),
+        "sync" => Some("Sync"),
+        "import" => Some("Import"),
+        "export" => Some("Export"),
+        "scan" => Some("Scan"),
+        "validate" => Some("Validate"),
+        "check" => Some("Check"),
+        _ => None,
+    }
+}
+
+fn resource_for_action(static_segs: &[String]) -> String {
+    static_segs
+        .iter()
+        .rev()
+        .skip(1)
+        .find(|segment| action_from_segment(segment).is_none())
+        .map(|segment| segment.as_str())
+        .unwrap_or("resource")
+        .to_string()
 }
 
 /// Separate API-relevant headers from browser noise and cookies.
@@ -590,6 +632,25 @@ mod tests {
     #[test]
     fn title_post() {
         assert_eq!(title_from_path("POST", "/posts"), "Create posts");
+    }
+
+    #[test]
+    fn title_post_create_action_does_not_duplicate_action() {
+        assert_eq!(title_from_path("POST", "/create"), "Create resource");
+        assert_eq!(
+            title_from_path("POST", "/workspaces/create"),
+            "Create workspaces"
+        );
+    }
+
+    #[test]
+    fn title_post_action_segments_are_human_readable() {
+        assert_eq!(
+            title_from_path("POST", "/workspaces/open"),
+            "Open workspaces"
+        );
+        assert_eq!(title_from_path("POST", "/requests/exec"), "Run requests");
+        assert_eq!(title_from_path("POST", "/sync"), "Sync resource");
     }
 
     #[test]

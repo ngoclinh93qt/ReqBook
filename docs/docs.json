@@ -52,6 +52,8 @@
             "pages": [
               "guides/vibe-coding",
               "guides/web-preview",
+              "guides/e2e-testing",
+              "guides/desktop-smoke",
               "guides/vscode-extension",
               "guides/ci-cd",
               "guides/migration"

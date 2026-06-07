@@ -9,7 +9,7 @@ use std::{
 use anyhow::{Context as AnyhowContext, Result};
 use serde_json::Value;
 
-use crate::parser::{parse_endpoint, parse_pipeline, Endpoint};
+use crate::parser::{parse_endpoint, parse_pipeline, Endpoint, PipelineStep};
 
 /// Options for rendering agent context.
 #[derive(Debug, Clone)]
@@ -88,14 +88,20 @@ fn render_endpoint(root: &Path, file: &Path, options: &AgentContextOptions) -> R
         .unwrap_or_else(|| "none".to_string());
 
     let mut out = format!(
-        "Endpoint: {} {}\nFile: {}\nAuth: {}\nVariables: {}\nExpected: {}\n",
+        "Endpoint: {} {}\nFile: {}\nTitle: {}\nAuth: {}\nVariables: {}\nExpected: {}\n",
         endpoint.schema.method.as_str(),
         endpoint.schema.path,
         rel.display(),
+        endpoint.title,
         auth,
         empty_dash(variables),
         expected
     );
+    if !endpoint.description.trim().is_empty() {
+        out.push_str("Description: ");
+        out.push_str(endpoint.description.trim());
+        out.push('\n');
+    }
     if !related.is_empty() {
         out.push_str("Related flow: ");
         out.push_str(&related.join(", "));
@@ -112,6 +118,16 @@ fn render_endpoint(root: &Path, file: &Path, options: &AgentContextOptions) -> R
         out.push_str("\n\nExpected response:\n");
         out.push_str(&endpoint.expected_response);
         out.push('\n');
+        if let Some(tests) = &endpoint.tests {
+            out.push_str("\nAgent task:\n");
+            out.push_str(tests.trim());
+            out.push('\n');
+        }
+        if let Some(notes) = &endpoint.notes {
+            out.push_str("\nNotes:\n");
+            out.push_str(notes.trim());
+            out.push('\n');
+        }
     }
     Ok(out)
 }
@@ -142,12 +158,43 @@ fn render_flow(root: &Path, file: &Path, options: &AgentContextOptions) -> Resul
             out.push_str(&format!("  Injects: {}\n", step.inject.join(", ")));
         }
     }
+    if flow.steps.iter().any(|step| !step.inject.is_empty()) {
+        out.push_str(
+            "Inject semantics: Inject reads values captured by previous steps; env and CLI variables are resolved in request templates but do not satisfy Inject.\n",
+        );
+    }
     out.push_str(&format!(
         "Safe next command: rqb flow {} --env {}\n",
         file.display(),
         options.env
     ));
+    if options.verbose {
+        out.push_str("\nEndpoint details:\n");
+        for step in &flow.steps {
+            append_step_endpoint_context(root, step, options, &mut out)?;
+        }
+    }
     Ok(out)
+}
+
+fn append_step_endpoint_context(
+    root: &Path,
+    step: &PipelineStep,
+    options: &AgentContextOptions,
+    out: &mut String,
+) -> Result<()> {
+    let endpoint_path = root.join(&step.endpoint);
+    out.push_str("\n## ");
+    out.push_str(&step.name);
+    out.push('\n');
+    if endpoint_path.exists() {
+        out.push_str(&render_endpoint(root, &endpoint_path, options)?);
+    } else {
+        out.push_str("Missing endpoint file: ");
+        out.push_str(&step.endpoint);
+        out.push('\n');
+    }
+    Ok(())
 }
 
 fn resolve_target(root: &Path, target: &str) -> Result<PathBuf> {
@@ -358,6 +405,10 @@ fn truncate_to_budget(out: &mut String, token_budget: usize) {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
     use super::*;
 
     #[test]
@@ -368,5 +419,82 @@ mod tests {
         assert!(summary.contains("201"));
         assert!(summary.contains("body.id"));
         assert!(summary.contains("body.profile.email"));
+    }
+
+    #[test]
+    fn verbose_flow_context_includes_step_endpoint_details() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("apis/users")).unwrap();
+        fs::create_dir_all(root.join("flows")).unwrap();
+        fs::write(
+            root.join("apis/users/patch-user.md"),
+            r#"---
+resource: users
+protocol: http
+method: PATCH
+path: /users/:id
+version: 1
+---
+# Update user
+
+Update a user profile.
+
+## Request
+
+```http
+PATCH {{baseUrl}}/users/:id
+Content-Type: application/json
+
+{"name":"Ada"}
+```
+
+## Expected response
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id":"u1","name":"Ada"}
+```
+
+## Tests
+
+```agent-task
+Implement the PATCH handler and verify the response body keeps the user id.
+```
+"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("flows/update-user.md"),
+            r#"---
+type: pipeline
+name: update-user
+---
+# Update user
+
+## Steps
+
+1. **Update user** -> `apis/users/patch-user.md`
+   - Capture: `response.body.id` as id
+"#,
+        )
+        .unwrap();
+
+        let rendered = render(AgentContextOptions {
+            root: root.to_path_buf(),
+            target: Some(root.join("flows/update-user.md").display().to_string()),
+            changed_from: None,
+            token_budget: 1200,
+            verbose: true,
+            env: "dev".to_string(),
+        })
+        .unwrap();
+
+        assert!(rendered.contains("Endpoint details"));
+        assert!(rendered.contains("Endpoint: PATCH /users/:id"));
+        assert!(rendered.contains("Request:"));
+        assert!(rendered.contains("Agent task:"));
     }
 }

@@ -55,12 +55,15 @@ function ReqbookShell() {
     window.addEventListener('rqb:run-saved', handler);
     const onEndpointCreated = () => refreshWorkspaceData();
     const onWorkspaceSwitched = () => refreshWorkspaceData();
+    const onGitBranchSwitched = () => refreshWorkspaceData();
     window.addEventListener('rqb:endpoint-created', onEndpointCreated);
     window.addEventListener('rqb:workspace-switched', onWorkspaceSwitched);
+    window.addEventListener('rqb:git-branch-switched', onGitBranchSwitched);
     return () => {
       window.removeEventListener('rqb:run-saved', handler);
       window.removeEventListener('rqb:endpoint-created', onEndpointCreated);
       window.removeEventListener('rqb:workspace-switched', onWorkspaceSwitched);
+      window.removeEventListener('rqb:git-branch-switched', onGitBranchSwitched);
     };
   }, []);
 

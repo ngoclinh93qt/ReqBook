@@ -11,9 +11,9 @@ use std::{path::PathBuf, sync::Arc};
 use anyhow::Result;
 use axum::{
     extract::Request,
-    http::{header, HeaderMap, Method, StatusCode, Uri},
-    middleware::{from_fn, Next},
-    response::IntoResponse,
+    http::{header, HeaderMap, HeaderValue, Method, StatusCode, Uri},
+    middleware::{from_fn_with_state, Next},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
@@ -77,11 +77,18 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 pub type PickFolderFn =
     Arc<dyn Fn() -> tokio::sync::oneshot::Receiver<Option<String>> + Send + Sync>;
 
+#[derive(Default)]
+pub struct PreviewOptions {
+    pub pick_folder: Option<PickFolderFn>,
+    pub write_token: Option<String>,
+}
+
 pub(super) struct AppState {
     pub(super) root: Arc<std::sync::RwLock<PathBuf>>,
     pub(super) env: String,
     pub(super) mock_entries: Option<Vec<crate::mock::MockEntry>>,
     pub(super) pick_folder: Option<PickFolderFn>,
+    pub(super) write_token: Option<String>,
 }
 
 impl AppState {
@@ -157,12 +164,17 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/git/checkout", post(git_checkout_handler))
         .route("/api/pick-folder", get(pick_folder_handler))
         .fallback(static_handler)
-        .layer(from_fn(unsafe_request_guard))
+        .layer(from_fn_with_state(state.clone(), unsafe_request_guard))
         .with_state(state)
 }
 
-async fn unsafe_request_guard(req: Request, next: Next) -> impl IntoResponse {
-    if is_unsafe_method(req.method()) && !is_allowed_browser_write(req.headers()) {
+async fn unsafe_request_guard(
+    State(state): State<Arc<AppState>>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let is_unsafe = is_unsafe_method(req.method());
+    if is_unsafe && !is_allowed_browser_write(req.headers()) {
         return (
             StatusCode::FORBIDDEN,
             Json(serde_json::json!({
@@ -171,7 +183,24 @@ async fn unsafe_request_guard(req: Request, next: Next) -> impl IntoResponse {
         )
             .into_response();
     }
-    next.run(req).await
+
+    if is_unsafe && !has_valid_write_token(req.headers(), state.write_token.as_deref()) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
+                "error": "write requests require the active Reqbook desktop session"
+            })),
+        )
+            .into_response();
+    }
+
+    let mut response = next.run(req).await;
+    if !is_unsafe {
+        if let Some(token) = state.write_token.as_deref() {
+            set_write_token_cookie(response.headers_mut(), token);
+        }
+    }
+    response
 }
 
 fn is_unsafe_method(method: &Method) -> bool {
@@ -200,6 +229,40 @@ fn is_allowed_browser_write(headers: &HeaderMap) -> bool {
         return false;
     };
     matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+}
+
+fn has_valid_write_token(headers: &HeaderMap, expected: Option<&str>) -> bool {
+    let Some(expected) = expected else {
+        return true;
+    };
+    if expected.is_empty() {
+        return false;
+    }
+    if headers
+        .get("x-rqb-write-token")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value == expected)
+    {
+        return true;
+    }
+    headers
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(';'))
+        .any(|part| {
+            part.trim()
+                .strip_prefix("rqb_write_token=")
+                .is_some_and(|value| value == expected)
+        })
+}
+
+fn set_write_token_cookie(headers: &mut HeaderMap, token: &str) {
+    let cookie =
+        format!("rqb_write_token={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400");
+    if let Ok(value) = HeaderValue::from_str(&cookie) {
+        headers.insert(header::SET_COOKIE, value);
+    }
 }
 
 async fn bind_listener(host: &str, port: u16) -> Result<tokio::net::TcpListener> {
@@ -253,6 +316,33 @@ pub async fn run_with_ready<F>(
 where
     F: FnOnce(u16) + Send + 'static,
 {
+    run_with_ready_options(
+        root,
+        host,
+        port,
+        env,
+        mock,
+        PreviewOptions {
+            pick_folder,
+            write_token: None,
+        },
+        on_ready,
+    )
+    .await
+}
+
+pub async fn run_with_ready_options<F>(
+    root: Arc<std::sync::RwLock<PathBuf>>,
+    host: &str,
+    port: u16,
+    env: &str,
+    mock: bool,
+    options: PreviewOptions,
+    on_ready: F,
+) -> Result<()>
+where
+    F: FnOnce(u16) + Send + 'static,
+{
     let mock_entries = if mock {
         let r = root.read().unwrap().clone();
         let api_docs = r.join("api-docs");
@@ -271,7 +361,8 @@ where
         root,
         env: env.to_string(),
         mock_entries,
-        pick_folder,
+        pick_folder: options.pick_folder,
+        write_token: options.write_token,
     });
     let app = build_router(state);
     let listener = bind_listener(host, port).await?;
@@ -425,5 +516,41 @@ Content-Type: application/json
         let mut headers = HeaderMap::new();
         headers.insert("sec-fetch-site", "cross-site".parse().unwrap());
         assert!(!is_allowed_browser_write(&headers));
+    }
+
+    #[test]
+    fn write_token_guard_is_optional_for_cli_preview() {
+        let headers = HeaderMap::new();
+        assert!(has_valid_write_token(&headers, None));
+    }
+
+    #[test]
+    fn write_token_guard_accepts_session_cookie_or_header() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::COOKIE,
+            "theme=dark; rqb_write_token=session-123; other=value"
+                .parse()
+                .unwrap(),
+        );
+        assert!(has_valid_write_token(&headers, Some("session-123")));
+        assert!(!has_valid_write_token(&headers, Some("wrong")));
+
+        let mut headers = HeaderMap::new();
+        headers.insert("x-rqb-write-token", "session-123".parse().unwrap());
+        assert!(has_valid_write_token(&headers, Some("session-123")));
+    }
+
+    #[test]
+    fn write_token_cookie_is_http_only_and_strict() {
+        let mut headers = HeaderMap::new();
+        set_write_token_cookie(&mut headers, "session-123");
+        let cookie = headers
+            .get(header::SET_COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap();
+        assert!(cookie.contains("rqb_write_token=session-123"));
+        assert!(cookie.contains("HttpOnly"));
+        assert!(cookie.contains("SameSite=Strict"));
     }
 }
