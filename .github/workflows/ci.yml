@@ -61,6 +61,22 @@ jobs:
       - name: Validate jsonplaceholder example
         run: ./target/release/rqb validate examples/jsonplaceholder/api-docs/
 
+  crate-package:
+    name: Crate package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Package crate
+        run: cargo package --locked
+      - name: Check crates.io size limit
+        run: |
+          crate="$(ls target/package/reqbook-*.crate)"
+          bytes="$(wc -c < "$crate")"
+          echo "crate=$crate bytes=$bytes"
+          test "$bytes" -lt 10485760
+
   web-e2e:
     name: Web E2E
     runs-on: ubuntu-latest

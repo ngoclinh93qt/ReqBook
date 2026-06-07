@@ -64,6 +64,14 @@ jobs:
       - run: cd web && npm run e2e:flow
       - run: cd web && npm run e2e:branch
       - run: cargo run --bin rqb -- validate api-docs
+      - name: Package crate
+        run: cargo package --locked
+      - name: Check crates.io size limit
+        run: |
+          crate="$(ls target/package/reqbook-*.crate)"
+          bytes="$(wc -c < "$crate")"
+          echo "crate=$crate bytes=$bytes"
+          test "$bytes" -lt 10485760
       - name: Upload E2E failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
