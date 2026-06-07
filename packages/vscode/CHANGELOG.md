@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4 - 2026-06-07
+
+- Restrict GitHub Release artifact downloads to CLI binaries and the VSIX package.
+
 ## 0.1.3 - 2026-06-07
 
 - Normalize CRLF markdown input in embedded skill parsing and mock response parsing for Windows builds.

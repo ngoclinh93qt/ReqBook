@@ -167,7 +167,12 @@ jobs:
           ref: ${{ env.RELEASE_REF }}
       - uses: actions/download-artifact@v4
         with:
+          pattern: rqb-*
           merge-multiple: true
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: reqbook-vscode
           path: dist/
       - name: Verify release assets
         run: |
