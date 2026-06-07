@@ -3,7 +3,7 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context as AnyhowContext, Result};
-use reqbook::agent_context::ContextMode;
+use reqbook::agent_context::{ContextMode, ContextSections};
 
 use crate::AgentPackArgs;
 
@@ -12,6 +12,7 @@ use super::context::{normalize_targets, render_markdown, ContextRenderOptions};
 pub(crate) fn pack(args: AgentPackArgs) -> Result<()> {
     let targets = normalize_targets(&args.target)?;
     let mode = ContextMode::parse(&args.mode)?;
+    let sections = ContextSections::parse(args.include.as_deref(), args.brief, args.no_guidance)?;
     let content = render_markdown(ContextRenderOptions {
         root: args.root.clone(),
         targets: targets.clone(),
@@ -19,6 +20,8 @@ pub(crate) fn pack(args: AgentPackArgs) -> Result<()> {
         token_budget: args.token_budget,
         mode,
         intent: args.intent.clone(),
+        max_fields: args.max_fields,
+        sections,
         verbose: args.verbose,
         env: args.env.clone(),
     })?;
@@ -67,6 +70,9 @@ Use this pack as executable API context for Codex, Claude, Cursor, or another co
 - Token budget: `{}`
 - Mode: `{}`
 - Intent: `{}`
+- Brief: `{}`
+- Max fields: `{}`
+- Sections: `{}`
 - Verbose: `{}`
 
 ## Guardrails
@@ -91,6 +97,11 @@ Use this pack as executable API context for Codex, Claude, Cursor, or another co
         args.token_budget,
         args.mode,
         args.intent.as_deref().unwrap_or("implement"),
+        args.brief,
+        args.max_fields,
+        ContextSections::parse(args.include.as_deref(), args.brief, args.no_guidance)
+            .map(|sections| sections.names().join(", "))
+            .unwrap_or_else(|_| "invalid".to_string()),
         args.verbose,
         args.root.display(),
         command_text,
@@ -161,6 +172,10 @@ mod tests {
             token_budget: 800,
             mode: "surgical".to_string(),
             intent: Some("implement".to_string()),
+            brief: false,
+            max_fields: 8,
+            include: None,
+            no_guidance: false,
             verbose: true,
             env: "dev".to_string(),
         };

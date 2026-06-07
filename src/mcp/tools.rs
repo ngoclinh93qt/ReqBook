@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{
-    session::{build_context, read_session, resolve_env},
+    session::{build_context_for_path, read_session, resolve_env},
     util::{
         classify_engine_error, collection_root_for, hint_for_error_type, http_reason, now_iso8601,
         spec_rel, walk_specs,
@@ -57,6 +57,37 @@ pub(super) fn tools_list_result() -> Value {
                         "strict_assertions": {
                             "type": "boolean",
                             "description": "When true, failing structured assertions make the tool result fail (default: false)."
+                        }
+                    },
+                    "required": ["spec_path"]
+                }
+            },
+            {
+                "name": "rqb_diagnose",
+                "description": "Execute one endpoint and return a compact diagnosis with likely cause, next action, inspect targets, and verify commands.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "spec_path": {
+                            "type": "string",
+                            "description": "Path to the endpoint .md spec file."
+                        },
+                        "env": {
+                            "type": "string",
+                            "description": "Environment name (default: \"dev\")."
+                        },
+                        "vars": {
+                            "type": "object",
+                            "description": "Variable overrides as key/value pairs.",
+                            "additionalProperties": { "type": "string" }
+                        },
+                        "timeout_ms": {
+                            "type": "integer",
+                            "description": "Request timeout override in milliseconds."
+                        },
+                        "strict_assertions": {
+                            "type": "boolean",
+                            "description": "When true, failing structured assertions are diagnosed as contract failures (default: false)."
                         }
                     },
                     "required": ["spec_path"]
@@ -181,6 +212,22 @@ pub(super) fn tools_list_result() -> Value {
                             "type": "string",
                             "description": "Agent task intent, e.g. implement, debug, test, review, or document."
                         },
+                        "brief": {
+                            "type": "boolean",
+                            "description": "When true, omit title/guidance and return token-optimized contract sections (default: true for MCP)."
+                        },
+                        "max_fields": {
+                            "type": "integer",
+                            "description": "Maximum request/response fields per section (default: 6 for MCP; use 12 for implement/review/debug tasks)."
+                        },
+                        "include": {
+                            "type": "string",
+                            "description": "Comma-separated sections: title,variables,request,response,errors,assertions,rules,verify,guidance,all."
+                        },
+                        "no_guidance": {
+                            "type": "boolean",
+                            "description": "When true, omit agent workflow guidance text."
+                        },
                         "verbose": {
                             "type": "boolean",
                             "description": "Include full request and expected response blocks (default: false)."
@@ -288,7 +335,7 @@ pub(super) async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let context = build_context(args, &session);
+    let context = build_context_for_path(args, &session, spec_path, env);
 
     let source = match std::fs::read_to_string(spec_path) {
         Ok(s) => s,
@@ -439,6 +486,38 @@ pub(super) async fn handle_exec(args: &Value) -> Result<Value, (i32, String)> {
     Ok(json!({ "content": [{ "type": "text", "text": text }] }))
 }
 
+pub(super) async fn handle_diagnose(args: &Value) -> Result<Value, (i32, String)> {
+    let spec_path = args
+        .get("spec_path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| (-32602, "Invalid params: spec_path is required".to_string()))?;
+
+    let session = read_session();
+    let env = resolve_env(args, &session);
+    let context = build_context_for_path(args, &session, spec_path, env);
+    let timeout_ms = args.get("timeout_ms").and_then(|v| v.as_u64());
+    let strict_assertions = args
+        .get("strict_assertions")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let diagnosis = crate::diagnose::diagnose_endpoint(
+        Path::new(spec_path),
+        env,
+        context,
+        timeout_ms,
+        strict_assertions,
+    )
+    .await
+    .map_err(|e| (-32000, e.to_string()))?;
+    let structured = serde_json::to_value(&diagnosis).map_err(|e| (-32000, e.to_string()))?;
+    let text = serde_json::to_string_pretty(&diagnosis).map_err(|e| (-32000, e.to_string()))?;
+    Ok(json!({
+        "content": [{ "type": "text", "text": text }],
+        "structuredContent": structured,
+    }))
+}
+
 pub(super) async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
     let pipeline_path = args
         .get("pipeline_path")
@@ -491,7 +570,7 @@ pub(super) async fn handle_flow(args: &Value) -> Result<Value, (i32, String)> {
         .unwrap_or_else(|| Path::new("api-docs"))
         .to_path_buf();
 
-    let exec_opts = build_context(args, &session);
+    let exec_opts = build_context_for_path(args, &session, pipeline_path, env);
 
     let result = match pipeline::run(
         &pipeline,
@@ -838,7 +917,16 @@ pub(super) fn handle_context(args: &Value) -> Result<Value, (i32, String)> {
     let token_budget = args
         .get("token_budget")
         .and_then(|v| v.as_u64())
-        .unwrap_or(800) as usize;
+        .unwrap_or(600) as usize;
+    let brief = args.get("brief").and_then(|v| v.as_bool()).unwrap_or(true);
+    let max_fields = args.get("max_fields").and_then(|v| v.as_u64()).unwrap_or(6) as usize;
+    let include = args.get("include").and_then(|v| v.as_str());
+    let no_guidance = args
+        .get("no_guidance")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let sections = crate::agent_context::ContextSections::parse(include, brief, no_guidance)
+        .map_err(|err| (-32602, format!("Invalid params: {err}")))?;
     let verbose = args
         .get("verbose")
         .and_then(|v| v.as_bool())
@@ -859,7 +947,7 @@ pub(super) fn handle_context(args: &Value) -> Result<Value, (i32, String)> {
         .unwrap_or("dev")
         .to_string();
 
-    let text = crate::agent_context::render(crate::agent_context::AgentContextOptions {
+    let options = crate::agent_context::AgentContextOptions {
         root: std::path::PathBuf::from(root),
         target,
         changed_from,
@@ -868,9 +956,17 @@ pub(super) fn handle_context(args: &Value) -> Result<Value, (i32, String)> {
         env,
         mode,
         intent,
-    })
-    .map_err(|err| (-32000, err.to_string()))?;
-    Ok(json!({ "content": [{ "type": "text", "text": text }] }))
+        max_fields,
+        sections,
+    };
+    let text =
+        crate::agent_context::render(options.clone()).map_err(|err| (-32000, err.to_string()))?;
+    let structured = crate::agent_context::render_structured(options)
+        .map_err(|err| (-32000, err.to_string()))?;
+    Ok(json!({
+        "content": [{ "type": "text", "text": text }],
+        "structuredContent": structured,
+    }))
 }
 
 pub(super) async fn handle_history(args: &Value) -> Result<Value, (i32, String)> {
@@ -963,14 +1059,13 @@ pub(super) async fn handle_exec_batch(args: &Value) -> Result<Value, (i32, Strin
 
     let session = read_session();
     let env = resolve_env(args, &session);
-    let context = build_context(args, &session);
-
     let started = std::time::Instant::now();
     let mut results: Vec<Value> = Vec::new();
     let mut total_passed = 0usize;
     let mut total_failed = 0usize;
 
     for spec_path in &specs {
+        let context = build_context_for_path(args, &session, spec_path, env);
         let source = match std::fs::read_to_string(spec_path) {
             Ok(s) => s,
             Err(e) => {

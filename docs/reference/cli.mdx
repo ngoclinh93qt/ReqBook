@@ -151,6 +151,36 @@ rqb exec api-docs/apis/users/get-user-by-id.md --timeout=10000
 
 ---
 
+## rqb diagnose
+
+Run one endpoint and print a compact diagnosis for the next debugging step. This is intended for coding agents and developers after `rqb exec` fails.
+
+```bash
+rqb diagnose <file> [--env=<env>] [--output=<format>] [--var key=val]... [--timeout=<ms>] [--strict-assertions]
+```
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `<file>` | path | required | Path to an endpoint markdown file. |
+| `--env` | string | `dev` | Environment name. |
+| `--output` | enum | `console` | Output format: `console` or `json`. |
+| `--var` | string | | Inject a variable as `key=value`. Repeatable. |
+| `--timeout` | integer | | Override request timeout in milliseconds. |
+| `--strict-assertions` | bool | `false` | Treat failing `## Assertions` rules as contract failures. |
+
+`rqb diagnose` returns `passed`, `status`, `error_type`, `likely_cause`, `next_action`, `inspect`, `verify`, and a compact `diff`. Agents should use it after a failed `rqb exec` before reading backend source broadly.
+
+**Examples**
+
+```bash
+rqb diagnose api-docs/apis/refunds/post-refund-quote.md --env=dev
+rqb diagnose api-docs/apis/refunds/post-refund-quote.md --env=staging --output=json
+```
+
+**Exit codes**: `0` if diagnosis completed and printed a diagnosis, even when the endpoint failed. Non-zero exit is reserved for CLI setup errors such as invalid `--var` syntax, production confirmation refusal, or output serialization failure.
+
+---
+
 ## rqb flow
 
 Execute a pipeline file. Steps run sequentially by default, with optional parallelism.
@@ -355,7 +385,8 @@ Print bounded executable API context for coding agents.
 
 ```bash
 rqb context users.create
-rqb context users.create --mode surgical --intent implement
+rqb context users.create --mode surgical --intent implement --brief --max-fields 12 --include variables,request,response,errors,rules,verify
+rqb context users.create --include request,response,errors,rules,verify --no-guidance
 rqb context users.create --mode schema --output json
 rqb context users.create orders.create --mode compact --verbose
 rqb context flow signup-login-profile
@@ -369,10 +400,14 @@ rqb context --changed-from origin/main --output json
 | `--token-budget` | Approximate output token budget. |
 | `--mode` | `surgical`, `compact`, or `schema`. Defaults to `surgical` to minimize agent tokens. |
 | `--intent` | Agent task intent, e.g. `implement`, `debug`, `test`, `review`, or `document`. |
+| `--brief` | Token-optimized output: omits title/guidance and keeps executable contract sections. |
+| `--max-fields` | Maximum request/response fields per section. Defaults to `8`. Use `12` for implement/review/debug tasks that need complete behavior; use `6` only for very narrow lookup tasks. |
+| `--include` | Comma-separated sections: `title`, `variables`, `request`, `response`, `errors`, `assertions`, `rules`, `verify`, `guidance`, or `all`. |
+| `--no-guidance` | Omit agent workflow guidance text while keeping verify commands. |
 | `--verbose` | Include full request and expected response blocks. |
 | `--output` | `markdown` or `json`. JSON wraps the rendered context with env, root, target, and budget metadata for agent automation. |
 
-Use `--mode surgical` for most Codex/Claude/Cursor tasks. It returns only the method/path, variables, request body fields, success response fields, assertions, and verify commands. Use `--mode schema` when another tool or agent needs machine-readable contract JSON.
+Use `--mode surgical --brief --max-fields 12 --include variables,request,response,errors,rules,verify --no-guidance` for most Codex/Claude/Cursor implement, review, and debug tasks. It returns method/path, variables, bounded request/response/error fields, literal error codes, compact business rules, and verify commands without repeated guidance. Use `--max-fields 6` only for a known single-field lookup, and use `--mode schema` when another tool or agent needs machine-readable contract JSON.
 
 ---
 
@@ -382,7 +417,7 @@ Write an agent-ready markdown pack containing Reqbook context, guardrails, and s
 
 ```bash
 rqb agent pack users.create orders.create --verbose --out .reqbook/agent-context.md
-rqb agent pack flow signup-login-profile --mode surgical --token-budget 1800
+rqb agent pack flow signup-login-profile --mode surgical --brief --token-budget 1200
 rqb agent pack --changed-from origin/main --out .reqbook/changed-context.md
 ```
 
@@ -394,6 +429,10 @@ rqb agent pack --changed-from origin/main --out .reqbook/changed-context.md
 | `--token-budget` | Approximate output token budget. Defaults to `1600`. |
 | `--mode` | `surgical`, `compact`, or `schema`. Defaults to `surgical`. |
 | `--intent` | Agent task intent included in the pack metadata. |
+| `--brief` | Token-optimized context pack for coding agents. |
+| `--max-fields` | Maximum request/response fields per section. Defaults to `8`. |
+| `--include` | Comma-separated context sections to include. |
+| `--no-guidance` | Omit repeated guidance from the generated pack context. |
 | `--verbose` | Include full request, expected response, agent-task, and notes blocks. |
 | `--env` | Environment used in suggested verify commands. Defaults to `dev`. |
 
@@ -605,6 +644,7 @@ No flags. The MCP server exposes the following tools to any MCP-compatible AI ag
 | Tool | Description |
 |---|---|
 | `rqb_exec` | Execute an endpoint spec |
+| `rqb_diagnose` | Diagnose a failed endpoint and return next action, inspect targets, and verify commands |
 | `rqb_flow` | Run a pipeline |
 | `rqb_author` | Create or update a spec file |
 | `rqb_vars` | Show variable resolution for a spec |

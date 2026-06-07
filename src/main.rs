@@ -11,8 +11,8 @@ use clap_complete::{generate, Shell};
 use reqbook::workspace;
 
 use commands::{
-    agent, check, context, doctor, exec, export, import, init, install, regenerate_index, request,
-    serve, validate,
+    agent, check, context, diagnose, doctor, exec, export, import, init, install, regenerate_index,
+    request, serve, validate,
 };
 
 // ─── CLI types ────────────────────────────────────────────────────────────────
@@ -48,6 +48,8 @@ enum Command {
     Validate { path: PathBuf },
     /// Execute one endpoint.
     Exec(ExecArgs),
+    /// Run one endpoint and return an agent-facing failure diagnosis.
+    Diagnose(DiagnoseArgs),
     /// Execute a pipeline.
     Flow(FlowArgs),
     /// Run contract checks for endpoint and flow specs.
@@ -167,6 +169,27 @@ pub(crate) struct ExecArgs {
 }
 
 #[derive(Debug, Args)]
+pub(crate) struct DiagnoseArgs {
+    /// Endpoint markdown file.
+    pub(crate) file: PathBuf,
+    /// Environment.
+    #[arg(long, default_value = "dev")]
+    pub(crate) env: String,
+    /// Output format.
+    #[arg(long, default_value = "console")]
+    pub(crate) output: DiagnoseOutputFormat,
+    /// Inject a variable as key=value. Repeatable.
+    #[arg(long = "var")]
+    pub(crate) vars: Vec<String>,
+    /// Timeout override in milliseconds.
+    #[arg(long)]
+    pub(crate) timeout: Option<u64>,
+    /// Treat failing `## Assertions` rules as execution failures.
+    #[arg(long)]
+    pub(crate) strict_assertions: bool,
+}
+
+#[derive(Debug, Args)]
 pub(crate) struct FlowArgs {
     /// Pipeline markdown file.
     pub(crate) pipeline: PathBuf,
@@ -240,6 +263,18 @@ pub(crate) struct ContextArgs {
     /// Agent task intent: implement, debug, test, review, or document.
     #[arg(long)]
     pub(crate) intent: Option<String>,
+    /// Token-optimized output: omit title/guidance and keep only executable contract sections.
+    #[arg(long)]
+    pub(crate) brief: bool,
+    /// Maximum request/response fields to include per section.
+    #[arg(long, default_value_t = 8)]
+    pub(crate) max_fields: usize,
+    /// Comma-separated sections: title,variables,request,response,errors,assertions,rules,verify,guidance,all.
+    #[arg(long)]
+    pub(crate) include: Option<String>,
+    /// Omit agent workflow guidance text.
+    #[arg(long)]
+    pub(crate) no_guidance: bool,
     /// Include full request and expected response blocks.
     #[arg(long)]
     pub(crate) verbose: bool,
@@ -279,6 +314,18 @@ pub(crate) struct AgentPackArgs {
     /// Agent task intent: implement, debug, test, review, or document.
     #[arg(long)]
     pub(crate) intent: Option<String>,
+    /// Token-optimized output: omit title/guidance and keep only executable contract sections.
+    #[arg(long)]
+    pub(crate) brief: bool,
+    /// Maximum request/response fields to include per section.
+    #[arg(long, default_value_t = 8)]
+    pub(crate) max_fields: usize,
+    /// Comma-separated sections: title,variables,request,response,errors,assertions,rules,verify,guidance,all.
+    #[arg(long)]
+    pub(crate) include: Option<String>,
+    /// Omit agent workflow guidance text.
+    #[arg(long)]
+    pub(crate) no_guidance: bool,
     /// Include full request, expected response, agent-task, and notes blocks.
     #[arg(long)]
     pub(crate) verbose: bool,
@@ -427,6 +474,12 @@ pub(crate) enum ContextOutputFormat {
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
+pub(crate) enum DiagnoseOutputFormat {
+    Console,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
 pub(crate) enum CheckReportFormat {
     Markdown,
     Github,
@@ -461,6 +514,7 @@ async fn main() -> Result<()> {
         }
         Command::Validate { path } => validate::run(path)?,
         Command::Exec(args) => exec::exec(args, yes).await?,
+        Command::Diagnose(args) => diagnose::run(args, yes).await?,
         Command::Flow(args) => exec::flow(args, yes).await?,
         Command::Check(args) => check::run(args, yes).await?,
         Command::Context(args) => context::run(args)?,

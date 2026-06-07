@@ -80,6 +80,16 @@ Content-Type: application/json
 ```
 
 ```http
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+
+{
+  "error": "invalid_token",
+  "message": "Bearer token is not authorized for refund quotes."
+}
+```
+
+```http
 HTTP/1.1 422 Unprocessable Entity
 Content-Type: application/json
 
@@ -93,13 +103,36 @@ Content-Type: application/json
 }
 ```
 
+```http
+HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/json
+
+{
+  "error": "policy_rejected",
+  "message": "Refund quote total must be greater than zero."
+}
+```
+
+```http
+HTTP/1.1 500 Internal Server Error
+Content-Type: application/json
+
+{
+  "error": "internal_error",
+  "message": "Unexpected server error."
+}
+```
+
 ## Notes
 
 - `orderId` must match `ord_<digits>`.
 - `lineItems` is required, must contain 1 to 25 items, and each quantity must be 1 to 10.
-- Each line item requires `sku`, `quantity`, and `unitPriceCents`.
+- Each line item requires `sku`, `quantity`, and `unitPriceCents`; `unitPriceCents` must be a non-negative integer.
 - `reason` must be `duplicate`, `damaged`, `customer_request`, or `late_delivery`.
-- `shippingRefundCents` is optional and must be 0 to 2500 when present.
+- `shippingRefundCents` is optional, defaults to 0, and must be 0 to 2500 when present.
+- Computed `totalRefundCents` must be greater than 0; otherwise the server returns `422 policy_rejected`.
 - `damaged` and `late_delivery` waive the restocking fee.
 - Other reasons apply a 15% restocking fee capped at 2500 cents.
 - `requiresApproval` is true when the refund total is greater than 50000 cents or the total quantity is greater than 5.
+- The server returns `405 method_not_allowed` when this path is called with the wrong HTTP method.
+- The server returns `404 not_found` when no route matches the request path.

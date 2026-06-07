@@ -70,7 +70,7 @@ Agent support turns a coding agent into an API-capable collaborator that can sca
 </Steps>
 
 <Tip>
- For token-sensitive agent runs, start with `rqb_context` using `mode: "surgical"` and an explicit `intent`. It returns the executable API contract before the agent decides whether backend source inspection is necessary.
+ For token-sensitive agent runs, start with `rqb_context` using `mode: "surgical"`, `brief: true`, `max_fields: 6`, and an explicit `intent`. If an endpoint fails, call `rqb_diagnose` before reading backend source. Together they return the bounded contract, likely cause, inspect targets, and verify commands before the agent decides how much source inspection is necessary.
 </Tip>
 
 ---

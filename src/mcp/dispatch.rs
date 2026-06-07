@@ -5,8 +5,8 @@ use serde_json::{json, Value};
 use super::{
     resources::{handle_resources_list, handle_resources_read},
     tools::{
-        handle_author, handle_context, handle_exec, handle_exec_batch, handle_flow, handle_history,
-        handle_search, handle_session, handle_vars, tools_list_result,
+        handle_author, handle_context, handle_diagnose, handle_exec, handle_exec_batch,
+        handle_flow, handle_history, handle_search, handle_session, handle_vars, tools_list_result,
     },
     types::{McpRequest, McpResponse},
 };
@@ -50,6 +50,10 @@ pub(super) async fn dispatch(req: McpRequest) -> String {
                 .unwrap_or(Value::Object(Default::default()));
             match name {
                 "rqb_exec" => match handle_exec(&args).await {
+                    Ok(r) => McpResponse::ok(id, r),
+                    Err((code, msg)) => McpResponse::err(id, code, msg),
+                },
+                "rqb_diagnose" => match handle_diagnose(&args).await {
                     Ok(r) => McpResponse::ok(id, r),
                     Err((code, msg)) => McpResponse::err(id, code, msg),
                 },

@@ -2,6 +2,7 @@
 //!
 //! Exposes tools to any MCP-compatible AI agent:
 //! - `rqb_exec`          execute one endpoint spec
+//! - `rqb_diagnose`      diagnose one endpoint failure
 //! - `rqb_flow`          execute a pipeline
 //! - `rqb_author`        create or update a spec file
 //! - `rqb_vars`          show variable resolution for a spec
@@ -114,10 +115,10 @@ mod tests {
     // ── tools/list ──
 
     #[test]
-    fn tools_list_has_nine_tools() {
+    fn tools_list_has_ten_tools() {
         let list = tools_list_result();
         let tools = list["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 9, "expected 9 tools, got {}", tools.len());
+        assert_eq!(tools.len(), 10, "expected 10 tools, got {}", tools.len());
     }
 
     #[test]
@@ -130,6 +131,7 @@ mod tests {
             .map(|t| t["name"].as_str().unwrap())
             .collect();
         assert!(names.contains(&"rqb_exec"));
+        assert!(names.contains(&"rqb_diagnose"));
         assert!(names.contains(&"rqb_flow"));
         assert!(names.contains(&"rqb_author"));
         assert!(names.contains(&"rqb_vars"));
@@ -212,6 +214,57 @@ mod tests {
         );
         let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
         assert_eq!(v["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn diagnose_missing_spec_path_returns_32602() {
+        let req = make_req(
+            42,
+            "tools/call",
+            json!({"name": "rqb_diagnose", "arguments": {}}),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert_eq!(v["error"]["code"], -32602);
+    }
+
+    #[tokio::test]
+    async fn diagnose_loads_env_file_for_spec_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        let api_docs = tmp.path().join("api-docs");
+        let apis = api_docs.join("apis/health");
+        let shared = api_docs.join("_shared");
+        std::fs::create_dir_all(&apis).unwrap();
+        std::fs::create_dir_all(&shared).unwrap();
+        std::fs::write(
+            shared.join("env.md"),
+            "# Environments\n\n## dev\n\n```yaml\nbaseUrl: http://127.0.0.1:1\n```\n",
+        )
+        .unwrap();
+        let spec_path = apis.join("get-health.md");
+        std::fs::write(
+            &spec_path,
+            "---\nresource: health\nprotocol: http\nmethod: GET\npath: /health\nversion: 1\nenv: [dev]\n---\n# Get health\n\n## Request\n\n```http\nGET {{baseUrl}}/health\n```\n\n## Expected response\n\n```http\nHTTP/1.1 200 OK\n\n{\"ok\":true}\n```\n",
+        )
+        .unwrap();
+
+        let req = make_req(
+            44,
+            "tools/call",
+            json!({
+                "name": "rqb_diagnose",
+                "arguments": {
+                    "spec_path": spec_path.to_str().unwrap(),
+                    "env": "dev",
+                    "timeout_ms": 100
+                }
+            }),
+        );
+        let v: Value = serde_json::from_str(&dispatch(req).await).unwrap();
+        assert!(v["result"].is_object(), "expected result, got: {v}");
+        assert_eq!(
+            v["result"]["structuredContent"]["error_type"],
+            "NETWORK_ERROR"
+        );
     }
 
     #[tokio::test]

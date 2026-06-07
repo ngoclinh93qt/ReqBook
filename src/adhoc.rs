@@ -66,6 +66,7 @@ pub fn build_endpoint(params: &AdHocParams) -> Result<Endpoint> {
         description: "Ad-hoc request".to_string(),
         request: req,
         expected_response: "HTTP/1.1 200 OK".to_string(),
+        error_responses: Vec::new(),
         response_match: ResponseMatchMode::Shape,
         response_ignore: Vec::new(),
         response_schema: None,

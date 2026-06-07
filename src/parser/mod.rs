@@ -91,8 +91,11 @@ pub fn parse_endpoint(source: &str, path: impl AsRef<Path>) -> Result<Endpoint, 
     let request = exactly_one_code(&doc, "Request", "http", &path)?;
     let (expected_response, expected_info) =
         exactly_one_code_with_info(&doc, "Expected response", "http", &path)?;
+    let error_responses = optional_many_code(&doc, "Error responses", "http");
     let tests = optional_one_code(&doc, "Tests", "agent-task", &path)?;
-    let notes = doc.section_text("Notes");
+    let notes = raw_section(body, "Notes")
+        .map(|notes| notes.trim().to_string())
+        .filter(|notes| !notes.is_empty());
     let assertions = parse_assertions(doc.section_text("Assertions").as_deref().unwrap_or(""));
     let response_schema = optional_schema_code(&doc, &path)?;
     let response_match = response_match_from_schema_or_fence(&schema, &expected_info);
@@ -116,6 +119,7 @@ pub fn parse_endpoint(source: &str, path: impl AsRef<Path>) -> Result<Endpoint, 
         description,
         request,
         expected_response,
+        error_responses,
         response_match,
         response_ignore,
         response_schema,
@@ -427,6 +431,18 @@ fn optional_one_code(
             fix: format!("keep one `{lang}` block in ## {section}"),
         }),
     }
+}
+
+fn optional_many_code(doc: &MarkdownDoc, section: &str, lang: &str) -> Vec<String> {
+    doc.sections
+        .get(section)
+        .map(|section_data| {
+            matching_code_blocks(section_data, &[lang])
+                .into_iter()
+                .map(|(code, _)| code)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn optional_schema_code(doc: &MarkdownDoc, path: &str) -> Result<Option<String>, ParseError> {
@@ -833,5 +849,18 @@ name: demo
         let source = format!("{}\n## Notes\n\nRemember this.", endpoint_doc());
         let endpoint = parse_endpoint(&source, "endpoint.md").unwrap();
         assert_eq!(endpoint.notes.unwrap(), "Remember this.");
+    }
+
+    #[test]
+    fn parses_bulleted_notes_section() {
+        let source = format!(
+            "{}\n## Notes\n\n- `reason` must be `damaged`.\n- The server returns `404 not_found`.",
+            endpoint_doc()
+        );
+        let endpoint = parse_endpoint(&source, "endpoint.md").unwrap();
+        let notes = endpoint.notes.unwrap();
+
+        assert!(notes.contains("- `reason` must be `damaged`."));
+        assert!(notes.contains("- The server returns `404 not_found`."));
     }
 }

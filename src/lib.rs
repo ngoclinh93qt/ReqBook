@@ -2,6 +2,7 @@
 
 pub mod adhoc;
 pub mod agent_context;
+pub mod diagnose;
 pub mod engine;
 pub mod exporter;
 pub mod history;

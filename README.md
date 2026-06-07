@@ -125,12 +125,13 @@ Package-manager channels such as crates.io, the shell installer, npm, Homebrew, 
 rqb init
 rqb validate api-docs/
 rqb exec api-docs/apis/users/get-user-by-id.md --env=dev --var userId=42
+rqb diagnose api-docs/apis/users/get-user-by-id.md --env=dev --output=json
 rqb flow api-docs/flows/user-onboarding.md --env=dev
 rqb flow api-docs/flows/user-onboarding.md --dry-run --output json
 rqb check api-docs/ --changed-from origin/main --report github
-rqb context users.create --mode surgical --intent implement
+rqb context users.create --mode surgical --intent implement --brief --max-fields 12 --include variables,request,response,errors,rules,verify
 rqb context flow user-onboarding --mode schema --output json
-rqb agent pack flow user-onboarding --mode surgical --out .reqbook/agent-context.md
+rqb agent pack flow user-onboarding --mode surgical --brief --out .reqbook/agent-context.md
 rqb export openapi api-docs/ --out openapi.generated.yaml
 rqb import curl
 rqb import collection ./local-client-collection

@@ -24,6 +24,7 @@ api-docs/
 | Create or update specs | `/rqb` |
 | Debug a failing endpoint or pipeline | `/rqb-debug` |
 | Execute a spec | `rqb_exec` MCP tool |
+| Diagnose a failed endpoint | `rqb_diagnose` MCP tool |
 | Run a pipeline | `rqb_flow` MCP tool |
 
 ## Endpoint format
@@ -76,20 +77,22 @@ Content-Type: application/json
 | Tool | Use for |
 |---|---|
 | `rqb_exec` | Run one spec |
+| `rqb_diagnose` | After a failed `rqb_exec`, get likely cause, next action, inspect targets, and verify commands |
 | `rqb_flow` | Run a pipeline |
 | `rqb_author` | Create or update a spec (validates before writing — prefer over direct file writes) |
 | `rqb_search` | Find specs by method, path, or tag |
 | `rqb_vars` | Show variable resolution for a spec |
-| `rqb_context` | Build surgical API context before reading source; use `mode: "surgical"` and set `intent` |
+| `rqb_context` | Build surgical API context before reading source; for implement/review/debug use `mode: "surgical"`, `brief: true`, `max_fields: 12`, `include: "variables,request,response,errors,rules,verify"`, and set `intent` |
 | `rqb_history` | Inspect recent execution history and trend |
 | `rqb_session` | Get or set default MCP env and vars |
 | `rqb_exec_batch` | Run multiple specs in one call |
 
 ## Rules
 
-- Variables: `{{name}}` resolved from `_shared/env.md` → `.env.local` → `RQB_*` env vars.
+- Variables: `{{name}}` resolved from `_shared/env.md` → `.env.local` → `RQB_*` / `MAD_*` env vars → MCP session vars → explicit `vars` / CLI `--var`.
 - Secrets never in markdown — use `.env.local` or `RQB_*`.
-- Before inspecting backend source for an API task, call `rqb_context` with `mode: "surgical"` for the target endpoint or flow.
+- Before inspecting backend source for an API task, call `rqb_context` with `mode: "surgical"`, `brief: true`, `max_fields: 12`, and `include: "variables,request,response,errors,rules,verify"` for the target endpoint or flow. Use `max_fields: 6` only for a known narrow lookup.
+- After a failed `rqb_exec`, call `rqb_diagnose` before reading backend source broadly.
 - Use `mode: "schema"` when you need machine-readable contract fields for planning or code generation.
 - Use `rqb_author` not direct file writes.
 - After writing specs: `rqb index`.

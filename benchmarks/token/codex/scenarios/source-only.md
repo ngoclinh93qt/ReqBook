@@ -13,7 +13,7 @@ In `examples/agent-token-api`, find the local API endpoint that creates a refund
 
 Return only:
 1. HTTP method and path.
-2. Request body format and required content.
+2. Request body format, required content, validation constraints, ranges/enums, and business rules.
 3. Success response fields.
 4. Error cases.
 5. Exact source files inspected.

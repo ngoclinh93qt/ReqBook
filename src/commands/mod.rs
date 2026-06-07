@@ -3,6 +3,7 @@
 pub mod agent;
 pub mod check;
 pub mod context;
+pub mod diagnose;
 pub mod doctor;
 pub mod exec;
 pub mod export;

@@ -23,23 +23,25 @@ Command: `cargo build --release --locked && node scripts/benchmark.mjs`
 This benchmark runs Codex as the agent against the same local fixture in two modes:
 
 - **Without Reqbook:** the agent can inspect only implementation source under `examples/agent-token-api/src/`.
-- **With Reqbook:** the agent uses `rqb context --mode surgical` against `examples/agent-token-api/api-docs/` and may validate it with `rqb`.
+- **With Reqbook:** the agent locates one concrete endpoint spec, then uses `rqb context --mode surgical --brief --max-fields 12 --include variables,request,response,errors,rules,verify --no-guidance --token-budget 800` against `examples/agent-token-api/api-docs/` and validates it with `rqb`.
 
 The fixture is intentionally local and does not require a network service. The harness stores raw JSONL, prompts, and summaries under `target/token-benchmarks/codex/<timestamp>/`.
 
-Captured: 2026-06-07T07:04:06.205Z
+Latest rerun after adding rules/constraints, literal error codes, and a quality-focused prompt: 2026-06-07T23:24:42.105Z
 Machine: Darwin 25.3.0 arm64
 Codex: `codex-cli 0.135.0`
 Fixture: `examples/agent-token-api`
 Command: `node scripts/codex-token-benchmark.mjs`
-Artifact: `target/token-benchmarks/codex/2026-06-07T07-04-06-204Z/summary.md`
+Artifact: `target/token-benchmarks/codex/2026-06-07T23-24-42-104Z/summary.md`
 
 | Scenario | Usage runs | Mean total tokens | Mean uncached tokens | Notes |
 | --- | ---: | ---: | ---: | --- |
-| Without Reqbook (source only) | 1/1 | 67,128 | 20,024 | Source files only |
-| With Reqbook surgical context | 1/1 | 101,105 | 17,393 | Surgical context plus validation |
+| Without Reqbook (source only) | 1/1 | 96,599 | 33,751 | Source files only |
+| With Reqbook surgical context | 1/1 | 53,857 | 17,889 | Surgical context plus validation |
 
-Uncached-token comparison: Reqbook used **13.1% fewer uncached tokens** in this run (`1.15x` without / with Reqbook). Total-token comparison is not yet favorable: Reqbook used **50.6% more total tokens** in this one-run sample (`0.66x` without / with Reqbook). Keep quoting uncached-token savings separately from total-token spend until the benchmark is repeated across more tasks and the surgical prompt is further tightened.
+Uncached-token comparison: Reqbook used **47.0% fewer uncached tokens** in this run (`1.89x` without / with Reqbook). Total-token comparison: Reqbook used **44.2% fewer total tokens** in this one-run sample (`1.79x` without / with Reqbook). The Reqbook final answer covered the same endpoint method/path, required fields, validation ranges/enums, business rules, success fields, and documented error cases while inspecting only the Reqbook spec plus validation output. Treat this as a promising fixture result, not a broad public claim, until it is repeated across more tasks and stacks.
+
+Previous rerun attempt after adding `--brief --max-fields 6 --no-guidance`: 2026-06-07T07:38:20.952Z. Result: blocked by Codex usage limit for both scenarios. Artifact: `target/token-benchmarks/codex/2026-06-07T07-38-20-951Z/summary.md`.
 
 ## Test Status
 

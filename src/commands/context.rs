@@ -1,7 +1,7 @@
 //! `rqb context` command.
 
 use anyhow::Result;
-use reqbook::agent_context::{self, AgentContextOptions, ContextMode};
+use reqbook::agent_context::{self, AgentContextOptions, ContextMode, ContextSections};
 use serde_json::json;
 
 use crate::{ContextArgs, ContextOutputFormat};
@@ -13,6 +13,8 @@ pub(crate) struct ContextRenderOptions {
     pub(crate) token_budget: usize,
     pub(crate) mode: ContextMode,
     pub(crate) intent: Option<String>,
+    pub(crate) max_fields: usize,
+    pub(crate) sections: ContextSections,
     pub(crate) verbose: bool,
     pub(crate) env: String,
 }
@@ -28,6 +30,7 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
     let changed_from = args.changed_from.clone();
     let token_budget = args.token_budget;
     let mode = ContextMode::parse(&args.mode)?;
+    let sections = ContextSections::parse(args.include.as_deref(), args.brief, args.no_guidance)?;
     let verbose = args.verbose;
     let rendered = render_markdown(ContextRenderOptions {
         root: root.clone(),
@@ -36,6 +39,8 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
         token_budget,
         mode,
         intent: args.intent.clone(),
+        max_fields: args.max_fields,
+        sections,
         verbose,
         env: env.clone(),
     })?;
@@ -51,6 +56,9 @@ pub(crate) fn run(args: ContextArgs) -> Result<()> {
                 "token_budget": token_budget,
                 "mode": mode.as_str(),
                 "intent": args.intent,
+                "brief": args.brief,
+                "max_fields": args.max_fields,
+                "sections": sections.names(),
                 "verbose": verbose,
                 "content": rendered,
             }))?
@@ -67,6 +75,8 @@ pub(crate) fn render_markdown(options: ContextRenderOptions) -> Result<String> {
         token_budget,
         mode,
         intent,
+        max_fields,
+        sections,
         verbose,
         env,
     } = options;
@@ -84,6 +94,8 @@ pub(crate) fn render_markdown(options: ContextRenderOptions) -> Result<String> {
             env,
             mode,
             intent,
+            max_fields,
+            sections,
         })
     } else {
         let per_target_budget = (token_budget / targets.len()).max(128);
@@ -98,6 +110,8 @@ pub(crate) fn render_markdown(options: ContextRenderOptions) -> Result<String> {
                 env: env.clone(),
                 mode,
                 intent: intent.clone(),
+                max_fields,
+                sections,
             })?);
         }
         Ok(parts.join("\n\n---\n\n"))

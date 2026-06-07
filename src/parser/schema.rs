@@ -19,6 +19,9 @@ pub struct Endpoint {
     pub request: String,
     /// Expected HTTP response block.
     pub expected_response: String,
+    /// Optional reference error response blocks.
+    #[serde(default)]
+    pub error_responses: Vec<String>,
     /// Response match mode used by the execution engine.
     #[serde(default)]
     pub response_match: ResponseMatchMode,

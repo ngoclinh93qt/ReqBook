@@ -18,7 +18,7 @@ Reqbook gives agents the building blocks they need: markdown files they can read
  Two `/rqb` commands for the complex, LLM-native tasks: spec creation and enrichment, flow building, and debugging.
  </Card>
  <Card title="MCP server" icon="plug" href="/docs/agents/mcp">
- Nine structured tools for MCP-compatible agents — exec, flow, author, vars, search, context, history, session, and exec_batch. Surgical context by default.
+ Ten structured tools for MCP-compatible agents — exec, diagnose, flow, author, vars, search, context, history, session, and exec_batch. Surgical context by default.
  </Card>
  <Card title="Shared source" icon="code-pull-request">
  Every agent change is a markdown file in `api-docs/`. Reviewable, diffable, committable. No hidden state.
@@ -39,10 +39,11 @@ The key design decision: not every operation needs an agent. Simple, determinist
 | Build a workflow pipeline | `/rqb flow` | Needs to reason about data dependencies between steps |
 | Debug a failing endpoint or flow | `/rqb-debug` | Multi-step diagnosis with contextual interpretation |
 | Execute a spec (structured result) | `rqb_exec` MCP | Returns compact JSON — pass `verbose: true` for full payloads |
+| Diagnose a failed endpoint | `rqb_diagnose` MCP | Returns likely cause, next action, inspect targets, and verify commands before broad source reading |
 | Dry-run (resolve vars, don't send) | `rqb_exec` + `dry_run: true` | Catches missing variables before hitting the network |
 | Check variable readiness | `rqb_vars` MCP | Shows what's resolved and what's missing before exec |
 | Search specs by method/tag/path | `rqb_search` MCP | Compact index — no file reading required |
-| Build surgical API context | `rqb_context` MCP | Gives the agent method/path, body fields, response fields, assertions, and verify commands instead of many source files |
+| Build surgical API context | `rqb_context` MCP | Gives the agent method/path, bounded body fields, response fields, error cases, assertions, and verify commands instead of many source files |
 | Run a pipeline (structured result) | `rqb_flow` MCP | Returns per-step state for programmatic debugging |
 | Author a spec (with write guard) | `rqb_author` MCP | Validates before writing, refuses silent overwrites |
 | Check execution trend | `rqb_history` MCP | Stable/improving/regressing over recent runs |
@@ -76,11 +77,12 @@ Two commands covering the tasks where LLM reasoning produces better results than
 
 ## MCP server — MCP-compatible agents
 
-Nine tools that return structured JSON or surgical context for the agent to act on programmatically:
+Ten tools that return structured JSON or surgical context for the agent to act on programmatically:
 
 | Tool | When to use |
 |---|---|
 | `rqb_exec` | Execute a spec and get a structured result with diff |
+| `rqb_diagnose` | Diagnose a failed endpoint with likely cause, next action, inspect targets, and verify commands |
 | `rqb_flow` | Run a pipeline and get per-step state |
 | `rqb_author` | Write a spec with validation guard and overwrite protection |
 | `rqb_vars` | Check variable resolution before exec |
@@ -89,6 +91,8 @@ Nine tools that return structured JSON or surgical context for the agent to act 
 | `rqb_history` | Check execution trend over recent runs |
 | `rqb_session` | Set env and vars once for all subsequent calls |
 | `rqb_exec_batch` | Run multiple specs and get a summary table |
+
+Spec and pipeline tools resolve variables the same way as the CLI: `_shared/env.md`, `.env.local`, `RQB_*` / `MAD_*`, session vars, then explicit tool `vars`.
 
 ---
 
@@ -119,7 +123,7 @@ With all three active:
 - You can trigger complex workflows precisely without writing long prompts (slash commands)
 - The agent gets structured results without parsing terminal output (MCP)
 
-For token-sensitive runs, ask the agent to call `rqb_context` first with `mode: "surgical"` and an explicit `intent` such as `"implement"` or `"debug"`. This returns only the executable contract needed for the task before the agent decides whether source inspection is necessary.
+For implement, review, or debug runs, ask the agent to call `rqb_context` first with `mode: "surgical"`, `brief: true`, `max_fields: 12`, `include: "variables,request,response,errors,rules,verify"`, and an explicit `intent` such as `"implement"` or `"debug"`. Use `max_fields: 6` only for a known narrow lookup. If `rqb_exec` fails, call `rqb_diagnose` before reading backend source. This keeps the loop focused on the bounded contract, literal error codes, compact business rules, likely cause, inspect targets, and verify commands.
 
 ---
 

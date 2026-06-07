@@ -1,10 +1,10 @@
 ---
 title: "MCP server"
-description: "Nine structured tools for MCP-compatible coding agents: exec, flow, author, vars, search, context, history, session, and exec_batch. Surgical context by default; verbose mode for debugging."
+description: "Ten structured tools for MCP-compatible coding agents: exec, diagnose, flow, author, vars, search, context, history, session, and exec_batch. Surgical context by default; verbose mode for debugging."
 icon: "plug"
 ---
 
-The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-compatible coding agents. Execution tools return compact JSON by default, and `rqb_context` returns surgical contract context unless you request `compact` or `schema` mode. Full request/response payloads only appear when you pass `verbose: true`.
+The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-compatible coding agents. Execution tools return compact JSON by default, `rqb_diagnose` returns an agent-facing next-action plan after a failed endpoint, and `rqb_context` returns surgical contract context unless you request `compact` or `schema` mode. Full request/response payloads only appear when you pass `verbose: true`.
 
 ---
 
@@ -65,6 +65,7 @@ The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-c
 | Tool | Purpose |
 |---|---|
 | `rqb_exec` | Execute one endpoint spec compact result by default |
+| `rqb_diagnose` | Execute one endpoint and return likely cause, inspect targets, and verify commands |
 | `rqb_flow` | Run a pipeline compact per-step summary by default |
 | `rqb_author` | Create or update a spec (validates before writing, refuses silent overwrite) |
 | `rqb_vars` | Show which variables a spec needs and which are resolved |
@@ -73,6 +74,8 @@ The MCP server exposes Reqbook operations as structured JSON-RPC tools for MCP-c
 | `rqb_history` | Execution history and trend for a spec |
 | `rqb_session` | Get/set session env + vars (defaults for all exec/flow calls) |
 | `rqb_exec_batch` | Run multiple specs and return a summary table |
+
+For tools that execute a concrete spec or pipeline, the MCP server resolves variables from `api-docs/_shared/env.md`, `.env.local`, `RQB_*` / `MAD_*` environment variables, session vars, and explicit tool `vars`. Explicit `vars` have the highest priority.
 
 **Not in MCP use these directly:**
 
@@ -117,7 +120,7 @@ All tools use a consistent set of error type strings so agents can branch withou
 | `VALIDATION_ERROR` | Request or expected response block has a syntax error |
 | `UNSUPPORTED_PROTOCOL` | Spec uses `ws` or `sse` (not yet implemented) |
 
-Every error includes a `hint` field with a short actionable string.
+Execution errors include a `hint` field with a short actionable string. For deeper branching after a failed endpoint, call `rqb_diagnose` and use its `likely_cause`, `next_action`, `inspect`, and `verify` fields.
 
 ---
 
@@ -177,6 +180,47 @@ Execute one endpoint spec and return the HTTP result.
 ```
 
 Paste the value into your spec's `## Expected response` block.
+
+---
+
+### rqb_diagnose
+
+Execute one endpoint and return a compact diagnosis for the agent's next step. Use this after `rqb_exec` fails and before reading backend source broadly.
+
+**Input**
+
+| Parameter | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `spec_path` | string | yes | | Path to the spec file |
+| `env` | string | no | session or `"dev"` | Environment name |
+| `vars` | object | no | `{}` | Runtime variable overrides |
+| `timeout_ms` | integer | no | endpoint default | Request timeout override |
+| `strict_assertions` | boolean | no | `false` | Treat failing structured assertions as contract failures |
+
+**Output**
+
+```json
+{
+ "passed": false,
+ "status": 422,
+ "error_type": "CONTRACT_MISMATCH",
+ "summary": "POST /refunds/quote failed: CONTRACT_MISMATCH",
+ "likely_cause": "API returned documented error response HTTP 422.",
+ "next_action": "Inspect request variables/body/auth first; the backend may be correct and the test input may be invalid.",
+ "inspect": [
+  "backend route for POST /refunds/quote",
+  "api-docs/apis/refunds/post-refund-quote.md ## Expected response",
+  "api-docs/apis/refunds/post-refund-quote.md ## Error responses"
+ ],
+ "verify": [
+  "rqb validate api-docs",
+  "rqb exec api-docs/apis/refunds/post-refund-quote.md --env dev"
+ ],
+ "diff": { "status": "expected 201, got 422", "headers": [], "body": null, "assertions": [] }
+}
+```
+
+The tool returns the same object as `structuredContent`, so MCP clients can branch on `error_type`, `likely_cause`, `inspect`, and `verify` without parsing the text content.
 
 ---
 
@@ -297,9 +341,13 @@ Return bounded executable API context for an endpoint, flow, or changed specs. T
 | `target` | string | | Endpoint/flow id or file path, e.g. `users.create` |
 | `changed_from` | string | | Git ref used to summarize changed specs only |
 | `root` | string | `api-docs` | Reqbook docs root |
-| `token_budget` | integer | `800` | Approximate output token budget |
+| `token_budget` | integer | `600` | Approximate output token budget |
 | `mode` | `"surgical"` \| `"compact"` \| `"schema"` | `"surgical"` | Contract-only, human-readable compact, or JSON schema summary |
 | `intent` | string | `"implement"` | Agent task intent, e.g. `implement`, `debug`, `test`, `review`, or `document` |
+| `brief` | boolean | `true` | Token-optimized context: no title/guidance, bounded executable sections |
+| `max_fields` | integer | `6` | Maximum request/response fields per section. Use `12` for implement/review/debug tasks that need complete behavior. |
+| `include` | string | | Comma-separated sections: `title`, `variables`, `request`, `response`, `errors`, `assertions`, `rules`, `verify`, `guidance`, `all` |
+| `no_guidance` | boolean | `false` | Omit agent workflow guidance text |
 | `verbose` | boolean | `false` | Include full request and expected response blocks |
 | `env` | string | `dev` | Environment used in suggested next commands |
 
@@ -311,12 +359,13 @@ File: apis/users/post-users.md
 Variables: baseUrl, authToken
 Request body: body.email:string, body.role:string
 Success response: HTTP 201 body.id:string, body.email:string
+Error responses: HTTP 400 body.error:string, body.message:string
 Verify:
 - rqb validate api-docs
 - rqb exec api-docs/apis/users/post-users.md --env dev
 ```
 
-Use `mode: "schema"` when the client wants machine-readable JSON instead of text.
+The tool also returns `structuredContent` for MCP clients, so agents can consume method/path, bounded field lists, error responses, assertions, and verify commands without parsing text. Use `mode: "schema"` when the client wants the text content itself to be machine-readable JSON.
 
 ---
 
@@ -447,12 +496,15 @@ Specs are also accessible as MCP Resources under the `rqb://spec/` URI scheme. A
 4. rqb_exec { "spec_path": "api-docs/apis/orders/post-orders.md" }
  → { "passed": false, "error_type": "CONTRACT_MISMATCH", "hints": [...] }
 
-5. rqb_exec { "spec_path": "...", "infer_expected": true }
+5. rqb_diagnose { "spec_path": "api-docs/apis/orders/post-orders.md" }
+ → { "likely_cause": "...", "next_action": "...", "inspect": [...], "verify": [...] }
+
+6. rqb_exec { "spec_path": "...", "infer_expected": true }
  → { "inferred_expected": "HTTP/1.1 201 Created\n..." }
 
-6. rqb_author { "spec_path": "...", "content": "...(with inferred expected)...", "overwrite": true }
+7. rqb_author { "spec_path": "...", "content": "...(with inferred expected)...", "overwrite": true }
  → Spec updated
 
-7. rqb_exec_batch { "specs": ["...", "...", "..."] }
+8. rqb_exec_batch { "specs": ["...", "...", "..."] }
  → { "summary": { "total": 3, "passed": 3 } }
 ```

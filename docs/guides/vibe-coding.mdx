@@ -96,6 +96,7 @@ When the skills are installed, the agent should follow this pattern:
 |---|---|---|
 | Add an endpoint | `rqb_author` MCP tool | Create `api-docs/apis/<resource>/<method>-<slug>.md`, validate it, regenerate the index. |
 | Run one endpoint | `rqb_exec` MCP tool | Resolve env variables, path params, and runtime vars; report status, duration, and diff. |
+| Diagnose a failed endpoint | `rqb_diagnose` MCP tool | Return likely cause, next action, inspect targets, and verify commands before broad source reading. |
 | Create a workflow | `/rqb flow` command | Save a markdown flow under `api-docs/flows/`. |
 | Run a workflow | `rqb_flow` MCP tool | Execute steps, capture values, inject them downstream, and report the first failure. |
 | Review in browser | `rqb serve` | Use the UI for request tweaks, response inspection, and visual flow editing. |
