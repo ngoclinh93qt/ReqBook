@@ -74,6 +74,7 @@ pub fn path_matches(pattern: &str, actual: &str) -> bool {
 ///
 /// Returns `None` if the block is empty or the status line is malformed.
 fn parse_expected_response(raw: &str) -> Option<(StatusCode, String, Bytes)> {
+    let raw = raw.replace("\r\n", "\n").replace('\r', "\n");
     let raw = raw.trim();
     if raw.is_empty() {
         return None;
@@ -316,6 +317,15 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(ct, "application/json");
         assert_eq!(body, Bytes::from("{\"id\":1}"));
+    }
+
+    #[test]
+    fn parses_crlf_response_block() {
+        let raw = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"ok\":true}";
+        let (status, ct, body) = parse_expected_response(raw).unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(ct, "application/json");
+        assert_eq!(body, Bytes::from("{\"ok\":true}"));
     }
 
     #[test]

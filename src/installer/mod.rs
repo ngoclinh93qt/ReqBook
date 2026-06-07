@@ -184,7 +184,7 @@ struct SkillFrontmatter {
 }
 
 struct SkillSource {
-    source: &'static str,
+    source: String,
     meta: SkillFrontmatter,
     body: String,
 }
@@ -458,6 +458,7 @@ fn canonical_skills() -> Result<Vec<SkillSource>, InstallError> {
 }
 
 fn parse_skill(source: &'static str) -> Result<SkillSource, InstallError> {
+    let source = source.replace("\r\n", "\n").replace('\r', "\n");
     let rest = source
         .strip_prefix("---\n")
         .ok_or_else(|| InstallError::InvalidSkill {
@@ -722,6 +723,17 @@ mod tests {
             fs::read_to_string(dir.path().join(".github/instructions/rqb.instructions.md"))
                 .unwrap();
         assert!(copilot.contains("applyTo: \"api-docs/**/*.md\""));
+    }
+
+    #[test]
+    fn parses_skill_frontmatter_with_crlf() {
+        let skill =
+            parse_skill("---\r\nname: rqb\r\ndescription: Test skill\r\n---\r\n\r\n# Reqbook\r\n")
+                .unwrap();
+
+        assert_eq!(skill.meta.name, "rqb");
+        assert!(skill.body.contains("# Reqbook"));
+        assert!(skill.source.starts_with("---\n"));
     }
 
     #[test]

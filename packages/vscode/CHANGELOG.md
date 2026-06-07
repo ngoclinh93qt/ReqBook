@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 - 2026-06-07
+
+- Normalize CRLF markdown input in embedded skill parsing and mock response parsing for Windows builds.
+- Move the Intel macOS release build to the available macOS runner pool.
+
 ## 0.1.2 - 2026-06-07
 
 - Harden release packaging checks for CLI binaries and VSIX assets.
