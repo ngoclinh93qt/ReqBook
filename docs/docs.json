@@ -7,6 +7,16 @@
     "dark": "/images/rqb-app-icon.svg"
   },
   "favicon": "/images/rqb-app-icon.svg",
+  "redirects": [
+    {
+      "source": "/docs",
+      "destination": "/introduction"
+    },
+    {
+      "source": "/docs/:slug*",
+      "destination": "/:slug*"
+    }
+  ],
   "colors": {
     "primary": "#5b6cff",
     "light": "#7c8cff",

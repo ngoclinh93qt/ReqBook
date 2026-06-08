@@ -19,7 +19,7 @@ Every subcommand accepts these flags. Global flags can be placed before or after
 
 ## Exit codes
 
-Reqbook returns stable exit codes you can reliably test for in CI scripts. See the [Exit codes reference](/docs/reference/exit-codes) for CI usage examples.
+Reqbook returns stable exit codes you can reliably test for in CI scripts. See the [Exit codes reference](/reference/exit-codes) for CI usage examples.
 
 | Code | Name | Meaning |
 |---|---|---|
@@ -253,7 +253,7 @@ rqb index
 
 Convert an existing API spec file into Reqbook markdown endpoint files. All subcommands write endpoint files under `api-docs/`, then run `rqb index` automatically. Complex logic (pre-request scripts, dynamic variables, JavaScript assertions) is imported as `agent-task` blocks for manual review.
 
-**After any import**: run `rqb validate api-docs/` and move any secrets to `.env.local`. See the [Migration guide](/docs/guides/migration) for per-tool concept mapping and post-import checklists.
+**After any import**: run `rqb validate api-docs/` and move any secrets to `.env.local`. See the [Migration guide](/guides/migration) for per-tool concept mapping and post-import checklists.
 
 ### rqb import postman
 
@@ -660,7 +660,7 @@ Install an agent config:
 rqb install mcp --agent=codex-cli
 ```
 
-See [AI agent integration](/docs/guides/ai-agents) for full setup and usage details.
+See [AI agent integration](/guides/ai-agents) for full setup and usage details.
 
 ---
 

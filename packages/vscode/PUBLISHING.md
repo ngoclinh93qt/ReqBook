@@ -41,6 +41,12 @@ If the Marketplace publisher is not `reqbook`, update `publisher` in `package.js
 
 The repository release workflow packages the VSIX on every `v*` tag and attaches it to the GitHub Release. Marketplace publishing is gated by repository variables so release tags stay safe before tokens are configured.
 
+The workflow is idempotent for registry publishing: if the VS Code Marketplace, Open VSX, crates.io, or npm already has the package version, that publish step skips instead of failing the rerun. A new public release still needs a new version. Before creating `vX.Y.Z`, make sure these files all contain `X.Y.Z`:
+
+- `Cargo.toml`
+- `packages/npm/package.json`
+- `packages/vscode/package.json`
+
 | Channel | Repository variable | Secret |
 |---|---|---|
 | Visual Studio Marketplace | `PUBLISH_VSCODE=true` | `VSCE_PAT` |
