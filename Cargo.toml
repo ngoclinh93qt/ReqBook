@@ -51,7 +51,7 @@ minimal = []
 
 [dependencies]
 anyhow = "1.0"
-axum = { version = "0.7", optional = true }
+axum = { version = "0.8", optional = true }
 rust-embed = { version = "8", optional = true }
 mime_guess = { version = "2", optional = true }
 clap = { version = "=4.5.23", features = ["derive"] }
