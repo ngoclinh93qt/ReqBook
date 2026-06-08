@@ -2,7 +2,7 @@
   "name": "reqbook-vscode",
   "displayName": "Reqbook",
   "description": "Preview, validate, run, and inspect Reqbook API specs from VS Code.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "reqbook",
   "license": "Apache-2.0",
   "repository": {

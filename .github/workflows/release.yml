@@ -53,6 +53,8 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: web/package-lock.json
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - name: Validate package versions
         run: |
           tag_version="${RELEASE_TAG#v}"
@@ -88,7 +90,7 @@ jobs:
           check_version "packages/vscode/package.json" "$vscode_version"
 
           if [ "$mismatch" -ne 0 ]; then
-            echo "Create release tags only from commits whose package versions already match the tag." >&2
+            echo "Release version sync failed; every release-facing manifest must match $RELEASE_TAG after scripts/sync-release-version.mjs runs." >&2
             exit 1
           fi
       - run: cd web && npm ci
@@ -152,6 +154,8 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: web/package-lock.json
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - name: Build web UI
         run: cd web && npm ci && npm run build
       - name: Install musl tools
@@ -279,6 +283,8 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: packages/vscode/package-lock.json
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - name: Package VS Code extension
         run: |
           mkdir -p dist
@@ -306,6 +312,8 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: packages/vscode/package-lock.json
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - uses: actions/download-artifact@v4
         with:
           name: reqbook-vscode
@@ -340,6 +348,8 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: packages/vscode/package-lock.json
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - uses: actions/download-artifact@v4
         with:
           name: reqbook-vscode
@@ -368,9 +378,14 @@ jobs:
           ref: ${{ env.RELEASE_REF }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - name: Publish to crates.io
         run: |
-          version="$(cargo metadata --no-deps --format-version 1 | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
+          version="$(cargo metadata --no-deps --format-version 1 | python3 -c 'import json,sys; meta=json.load(sys.stdin); print(next(p["version"] for p in meta["packages"] if p["name"] == "reqbook"))')"
           if cargo search reqbook --limit 5 | grep -Eq "^reqbook = \"$version\""; then
             echo "reqbook v$version already exists on crates.io; skipping publish."
             exit 0
@@ -394,6 +409,8 @@ jobs:
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - name: Publish to npm
         run: |
           name="$(node -p "require('./package.json').name")"
@@ -414,6 +431,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.RELEASE_REF }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Sync package versions from release tag
+        run: node scripts/sync-release-version.mjs "${{ env.RELEASE_TAG }}"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}

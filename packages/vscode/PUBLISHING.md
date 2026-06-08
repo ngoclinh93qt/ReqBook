@@ -15,7 +15,7 @@ cd packages/vscode
 npm ci
 npm test
 npm run check
-npm run package -- --out /tmp/reqbook-vscode-0.2.2.vsix
+npm run package -- --out /tmp/reqbook-vscode-0.2.3.vsix
 ```
 
 Install the generated VSIX in VS Code and smoke test these commands against a real Reqbook collection:
@@ -41,11 +41,9 @@ If the Marketplace publisher is not `reqbook`, update `publisher` in `package.js
 
 The repository release workflow packages the VSIX on every `v*` tag and attaches it to the GitHub Release. Marketplace publishing is gated by repository variables so release tags stay safe before tokens are configured.
 
-The workflow is idempotent for registry publishing: if the VS Code Marketplace, Open VSX, crates.io, or npm already has the package version, that publish step skips instead of failing the rerun. A new public release still needs a new version. Before creating `vX.Y.Z`, make sure these files all contain `X.Y.Z`:
+The workflow is idempotent for registry publishing: if the VS Code Marketplace, Open VSX, crates.io, or npm already has the package version, that publish step skips instead of failing the rerun. A new public release still needs a new tag.
 
-- `Cargo.toml`
-- `packages/npm/package.json`
-- `packages/vscode/package.json`
+Release jobs treat the Git tag as the source of truth. On `vX.Y.Z`, the workflow runs `scripts/sync-release-version.mjs vX.Y.Z` in each checkout so Cargo, Tauri, npm, and VS Code package manifests are rewritten to `X.Y.Z` before building or publishing.
 
 | Channel | Repository variable | Secret |
 |---|---|---|
@@ -58,7 +56,7 @@ Open VSX uses a separate namespace/token flow.
 
 ```bash
 cd packages/vscode
-npm exec -- ovsx publish /tmp/reqbook-vscode-0.2.2.vsix -p "$OVSX_PAT"
+npm exec -- ovsx publish /tmp/reqbook-vscode-0.2.3.vsix -p "$OVSX_PAT"
 ```
 
 Do not commit generated `.vsix` artifacts or personal access tokens.

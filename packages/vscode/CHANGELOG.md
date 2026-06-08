@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 - 2026-06-08
+
+- Release artifacts are versioned from the Git tag.
+
 ## 0.2.2 - 2026-06-08
 
 - Align the extension package version with the Reqbook 0.2.2 release.

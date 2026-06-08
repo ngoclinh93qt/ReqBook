@@ -1,6 +1,6 @@
 {
   "name": "reqbook",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Reqbook is executable API documentation for humans, CI, and coding agents.",
   "license": "Apache-2.0",
   "bin": {
