@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-06-08
+
+- Align the extension package version with the Reqbook 0.2.1 release.
+
 ## 0.1.5 - 2026-06-07
 
 - Handle CRLF endpoint frontmatter consistently for Windows checkouts.
