@@ -56,15 +56,39 @@ jobs:
       - name: Validate package versions
         run: |
           tag_version="${RELEASE_TAG#v}"
-          cargo_meta="$(cargo metadata --no-deps --format-version 1)"
-          cargo_version="$(python3 -c 'import json,sys; meta=json.loads(sys.argv[1]); print(next(p["version"] for p in meta["packages"] if p["name"] == "reqbook"))' "$cargo_meta")"
-          tauri_cargo_version="$(python3 -c 'import json,sys; meta=json.loads(sys.argv[1]); print(next(p["version"] for p in meta["packages"] if p["name"] == "rqb-desktop"))' "$cargo_meta")"
+          cargo metadata --no-deps --format-version 1 > /tmp/reqbook-cargo-metadata.json
+          cargo_version="$(python3 -c 'import json; meta=json.load(open("/tmp/reqbook-cargo-metadata.json")); print(next(p["version"] for p in meta["packages"] if p["name"] == "reqbook"))')"
+          tauri_cargo_version="$(python3 -c 'import json; meta=json.load(open("/tmp/reqbook-cargo-metadata.json")); print(next(p["version"] for p in meta["packages"] if p["name"] == "rqb-desktop"))')"
           tauri_config_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
           npm_version="$(node -p "require('./packages/npm/package.json').version")"
           vscode_version="$(node -p "require('./packages/vscode/package.json').version")"
-          echo "tag=$tag_version cargo=$cargo_version tauri-cargo=$tauri_cargo_version tauri-config=$tauri_config_version npm=$npm_version vscode=$vscode_version"
-          if [ "$cargo_version" != "$tag_version" ] || [ "$tauri_cargo_version" != "$tag_version" ] || [ "$tauri_config_version" != "$tag_version" ] || [ "$npm_version" != "$tag_version" ] || [ "$vscode_version" != "$tag_version" ]; then
-            echo "release tag must match Cargo.toml, src-tauri/Cargo.toml, src-tauri/tauri.conf.json, packages/npm/package.json, and packages/vscode/package.json versions" >&2
+
+          echo "Resolved release versions:"
+          echo "  tag:                          $tag_version"
+          echo "  Cargo.toml:                   $cargo_version"
+          echo "  src-tauri/Cargo.toml:         $tauri_cargo_version"
+          echo "  src-tauri/tauri.conf.json:    $tauri_config_version"
+          echo "  packages/npm/package.json:    $npm_version"
+          echo "  packages/vscode/package.json: $vscode_version"
+
+          mismatch=0
+          check_version() {
+            label="$1"
+            actual="$2"
+            if [ "$actual" != "$tag_version" ]; then
+              echo "::error title=Release version mismatch::$label is $actual but release tag $RELEASE_TAG requires $tag_version."
+              mismatch=1
+            fi
+          }
+
+          check_version "Cargo.toml" "$cargo_version"
+          check_version "src-tauri/Cargo.toml" "$tauri_cargo_version"
+          check_version "src-tauri/tauri.conf.json" "$tauri_config_version"
+          check_version "packages/npm/package.json" "$npm_version"
+          check_version "packages/vscode/package.json" "$vscode_version"
+
+          if [ "$mismatch" -ne 0 ]; then
+            echo "Create release tags only from commits whose package versions already match the tag." >&2
             exit 1
           fi
       - run: cd web && npm ci

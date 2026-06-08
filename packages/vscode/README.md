@@ -57,7 +57,7 @@ Completion is offered while editing `{{variable}}` templates and path params.
 For pre-release builds, install the packaged VSIX from the command line:
 
 ```bash
-code --install-extension reqbook-vscode-0.2.1.vsix
+code --install-extension reqbook-vscode-0.2.2.vsix
 ```
 
 Then open a workspace with a Reqbook collection and run `Reqbook: Validate Current File` against an endpoint markdown file.
@@ -68,7 +68,7 @@ Then open a workspace with a Reqbook collection and run `Reqbook: Validate Curre
 npm ci
 npm test
 npm run check
-npm run package -- --out /tmp/reqbook-vscode-0.2.1.vsix
+npm run package -- --out /tmp/reqbook-vscode-0.2.2.vsix
 ```
 
 See the [publishing checklist](https://github.com/ngoclinh93qt/ReqBook/blob/main/packages/vscode/PUBLISHING.md) for Marketplace publish steps.

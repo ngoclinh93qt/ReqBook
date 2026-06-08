@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.2.1 - 2026-06-08
+## 0.2.2 - 2026-06-08
 
-- Align the extension package version with the Reqbook 0.2.1 release.
+- Align the extension package version with the Reqbook 0.2.2 release.
 
 ## 0.1.5 - 2026-06-07
 
