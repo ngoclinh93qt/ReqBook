@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5 - 2026-06-08
+
+- Release artifacts are versioned from the Git tag.
+
 ## 0.2.3 - 2026-06-08
 
 - Release artifacts are versioned from the Git tag.

@@ -68,7 +68,7 @@ function updateCargoLockPackage(packageName) {
   const escapedName = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   replaceInFile(
     'Cargo.lock',
-    new RegExp(`(\\[\\[package\\]\\]\\nname = "${escapedName}"\\nversion = )"[^"]+"`),
+    new RegExp(`(\\[\\[package\\]\\]\\r?\\nname = "${escapedName}"\\r?\\nversion = )"[^"]+"`),
     `$1"${version}"`,
   );
 }
@@ -109,7 +109,7 @@ replaceInFile(
 );
 replaceInFile(
   'docs/installation.mdx',
-  /rqb version\n# \d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/,
+  /rqb version\r?\n# \d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/,
   `rqb version\n# ${version}`,
 );
 
@@ -123,7 +123,7 @@ if (!new RegExp(`^## ${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} - `, 'm')
   write(
     changelogPath,
     changelog.replace(
-      /^# Changelog\n\n/,
+      /^# Changelog\r?\n\r?\n/,
       `# Changelog\n\n## ${version} - ${today}\n\n- Release artifacts are versioned from the Git tag.\n\n`,
     ),
   );
