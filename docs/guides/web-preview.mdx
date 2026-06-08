@@ -96,9 +96,9 @@ or from the browser UI with the Run flow action.
 
 ## Environment and variables
 
-The UI reads `api-docs/_shared/env.md` for non-secret environment values:
+The UI reads `api-docs/_shared/env.md` for local non-secret environment values. If that file is missing, the Variables drawer starts from `api-docs/_shared/env.template.md` and lets you create the local file:
 
-````markdown filename="api-docs/_shared/env.md"
+````markdown filename="api-docs/_shared/env.template.md"
 ## dev
 
 ```yaml

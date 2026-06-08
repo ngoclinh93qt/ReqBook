@@ -307,7 +307,13 @@ fn collect_existing_keys(dir: &Path, keys: &mut std::collections::HashSet<(Strin
                 .unwrap_or_default();
             if matches!(
                 name,
-                "README.md" | "reqbook.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
+                "README.md"
+                    | "reqbook.md"
+                    | "mad.md"
+                    | "env.md"
+                    | "env.template.md"
+                    | "auth.md"
+                    | "variables.md"
             ) {
                 continue;
             }
@@ -427,7 +433,13 @@ fn collect_recursive(api_docs: &Path, dir: &Path, groups: &mut BTreeMap<String, 
                 .unwrap_or_default();
             if matches!(
                 name,
-                "README.md" | "reqbook.md" | "mad.md" | "env.md" | "auth.md" | "variables.md"
+                "README.md"
+                    | "reqbook.md"
+                    | "mad.md"
+                    | "env.md"
+                    | "env.template.md"
+                    | "auth.md"
+                    | "variables.md"
             ) {
                 continue;
             }

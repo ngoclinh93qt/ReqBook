@@ -6,13 +6,13 @@ icon: "shield"
 
 ## Never commit secrets
 
-Reqbook treats all markdown spec files as safe-to-commit artifacts. Secrets belong in `.env.local`, CI environment variables, or a secret manager never in `env.md`, endpoint files, pipeline files, or `reqbook.md`. The parser actively enforces this before any request is sent.
+Reqbook treats endpoint, pipeline, project markdown, and `env.template.md` as safe-to-commit artifacts. Generated `env.md` files are gitignored by default because environment values often drift by machine or deployment. Secrets belong in `.env.local`, CI environment variables, or a secret manager never in env markdown, endpoint files, pipeline files, or `reqbook.md`. The parser actively enforces this before any request is sent.
 
 ---
 
 ## Secret detection
 
-Reqbook scans `env.md`, endpoint files, pipeline files, and `reqbook.md` for common secret patterns during `rqb validate` and before every execution. If a match is found, the command exits with **code 5** no network request is made.
+Reqbook scans `env.template.md`, `env.md`, endpoint files, pipeline files, and `reqbook.md` for common secret patterns during `rqb validate` and before every execution. If a match is found, the command exits with **code 5** no network request is made.
 
 ### Patterns that trigger exit code 5
 
@@ -42,8 +42,10 @@ The error includes the file path and line number so you can find and move the of
 | `RQB_*` OS env vars | CI/CD pipelines and shared environments. Set in your CI provider's secret store. |
 | Secret manager + env | `RQB_AUTH_TOKEN=$(vault read secret/api-token)` inject at runtime from HashiCorp Vault, AWS Secrets Manager, or similar. |
 
+Generated `api-docs/_shared/env.md` files are also listed in `.gitignore` by default, while `api-docs/_shared/env.template.md` is meant to be committed. Both are still for non-secret values only.
+
 <Tip>
- `rqb doctor` checks that `.env.local` is listed in `.gitignore` and reports an error with a fix suggestion if it is not. Run it after `rqb init` and before onboarding new contributors.
+ `rqb doctor` checks that `.env.local` and the generated `api-docs/_shared/env.md` path are listed in `.gitignore` and reports an error with a fix suggestion if either is missing. Run it after `rqb init` and before onboarding new contributors.
 </Tip>
 
 ---

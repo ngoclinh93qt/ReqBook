@@ -111,6 +111,11 @@ pub(super) struct SaveVarsBody {
     pub(super) vars: BTreeMap<String, String>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+pub(super) struct VarsQuery {
+    pub(super) env: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub(super) struct ScanRoute {
     pub(super) method: String,

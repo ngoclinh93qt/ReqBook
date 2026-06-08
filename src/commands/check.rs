@@ -437,10 +437,12 @@ fn is_checkable_markdown(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
         return false;
     };
-    !matches!(name, "README.md" | "reqbook.md" | "mad.md" | "env.md")
-        && !path
-            .components()
-            .any(|component| matches!(component.as_os_str().to_str(), Some("_shared")))
+    !matches!(
+        name,
+        "README.md" | "reqbook.md" | "mad.md" | "env.md" | "env.template.md"
+    ) && !path
+        .components()
+        .any(|component| matches!(component.as_os_str().to_str(), Some("_shared")))
 }
 
 fn is_flow_file(path: &Path) -> bool {

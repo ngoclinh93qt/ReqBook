@@ -102,7 +102,7 @@ fn collect_endpoint_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
             let name = path.file_name().unwrap_or_default().to_string_lossy();
             if !matches!(
                 name.as_ref(),
-                "README.md" | "reqbook.md" | "mad.md" | "env.md"
+                "README.md" | "reqbook.md" | "mad.md" | "env.md" | "env.template.md"
             ) {
                 out.push(path);
             }

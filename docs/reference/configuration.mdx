@@ -131,11 +131,18 @@ Retries apply to network errors (exit code `4`) and to `5xx` responses. They do 
 
 ---
 
-## Environment config: `api-docs/_shared/env.md`
+## Environment config: template and local files
 
-`api-docs/_shared/env.md` stores non-secret variable values for each named environment. Each environment is a second-level heading followed by a `yaml` code block.
+Reqbook uses two environment markdown files:
 
-```yaml filename="api-docs/_shared/env.md"
+| File | Git behavior | Purpose |
+|---|---|---|
+| `api-docs/_shared/env.template.md` | Commit | Shared shape and safe defaults for new contributors. |
+| `api-docs/_shared/env.md` | Ignore | Local values used by the CLI, web preview, MCP tools, and agents. |
+
+Both files use the same format. Each environment is a second-level heading followed by a `yaml` code block.
+
+```yaml filename="api-docs/_shared/env.template.md"
 # Environments
 
 ## dev
@@ -157,7 +164,7 @@ baseUrl: https://api.example.com
 The environment name passed to `--env` must match one of these headings exactly. If the heading is missing, Reqbook exits with code `2`.
 
 <Warning>
-Do not put secrets in `env.md`. Tokens, passwords, and private keys must go in `.env.local` or `RQB_*` environment variables. The parser enforces this at validation time and exits with code `5` if a secret pattern is detected.
+Do not put secrets in either env markdown file. Tokens, passwords, and private keys must go in `.env.local` or `RQB_*` environment variables. The parser enforces this at validation time and exits with code `5` if a secret pattern is detected.
 </Warning>
 
 ---

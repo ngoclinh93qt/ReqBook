@@ -43,13 +43,13 @@ rqb init [--name=<name>] [--dev-url=<url>] [--yes]
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--name` | string | interactive | Project name written into `reqbook.md`. |
-| `--dev-url` | string | interactive | Base URL written into `_shared/env.md` for the `dev` environment. |
+| `--dev-url` | string | interactive | Base URL written into `_shared/env.template.md` and `_shared/env.md` for the `dev` environment. |
 | `--yes` | bool | `false` | Global flag. Accept all defaults without interactive prompts. |
 
 Without `--yes`, Reqbook prompts for any missing values. `--yes` uses `my-api` and `http://localhost:8080` as defaults when no flags are provided.
 
 <Note>
-`rqb init` does not overwrite existing files. If a file already exists, it exits with an error naming the conflicting file. It also appends `.env.local` to `.gitignore` if not already present.
+`rqb init` does not overwrite existing files. If a file already exists, it exits with an error naming the conflicting file. It creates both `_shared/env.template.md` and `_shared/env.md`, then appends `.env.local` and the generated `<collection>/_shared/env.md` path to `.gitignore` if they are not already present.
 </Note>
 
 **Examples**
@@ -83,7 +83,7 @@ rqb validate <path>
 
 Reqbook classifies each file by location and name:
 
-- Files named `env.md` → validated as environment config.
+- Files named `env.md` or `env.template.md` → validated as environment config.
 - Files under `flows/` → validated as pipeline files.
 - `reqbook.md` and `README.md` → checked for frontmatter only.
 - All other `.md` files → validated as endpoint files.
@@ -584,13 +584,13 @@ rqb doctor [--fix]
 `rqb doctor` checks:
 
 - Whether `api-docs/` exists.
-- Whether `.env.local` is listed in `.gitignore`.
+- Whether `.env.local` and `<collection>/_shared/env.md` are listed in `.gitignore`.
 - Whether all specs under `api-docs/` are valid.
 - Which AI agent config directories are present.
 - Whether installed skills match the current binary version.
 - Whether an outbound network connection can be made.
 
-`--fix` applies safe fixes automatically: adds `.env.local` to `.gitignore` if missing, and reinstalls stale skills.
+`--fix` applies safe fixes automatically: adds missing local environment entries to `.gitignore`, and reinstalls stale skills.
 
 <Note>
 Run `rqb doctor` as the first debugging step when `rqb exec`, `rqb validate`, or an AI agent skill behaves unexpectedly.

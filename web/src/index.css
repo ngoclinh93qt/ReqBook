@@ -359,6 +359,19 @@ textarea.input { min-height: 90px; resize: vertical; line-height: 1.55; }
 .seg { display: inline-flex; align-items: center; padding: 3px; border-radius: var(--r-md); background: var(--bg-soft); gap: 2px; margin-bottom: 16px; }
 .seg button { height: 26px; padding: 0 10px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--fg-3); }
 .seg button.is-on { background: var(--bg-elev); color: var(--fg); box-shadow: var(--shadow-1); }
+.env-status { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); padding: 12px; margin: 0 0 14px; }
+.env-status.needs-local { border-color: color-mix(in oklch, var(--warn) 42%, var(--border)); background: var(--warn-soft); }
+.env-status-head { display: flex; align-items: flex-start; gap: 10px; }
+.env-status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fg-4); margin-top: 6px; flex: 0 0 auto; }
+.env-status-dot.local { background: var(--ok); }
+.env-status-dot.template { background: var(--warn); }
+.env-status-title { font-size: 13px; font-weight: 650; color: var(--fg); }
+.env-status-sub { margin-top: 1px; font-size: 12.5px; color: var(--fg-3); line-height: 1.45; }
+.env-file-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.env-file-grid div { min-width: 0; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg-elev); padding: 8px; }
+.env-file-grid span { display: block; margin-bottom: 4px; font-size: 10.5px; font-weight: 700; color: var(--fg-4); text-transform: uppercase; letter-spacing: .06em; }
+.env-file-grid span b { float: right; color: var(--fg-3); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.env-file-grid code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--fg-2); }
 .env-modal { width: min(520px, 100%); }
 .env-form { display: grid; gap: 14px; }
 .env-form label { display: grid; gap: 6px; }
@@ -385,6 +398,7 @@ textarea.input { min-height: 90px; resize: vertical; line-height: 1.55; }
   .row { grid-template-columns: 64px 1fr 24px; }
   .r-last, .r-status { display: none; }
   .index-wrap, .spec-wrap { padding-left: 18px; padding-right: 18px; }
+  .env-file-grid { grid-template-columns: 1fr; }
 }
 
 .flow-head { display: flex; align-items: flex-end; gap: 20px; }

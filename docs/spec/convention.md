@@ -22,6 +22,7 @@ api-docs/
 ├── README.md
 ├── reqbook.md
 ├── _shared/
+│   ├── env.template.md
 │   ├── env.md
 │   ├── auth.md
 │   └── variables.md
@@ -36,7 +37,7 @@ api-docs/
 
 `api-docs/reqbook.md` is the project configuration file. It is markdown with YAML frontmatter and structured YAML code blocks.
 
-`api-docs/_shared/env.md` contains non-secret environment values such as base URLs. It must not contain tokens, passwords, private keys, or production credentials.
+`api-docs/_shared/env.template.md` contains the shared non-secret environment shape. `api-docs/_shared/env.md` contains local runtime values and is listed in `.gitignore` by default. Neither file may contain tokens, passwords, private keys, or production credentials.
 
 `api-docs/_shared/auth.md` contains reusable auth documentation and examples without real secrets.
 
@@ -393,7 +394,7 @@ the current Reqbook release does not execute arbitrary code from `agent-task` bl
 
 ## Shared environment config
 
-`api-docs/_shared/env.md` stores non-secret values per environment.
+`api-docs/_shared/env.template.md` stores shared non-secret defaults per environment. `api-docs/_shared/env.md` uses the same format for local runtime values and is gitignored by default.
 
 Example:
 
@@ -420,7 +421,7 @@ baseUrl: https://api.example.com
 ```
 ````
 
-Do not put secrets in `env.md`. Use `.env.local` for local secrets and OS environment variables for CI secrets.
+Do not put secrets in env markdown. Use `.env.local` for local secrets and OS environment variables for CI secrets.
 
 ## Variables
 
@@ -461,7 +462,7 @@ authToken=local-development-token
 webhookSecret=local-development-secret
 ```
 
-`rqb doctor` verifies that `.env.local` appears in `.gitignore`. If `.env.local` is missing from `.gitignore`, doctor reports an error with a suggested fix.
+`rqb doctor` verifies that `.env.local` and the generated `_shared/env.md` path appear in `.gitignore`. If either entry is missing, doctor reports an error with a suggested fix.
 
 ### OS environment variables
 
@@ -633,11 +634,11 @@ If an endpoint declares `env: [dev, staging]` and the user runs `--env=prod`, Re
 
 ## Security rules
 
-Reqbook treats markdown specs as safe-to-commit files. Secrets belong in `.env.local`, a secret manager, CI variables, or OS environment variables.
+Reqbook treats endpoint, pipeline, project markdown, and env templates as safe-to-commit files. Generated `env.md` is gitignored by default because environment values often vary by machine or deployment. Secrets belong in `.env.local`, a secret manager, CI variables, or OS environment variables.
 
 ### Secret detection
 
-The parser refuses secrets in versioned markdown sources such as `api-docs/_shared/env.md`, endpoint files, pipeline files, and `reqbook.md`.
+The parser refuses secrets in markdown sources such as `api-docs/_shared/env.template.md`, `api-docs/_shared/env.md`, endpoint files, pipeline files, and `reqbook.md`.
 
 Secret patterns include:
 
@@ -645,7 +646,7 @@ Secret patterns include:
 - Hex strings longer than 32 characters.
 - Values with prefixes `sk_` or `pk_live_`.
 
-If a secret is found in `env.md`, Reqbook exits with code 5.
+If a secret is found in env markdown, Reqbook exits with code 5.
 
 ```text
 api-docs/_shared/env.md:12: possible secret detected
@@ -738,8 +739,8 @@ Reqbook imports Postman collections into markdown endpoint files. The result sho
 | Body | Body in `http` request block | JSON bodies are formatted for readable diffs. |
 | Tests | `## Expected response` and `agent-task` block | Simple status/body checks become expected responses. Complex JavaScript becomes manual review tasks. |
 | Pre-request script | `agent-task` block | Imported as manual review instructions, not executable JavaScript. |
-| Collection variables | `_shared/variables.md` or `_shared/env.md` | Non-secret values can be committed. Secrets must move to `.env.local`. |
-| Environment | `_shared/env.md` section | Environment names map to markdown headings such as `## dev`. |
+| Collection variables | `_shared/variables.md`, `_shared/env.template.md`, or local `_shared/env.md` | Non-secret template values can be committed intentionally. Generated `_shared/env.md` is gitignored by default. Secrets must move to `.env.local`. |
+| Environment | `_shared/env.template.md` / `_shared/env.md` section | Environment names map to markdown headings such as `## dev`. |
 | Auth helper | Endpoint or project `auth` setting | Bearer/basic auth maps directly when possible. |
 | Examples | `## Expected response` block | Postman examples become expected response candidates. |
 
@@ -769,6 +770,7 @@ Postman environments containing tokens are rejected by Reqbook if imported into 
 api-docs/
 ├── reqbook.md
 ├── _shared/
+│   ├── env.template.md
 │   └── env.md
 ├── apis/
 │   └── users/
@@ -815,7 +817,7 @@ plugins: []
 ```
 ````
 
-`api-docs/_shared/env.md`:
+`api-docs/_shared/env.template.md`:
 
 ````markdown
 # Environments

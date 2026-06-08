@@ -34,7 +34,7 @@ An internal failure prevented Reqbook from building the HTTP request. Common cau
 The request was built and sent but no response was received. Covers DNS resolution failure, connection refused, and timeout expiry across all retry attempts.
 
 **Exit code 5 Secret detected**
-Reqbook found a pattern matching a secret (JWT token, hex API key, `sk_` prefixed key, etc.) in a versioned markdown file. The process exits immediately no request is sent, no spec is executed. Move the value to `.env.local` or a `RQB_*` environment variable.
+Reqbook found a pattern matching a secret (JWT token, hex API key, `sk_` prefixed key, etc.) in a markdown/config file. The process exits immediately no request is sent, no spec is executed. Move the value to `.env.local` or a `RQB_*` environment variable.
 
 ---
 

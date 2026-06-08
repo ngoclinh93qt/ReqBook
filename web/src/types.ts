@@ -36,6 +36,11 @@ export interface VarsData {
   env: string;
   vars: Record<string, string>;
   envs: string[];
+  source?: 'local' | 'template' | 'empty';
+  env_file_exists?: boolean;
+  template_file_exists?: boolean;
+  env_path?: string;
+  template_path?: string;
 }
 
 export interface ExecResult {

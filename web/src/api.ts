@@ -41,7 +41,10 @@ export const api = {
       body: JSON.stringify(options),
     }).then(r => json<ExecResult>(r)),
 
-  getVariables: () => fetch(`${BASE}/variables`).then(r => json<VarsData>(r)),
+  getVariables: (env?: string) => {
+    const query = env ? `?env=${encodeURIComponent(env)}` : '';
+    return fetch(`${BASE}/variables${query}`).then(r => json<VarsData>(r));
+  },
 
   saveVariables: (env: string, vars: Record<string, string>) =>
     fetch(`${BASE}/variables`, {

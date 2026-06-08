@@ -188,7 +188,7 @@ fn walk_specs_inner(root: &Path, dir: &Path, cb: &mut impl FnMut(&Path, String))
             let name = p.file_name().unwrap_or_default().to_string_lossy();
             if matches!(
                 name.as_ref(),
-                "README.md" | "reqbook.md" | "mad.md" | "env.md"
+                "README.md" | "reqbook.md" | "mad.md" | "env.md" | "env.template.md"
             ) {
                 continue;
             }

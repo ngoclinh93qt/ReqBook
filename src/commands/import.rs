@@ -143,9 +143,11 @@ pub(crate) async fn run(command: ImportCommand, collection: &Path) -> Result<()>
             if !written.is_empty() {
                 regenerate_index(collection)?;
                 let env_path = collection.join("_shared/env.md");
+                let template_path = collection.join("_shared/env.template.md");
                 println!(
-                    "Next: set baseUrl in {}, \
+                    "Next: copy defaults from {} into {}, \
                      then run `rqb validate {}`",
+                    template_path.display(),
                     env_path.display(),
                     collection.display()
                 );

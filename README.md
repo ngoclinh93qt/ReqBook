@@ -44,6 +44,7 @@ rqb request GET https://httpbin.org/get  # ad-hoc request (rqb-cli)
 api-docs/
 ├── reqbook.md
 ├── _shared/
+│   ├── env.template.md
 │   └── env.md
 ├── apis/
 │   └── users/

@@ -164,7 +164,7 @@ pub fn parse_pipeline(source: &str, path: impl AsRef<Path>) -> Result<Pipeline, 
     })
 }
 
-/// Parse `_shared/env.md` and reject committed secrets.
+/// Parse `_shared/env.md` and reject secrets.
 pub fn parse_env_config(source: &str, path: impl AsRef<Path>) -> Result<EnvConfig, ParseError> {
     let path = path.as_ref().display().to_string();
     ensure_no_secret(source, &path)

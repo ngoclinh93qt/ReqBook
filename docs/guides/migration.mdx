@@ -100,8 +100,8 @@ The import commands convert foreign formats into Reqbook markdown endpoint files
  | Test scripts (simple status/body checks) | `## Expected response` block | Simple assertions are converted directly. |
  | Test scripts (complex JavaScript) | `agent-task` block | JS logic is imported as manual review instructions. |
  | Pre-request scripts | `agent-task` block | Not executable; imported as review instructions. |
- | Collection variables | `_shared/env.md` or `.env.local` | Non-secret values only in `env.md`. |
- | Environments | `_shared/env.md` sections | Each Postman environment becomes a `## <name>` heading. |
+ | Collection variables | `_shared/env.template.md`, local `_shared/env.md`, or `.env.local` | Non-secret shared shape goes in the template; local values go in gitignored `env.md`. |
+ | Environments | `_shared/env.template.md` / `_shared/env.md` sections | Each Postman environment becomes a `## <name>` heading. |
  | Auth helper (bearer/basic) | `auth:` in frontmatter or `reqbook.md` | Maps directly for `bearer` and `basic` types. |
 
  **What needs manual review after import**
@@ -152,8 +152,8 @@ The import commands convert foreign formats into Reqbook markdown endpoint files
  | Method | `method` frontmatter + request line | |
  | Headers | Headers in `http` request block | |
  | Body | Body in `http` request block | |
- | Environment (base + sub) | `_shared/env.md` sections | Each becomes a `## <name>` heading. |
- | Environment variables | `_shared/env.md` or `.env.local` | Non-secret values go to `env.md`. Secrets go to `.env.local`. |
+ | Environment (base + sub) | `_shared/env.template.md` / `_shared/env.md` sections | Each becomes a `## <name>` heading. |
+ | Environment variables | `_shared/env.template.md`, local `_shared/env.md`, or `.env.local` | Non-secret shared shape goes in the template. Local values go to gitignored `env.md`. Secrets go to `.env.local`. |
  | Test results | `## Expected response` block | Simple status checks are preserved. |
  | Plugins / pre/post-request scripts | `agent-task` block | Imported as manual review instructions. |
 

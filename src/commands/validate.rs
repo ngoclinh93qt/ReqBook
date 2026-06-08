@@ -52,6 +52,10 @@ pub(crate) fn validate_file(path: &Path) -> Result<()> {
     let source = read_text(path, "validating markdown")?;
     let result = if path.ends_with("_shared/env.md")
         || path.file_name().is_some_and(|name| name == "env.md")
+        || path.ends_with("_shared/env.template.md")
+        || path
+            .file_name()
+            .is_some_and(|name| name == "env.template.md")
     {
         parser::parse_env_config(&source, path).map(|_| ())
     } else if path

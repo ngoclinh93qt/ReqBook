@@ -52,6 +52,7 @@ api-docs/
 ├── README.md
 ├── reqbook.md
 ├── _shared/
+│ ├── env.template.md
 │ └── env.md
 ├── apis/
 │ └── posts/
@@ -61,6 +62,8 @@ api-docs/
 ```
 
 The generated endpoint uses JSONPlaceholder, so it can run immediately.
+
+The generated `.gitignore` includes `.env.local` and `api-docs/_shared/env.md`, while `api-docs/_shared/env.template.md` stays commit-ready for new contributors.
 
 ---
 

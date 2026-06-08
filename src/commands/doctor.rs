@@ -1,9 +1,10 @@
 //! `rqb doctor` command — diagnose project setup.
 
-use std::{fs, io::Write, path::Path};
+use std::{fs, path::Path};
 
 use anyhow::Result;
 use owo_colors::OwoColorize;
+use reqbook::workspace;
 
 use super::validate::{markdown_files, validate_file};
 
@@ -14,18 +15,17 @@ pub(crate) fn run(args: crate::DoctorArgs, collection: &Path) -> Result<()> {
     println!("Project");
     println!("  Collection: {}", collection.display());
     check("collection exists", collection.exists());
-    let gitignore = fs::read_to_string(".gitignore").unwrap_or_default();
-    let env_ignored = gitignore
-        .lines()
-        .any(|line| matches!(line.trim(), ".env.local" | "/.env.local"));
-    check(".env.local in .gitignore", env_ignored);
-    if args.fix && !env_ignored {
-        let mut file = fs::OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(".gitignore")?;
-        writeln!(file, ".env.local")?;
-        println!("  Fix: added .env.local to .gitignore");
+    let missing_gitignore_entries = workspace::missing_env_gitignore_entries(collection);
+    for entry in workspace::required_env_gitignore_entries(collection) {
+        check(
+            &format!("{entry} in .gitignore"),
+            !missing_gitignore_entries.contains(&entry),
+        );
+    }
+    if args.fix && !missing_gitignore_entries.is_empty() {
+        for entry in workspace::ensure_env_files_gitignored(collection)? {
+            println!("  Fix: added {entry} to .gitignore");
+        }
     }
     if collection.exists() {
         match validate_project_silent(collection) {

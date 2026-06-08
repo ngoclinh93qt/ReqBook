@@ -39,15 +39,18 @@ function ReqbookShell() {
   const refreshWorkspaceData = () => setWorkspaceTick(tick => tick + 1);
 
   useEffect(() => {
+    api.getVariables(env).then(data => {
+      setVarsData(data);
+      if (data.env && data.env !== env) setEnv(data.env);
+    }).catch(() => {});
+  }, [env, workspaceTick]);
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('rqb-theme', theme);
   }, [theme]);
 
   useEffect(() => {
-    api.getVariables().then(data => {
-      setVarsData(data);
-      setEnv(data.env || data.envs[0] || 'dev');
-    }).catch(() => {});
     api.getIndex().then(data => {
       setMockMode(data.mock_mode ?? false);
     }).catch(() => {});
@@ -98,7 +101,17 @@ function ReqbookShell() {
     };
     await api.saveVariables(name, vars);
     const envs = varsData?.envs.includes(name) ? varsData.envs : [...(varsData?.envs ?? []), name];
-    setVarsData({ env: name, envs, vars });
+    setVarsData({
+      ...(varsData ?? {}),
+      env: name,
+      envs,
+      vars,
+      source: 'local',
+      env_file_exists: true,
+      template_file_exists: varsData?.template_file_exists,
+      env_path: varsData?.env_path,
+      template_path: varsData?.template_path,
+    });
     setEnv(name);
   }
 
@@ -263,12 +276,19 @@ function VariablesDrawer({ open, onClose, env, setEnv, varsData, setVarsData, br
   const [browserRows, setBrowserRows] = useState<[string, string][]>([]);
   const [envRows, setEnvRows] = useState<[string, string][]>([]);
   const [msg, setMsg] = useState('');
+  const initializedOpenDrawer = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      setBrowserRows(Object.entries(browserVars));
-      setEnvRows(Object.entries(varsData?.vars ?? {}));
+    if (!open) {
+      initializedOpenDrawer.current = false;
+      return;
+    }
+    setBrowserRows(Object.entries(browserVars));
+    setEnvRows(Object.entries(varsData?.vars ?? {}));
+    if (!initializedOpenDrawer.current && varsData) {
+      setTab(varsData?.source === 'template' ? 'env' : 'browser');
       setMsg('');
+      initializedOpenDrawer.current = true;
     }
   }, [browserVars, open, varsData]);
 
@@ -277,8 +297,19 @@ function VariablesDrawer({ open, onClose, env, setEnv, varsData, setVarsData, br
   async function saveEnv() {
     const vars = Object.fromEntries(envRows.filter(([key]) => key.trim()));
     await api.saveVariables(env, vars);
-    setVarsData({ env, envs: varsData?.envs ?? [env], vars });
-    setMsg('Saved');
+    const envs = varsData?.envs.includes(env) ? varsData.envs : [...(varsData?.envs ?? []), env];
+    setVarsData({
+      ...(varsData ?? {}),
+      env,
+      envs,
+      vars,
+      source: 'local',
+      env_file_exists: true,
+      template_file_exists: varsData?.template_file_exists,
+      env_path: varsData?.env_path,
+      template_path: varsData?.template_path,
+    });
+    setMsg(varsData?.source === 'template' ? 'Local env created' : 'Saved');
   }
 
   return (
@@ -309,11 +340,11 @@ function VariablesDrawer({ open, onClose, env, setEnv, varsData, setVarsData, br
           {tab === 'env' && (
             <div className="drawer-section">
               <div className="seg">{(varsData?.envs ?? [env]).map(item => <button key={item} className={item === env ? 'is-on' : ''} onClick={() => setEnv(item)}>{item}</button>)}</div>
-              <p className="help">Saved to <code>api-docs/_shared/env.md</code>. Do not store secrets here.</p>
+              <EnvFileStatus varsData={varsData} />
               <Rows rows={envRows} setRows={setEnvRows} />
               <div className="drawer-actions">
                 <button className="add-row" onClick={() => setEnvRows(rows => [...rows, ['', '']])}><Icon.plus /> Add variable</button>
-                <button className="btn-primary" onClick={saveEnv}>Save env vars</button>
+                <button className="btn-primary" onClick={saveEnv}>{varsData?.source === 'template' ? 'Create local env' : 'Save env vars'}</button>
               </div>
             </div>
           )}
@@ -328,6 +359,37 @@ function VariablesDrawer({ open, onClose, env, setEnv, varsData, setVarsData, br
         </div>
       </aside>
     </>
+  );
+}
+
+function EnvFileStatus({ varsData }: { varsData: VarsData | null }) {
+  const source = varsData?.source ?? 'empty';
+  const envPath = varsData?.env_path ?? 'api-docs/_shared/env.md';
+  const templatePath = varsData?.template_path ?? 'api-docs/_shared/env.template.md';
+  const usesTemplate = source === 'template';
+  const templateExists = varsData?.template_file_exists ?? false;
+  const localExists = varsData?.env_file_exists ?? false;
+
+  return (
+    <div className={`env-status ${usesTemplate ? 'needs-local' : ''}`}>
+      <div className="env-status-head">
+        <span className={`env-status-dot ${source}`} />
+        <div>
+          <div className="env-status-title">{usesTemplate ? 'Local env not created' : source === 'local' ? 'Local env active' : 'No env file found'}</div>
+          <div className="env-status-sub">{usesTemplate ? 'Review the template values, then create the local file.' : 'Values in this tab are local environment values.'}</div>
+        </div>
+      </div>
+      <div className="env-file-grid">
+        <div>
+          <span>Template <b>{templateExists ? 'ready' : 'missing'}</b></span>
+          <code>{templatePath}</code>
+        </div>
+        <div>
+          <span>Local <b>{localExists ? 'ready' : 'missing'}</b></span>
+          <code>{envPath}</code>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -388,7 +450,7 @@ function AddEnvironmentModal({ existing, onClose, onCreate }: {
           <span className="modal-icon"><Icon.plus /></span>
           <div>
             <h2>New environment</h2>
-            <div className="sub">Create a new env in <code>api-docs/_shared/env.md</code>.</div>
+            <div className="sub">Create a local env in <code>api-docs/_shared/env.md</code>.</div>
           </div>
           <button className="btn icon" onClick={onClose}><Icon.x /></button>
         </div>

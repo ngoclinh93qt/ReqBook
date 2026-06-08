@@ -1036,7 +1036,10 @@ fn is_context_file(path: &Path) -> bool {
         .and_then(|name| name.to_str())
         .unwrap_or("");
     path.extension().is_some_and(|ext| ext == "md")
-        && !matches!(name, "README.md" | "reqbook.md" | "mad.md" | "env.md")
+        && !matches!(
+            name,
+            "README.md" | "reqbook.md" | "mad.md" | "env.md" | "env.template.md"
+        )
 }
 
 fn is_flow_file(path: &Path) -> bool {

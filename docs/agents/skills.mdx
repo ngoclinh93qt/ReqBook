@@ -35,7 +35,8 @@ rqb skills install --agent=claude-code
 ```
 api-docs/
 ├── reqbook.md              # project config (name, default-env, timeouts)
-├── _shared/env.md          # base URLs and variables per environment
+├── _shared/env.template.md # shared environment template
+├── _shared/env.md          # local base URLs and variables
 ├── apis/<resource>/<method>-<slug>.md   # one file per endpoint
 └── flows/<name>.md         # multi-step pipelines
 ```

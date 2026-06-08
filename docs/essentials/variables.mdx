@@ -51,11 +51,11 @@ RQB_USER_ID=from-os rqb exec api-docs/apis/users/get-user.md --var userId=from-c
 
 ---
 
-## env.md non-secret per-environment values
+## Environment template and local values
 
-`api-docs/_shared/env.md` stores base URLs and non-secret configuration per environment. Select an environment at runtime with `--env=<name>`.
+`api-docs/_shared/env.template.md` stores the shared shape and safe defaults for each environment. `api-docs/_shared/env.md` stores the local values used at runtime and is gitignored by default. Select an environment with `--env=<name>`.
 
-````markdown filename="api-docs/_shared/env.md"
+````markdown filename="api-docs/_shared/env.template.md"
 # Environments
 
 ## dev
@@ -81,7 +81,7 @@ pageSize: 50
 ````
 
 <Warning>
- Do not put tokens, passwords, or API keys in `env.md`. The Reqbook parser detects common secret patterns and exits with code 5 before any network request is made.
+ Do not put tokens, passwords, or API keys in either env markdown file. The Reqbook parser detects common secret patterns and exits with code 5 before any network request is made.
 </Warning>
 
 ---
@@ -97,7 +97,7 @@ stripeKey=sk_test_...
 ```
 
 <Tip>
- `rqb init` adds `.env.local` to `.gitignore` automatically. Run `rqb doctor` to confirm it is listed the command reports an error with a suggested fix if it's missing.
+ `rqb init` creates both `api-docs/_shared/env.template.md` and `api-docs/_shared/env.md`. It adds `.env.local` and `api-docs/_shared/env.md` to `.gitignore` automatically. Run `rqb doctor` to confirm both ignored entries are listed.
 </Tip>
 
 ---

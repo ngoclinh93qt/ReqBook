@@ -141,7 +141,7 @@ pub fn detect_secret(input: &str) -> bool {
     })
 }
 
-/// Refuse secrets in versioned sources.
+/// Refuse secrets in markdown/config sources.
 pub fn ensure_no_secret(input: &str, source: &str) -> Result<(), ResolveError> {
     if detect_secret(input) {
         Err(ResolveError::SecretDetected {

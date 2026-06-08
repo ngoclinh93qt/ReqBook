@@ -4,7 +4,7 @@ use std::{fs, sync::Arc};
 
 use axum::{
     body::Bytes,
-    extract::{Path as AxumPath, State},
+    extract::{Path as AxumPath, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
@@ -17,6 +17,7 @@ use crate::{
     parser::{parse_endpoint, parse_env_config, parse_pipeline, EnvConfig},
     pipeline::{self, PipelineOpts},
     resolver::SourceKind,
+    workspace,
 };
 
 use super::{
@@ -27,7 +28,7 @@ use super::{
     },
     types::{
         AdHocReqBody, AdHocReqResponse, ExecBody, FlowsResponse, IndexResponse, RuntimeOverrides,
-        SaveVarsBody, SpecResponse, ValidateResponse, API_DOCS_DIR,
+        SaveVarsBody, SpecResponse, ValidateResponse, VarsQuery, API_DOCS_DIR,
     },
     AppState,
 };
@@ -459,20 +460,41 @@ pub(super) async fn save_spec_handler(
 
 // ─── Variables handlers ───────────────────────────────────────────────────────
 
-pub(super) async fn get_variables_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let env_path = state.current_root().join("api-docs/_shared/env.md");
-    let (vars, all_envs) = if let Ok(source) = fs::read_to_string(&env_path) {
-        if let Ok(config) = parse_env_config(&source, &env_path) {
-            let vars = config.envs.get(&state.env).cloned().unwrap_or_default();
-            let all_envs: Vec<String> = config.envs.keys().cloned().collect();
-            (vars, all_envs)
-        } else {
-            (std::collections::BTreeMap::new(), vec![])
-        }
-    } else {
-        (std::collections::BTreeMap::new(), vec![])
+pub(super) async fn get_variables_handler(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<VarsQuery>,
+) -> impl IntoResponse {
+    let collection = state.current_root().join("api-docs");
+    let env_path = workspace::shared_env_path(&collection);
+    let template_path = workspace::shared_env_template_path(&collection);
+    let requested_env = query.env.unwrap_or_else(|| state.env.clone());
+    let env_exists = env_path.exists();
+    let template_exists = template_path.exists();
+
+    let (config, source) = match read_env_config(&env_path) {
+        Some(config) => (config, "local"),
+        None => match read_env_config(&template_path) {
+            Some(config) => (config, "template"),
+            None => (EnvConfig::default(), "empty"),
+        },
     };
-    Json(serde_json::json!({"env": state.env, "vars": vars, "envs": all_envs}))
+    let selected_env = if config.envs.contains_key(&requested_env) {
+        requested_env
+    } else {
+        config.envs.keys().next().cloned().unwrap_or(requested_env)
+    };
+    let vars = config.envs.get(&selected_env).cloned().unwrap_or_default();
+    let all_envs: Vec<String> = config.envs.keys().cloned().collect();
+    Json(serde_json::json!({
+        "env": selected_env,
+        "vars": vars,
+        "envs": all_envs,
+        "source": source,
+        "env_file_exists": env_exists,
+        "template_file_exists": template_exists,
+        "env_path": "api-docs/_shared/env.md",
+        "template_path": "api-docs/_shared/env.template.md"
+    }))
 }
 
 pub(super) async fn save_variables_handler(
@@ -490,12 +512,12 @@ pub(super) async fn save_variables_handler(
         }
     };
     let env_name = body.env.unwrap_or_else(|| state.env.clone());
-    let env_path = state.current_root().join("api-docs/_shared/env.md");
-    let mut config = if let Ok(source) = fs::read_to_string(&env_path) {
-        parse_env_config(&source, &env_path).unwrap_or_default()
-    } else {
-        EnvConfig::default()
-    };
+    let collection = state.current_root().join("api-docs");
+    let env_path = workspace::shared_env_path(&collection);
+    let template_path = workspace::shared_env_template_path(&collection);
+    let mut config = read_env_config(&env_path)
+        .or_else(|| read_env_config(&template_path))
+        .unwrap_or_default();
     config.envs.insert(env_name, body.vars);
     let dir = env_path.parent().expect("path has parent");
     if let Err(e) = fs::create_dir_all(dir) {
@@ -514,6 +536,11 @@ pub(super) async fn save_variables_handler(
         )
             .into_response(),
     }
+}
+
+fn read_env_config(path: &std::path::Path) -> Option<EnvConfig> {
+    let source = fs::read_to_string(path).ok()?;
+    parse_env_config(&source, path).ok()
 }
 
 // ─── Import handlers ──────────────────────────────────────────────────────────

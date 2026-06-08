@@ -1,9 +1,10 @@
 //! `rqb init` command — scaffold a new api-docs directory.
 
-use std::{fs, io::Write, path::Path};
+use std::{fs, path::Path};
 
 use anyhow::{bail, Context as AnyhowContext, Result};
 use owo_colors::OwoColorize;
+use reqbook::workspace;
 
 use super::regenerate_index;
 
@@ -131,33 +132,21 @@ pub(crate) fn run(args: crate::InitArgs, collection: &Path, yes: bool) -> Result
     fs::create_dir_all(collection.join("apis/posts"))?;
     fs::create_dir_all(collection.join("flows"))?;
     write_new(&collection.join("reqbook.md"), &project_config(&name))?;
-    write_new(&collection.join("_shared/env.md"), &env_config(&dev_url))?;
+    let env_config = workspace::env_config_with_base_url(&dev_url);
+    write_new(
+        &workspace::shared_env_template_path(collection),
+        &env_config,
+    )?;
+    write_new(&workspace::shared_env_path(collection), &env_config)?;
     write_new(
         &collection.join("apis/posts/get-posts.md"),
         example_endpoint(),
     )?;
-    ensure_gitignore_has_env_local()?;
+    workspace::ensure_env_files_gitignored(collection)?;
     regenerate_index(collection)?;
 
     println!("{} Created reqbook.md (project config)", "✓".green());
     println!("{} Created api-docs/ with 1 example", "✓".green());
-    Ok(())
-}
-
-fn ensure_gitignore_has_env_local() -> Result<()> {
-    let path = Path::new(".gitignore");
-    let existing = fs::read_to_string(path).unwrap_or_default();
-    if existing.lines().any(|line| line.trim() == ".env.local") {
-        return Ok(());
-    }
-    let mut file = fs::OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(path)?;
-    if !existing.is_empty() && !existing.ends_with('\n') {
-        writeln!(file)?;
-    }
-    writeln!(file, ".env.local")?;
     Ok(())
 }
 
@@ -195,20 +184,6 @@ autosave: 2s
 
 ```yaml
 plugins: []
-```
-"#
-    )
-}
-
-fn env_config(dev_url: &str) -> String {
-    format!(
-        r#"# Environments
-
-## dev
-
-```yaml
-baseUrl: {dev_url}
-postId: 1
 ```
 "#
     )
