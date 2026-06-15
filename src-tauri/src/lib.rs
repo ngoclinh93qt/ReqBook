@@ -1,6 +1,7 @@
 use std::{
     fmt::Write as _,
     path::PathBuf,
+    process::Command,
     sync::{Arc, Mutex, RwLock},
 };
 
@@ -49,6 +50,42 @@ async fn open_workspace(
         let _ = win.set_title(&format!("Reqbook — {name}"));
     }
     Ok(())
+}
+
+#[tauri::command]
+fn open_external(url: String) -> Result<(), String> {
+    const ALLOWED_URLS: [&str; 3] = [
+        "https://markapidown.net/out/feedback",
+        "https://markapidown.net/out/bug",
+        "https://markapidown.net/out/star",
+    ];
+
+    if !ALLOWED_URLS.contains(&url.as_str()) {
+        return Err("external URL is not allowed".to_string());
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+    {
+        #[cfg(target_os = "macos")]
+        let status = Command::new("open").arg(&url).status();
+
+        #[cfg(target_os = "linux")]
+        let status = Command::new("xdg-open").arg(&url).status();
+
+        #[cfg(target_os = "windows")]
+        let status = Command::new("cmd").args(["/C", "start", "", &url]).status();
+
+        match status {
+            Ok(exit) if exit.success() => Ok(()),
+            Ok(exit) => Err(format!("system browser exited with {exit}")),
+            Err(error) => Err(format!("failed to open system browser: {error}")),
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        Err("opening external URLs is not supported on this platform".to_string())
+    }
 }
 
 pub fn run() {
@@ -122,7 +159,11 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_server_url, open_workspace,])
+        .invoke_handler(tauri::generate_handler![
+            get_server_url,
+            open_workspace,
+            open_external,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running rqb-desktop");
 }

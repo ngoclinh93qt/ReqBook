@@ -5,6 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "allow-get-server-url",
+    "allow-open-workspace",
+    "allow-open-external"
   ]
 }

@@ -110,7 +110,25 @@ rqb import project .
 
 ## Installation
 
-Until the first public release artifacts are published, install Reqbook from a local checkout:
+Install the `rqb` CLI with the channel that fits your environment:
+
+```bash
+# macOS or Linux, prebuilt binary
+curl -fsSL https://markapidown.net/install.sh | sh
+
+# npm wrapper around the native binary
+npm install -g reqbook
+
+# build from crates.io
+cargo install reqbook
+
+# Homebrew tap
+brew install reqbook/tap/rqb
+```
+
+Windows MSI installers, Docker images, and checksums are published from the GitHub Releases workflow. See the full install guide at <https://docs.markapidown.net/installation>.
+
+For local development from source:
 
 ```bash
 git clone https://github.com/ngoclinh93qt/ReqBook.git
@@ -118,7 +136,11 @@ cd ReqBook
 cargo install --path .
 ```
 
-Package-manager channels such as crates.io, the shell installer, npm, Homebrew, Docker, and GitHub Release binaries should be documented here only after the corresponding public release artifacts are available.
+## Feedback and anonymous usage
+
+The web and desktop UI include a **Feedback and support** button for GitHub Discussions, structured bug reports, and repository stars.
+
+Anonymous active-usage reporting is off by default. A user can enable it from the support popup. When enabled, Reqbook sends only a random local identifier, the UI surface (`desktop` or `web`), the Reqbook version, and a heartbeat. It does not send workspace paths, endpoint URLs, headers, variables, request bodies, responses, or file contents. Disabling the setting removes the local anonymous identifier.
 
 ## CLI
 

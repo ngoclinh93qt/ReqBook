@@ -102,6 +102,22 @@ node scripts/desktop-smoke.mjs
 
 ---
 
+## Anonymous active usage
+
+Anonymous active-usage reporting in the web and desktop UI is **off by default**. Users can enable or disable it from the **Feedback and support** popup.
+
+When enabled, Reqbook sends a heartbeat containing:
+
+- a random identifier stored in browser-local storage,
+- the surface: `desktop` or `web`,
+- the Reqbook version.
+
+Reqbook does not include workspace paths, API URLs, request or response data, headers, variables, environment values, filenames, or source content. Disabling anonymous usage stops heartbeats and removes the local identifier.
+
+The server retains each active-presence key for five minutes. Counts therefore represent opted-in users active within the last five minutes and can be delayed by Cloudflare KV propagation.
+
+---
+
 ## Exit codes
 
 Every Reqbook command exits with a stable, machine-readable code. CI pipelines can branch on these codes to distinguish test failures from spec errors.

@@ -11,6 +11,7 @@ import { Icon } from './ui';
 import type { VarsData } from './types';
 import { useBrowserVars } from './hooks/useBrowserVars';
 import { BrandMark, Sidebar, StatusBar, WorkspaceSwitcher } from './Sidebar';
+import { SupportPrompt } from './SupportPrompt';
 
 export function App() {
   return (
@@ -35,6 +36,8 @@ function ReqbookShell() {
   const [syncMsg, setSyncMsg] = useState('');
   const [runTick, setRunTick] = useState(0);
   const [workspaceTick, setWorkspaceTick] = useState(0);
+  const [appVersion, setAppVersion] = useState('unknown');
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const refreshWorkspaceData = () => setWorkspaceTick(tick => tick + 1);
 
@@ -53,6 +56,7 @@ function ReqbookShell() {
   useEffect(() => {
     api.getIndex().then(data => {
       setMockMode(data.mock_mode ?? false);
+      setAppVersion(data.version);
     }).catch(() => {});
     const handler = () => setRunTick(t => t + 1);
     window.addEventListener('rqb:run-saved', handler);
@@ -130,6 +134,7 @@ function ReqbookShell() {
         onAddEnvironment={() => setEnvModalOpen(true)}
         mockMode={mockMode}
         workspaceTick={workspaceTick}
+        onOpenSupport={() => setSupportOpen(true)}
       />
       <div className="body-row">
         <Sidebar
@@ -176,6 +181,7 @@ function ReqbookShell() {
           }}
         />
       )}
+      <SupportPrompt open={supportOpen} onOpenChange={setSupportOpen} version={appVersion} />
     </div>
   );
 }
@@ -221,7 +227,7 @@ function EnvSwitcher({ envs, value, onChange, onAdd }: {
   );
 }
 
-function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, mockMode, workspaceTick }: {
+function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, envs, onOpenVars, onAddEnvironment, mockMode, workspaceTick, onOpenSupport }: {
   relPath: string;
   onHome: () => void;
   onNewRequest: () => void;
@@ -234,6 +240,7 @@ function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, e
   onAddEnvironment: () => void;
   mockMode?: boolean;
   workspaceTick: number;
+  onOpenSupport: () => void;
 }) {
   return (
     <header className="topbar">
@@ -254,6 +261,9 @@ function TopBar({ relPath, onHome, onNewRequest, theme, setTheme, env, setEnv, e
         <button className="tnav-item" onClick={onOpenVars}><span className="ic"><Icon.vars /></span>Variables</button>
         {mockMode && <span className="mock-pill">mock</span>}
         <EnvSwitcher envs={envs} value={env} onChange={setEnv} onAdd={onAddEnvironment} />
+        <button className="btn icon" onClick={onOpenSupport} title="Feedback and support">
+          <Icon.message />
+        </button>
         <button className="btn icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme">
           {theme === 'dark' ? <Icon.sun /> : <Icon.moon />}
         </button>

@@ -14,7 +14,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: What should MarkApiDown do?
+      description: What should Reqbook do?
     validations:
       required: true
   - type: textarea

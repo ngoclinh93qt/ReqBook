@@ -28,6 +28,9 @@ export const Icon = {
   dots: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor" aria-hidden><circle cx="3" cy="7" r="1.3" /><circle cx="7" cy="7" r="1.3" /><circle cx="11" cy="7" r="1.3" /></svg>,
   flow: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="3.5" cy="3.5" r="1.8" /><circle cx="10.5" cy="10.5" r="1.8" /><path d="M5 4.5C8 5 9 6 9.5 9" /></svg>,
   trash: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 4h9" /><path d="M5 4V2.5h4V4" /><path d="M3.5 4l.5 7.5h6l.5-7.5" /></svg>,
+  message: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8.5A2.5 2.5 0 0 1 9.5 11H5l-3 2V4.5A2.5 2.5 0 0 1 4.5 2h5A2.5 2.5 0 0 1 12 4.5Z" /></svg>,
+  bug: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3.5 4 2M9 3.5 10 2M4.5 6h5M7 11V7.5M2 7h2M10 7h2M3 4.5l1.5 1M11 4.5l-1.5 1" /><rect x="4" y="3" width="6" height="9" rx="3" /></svg>,
+  star: () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"><path d="m7 1.6 1.65 3.35 3.7.54-2.68 2.61.63 3.69L7 10.05l-3.3 1.74.63-3.69-2.68-2.61 3.7-.54Z" /></svg>,
 };
 
 export function MethodBadge({ method }: { method: string }) {
